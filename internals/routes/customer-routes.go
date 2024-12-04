@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"psi-src/internals/controllers"
+	"github.com/patrck23/carbond/internals/controllers"
 
 	"github.com/gofiber/fiber/v2"
 )

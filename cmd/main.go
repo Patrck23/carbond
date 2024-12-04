@@ -1,8 +1,8 @@
 package main
 
 import (
-	"psi-src/internals/database"
-	"psi-src/internals/routes"
+	"github.com/patrck23/carbond/internals/database"
+	"github.com/patrck23/carbond/internals/routes"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"

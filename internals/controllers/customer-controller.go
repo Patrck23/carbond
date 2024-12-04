@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"psi-src/internals/database"
-	"psi-src/internals/models/customerRegistration"
+	"github.com/patrck23/carbond/internals/database"
+	"github.com/patrck23/carbond/internals/models/customerRegistration"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -10,7 +10,7 @@ import (
 // Create a customer
 func CreateCustomer(c *fiber.Ctx) error {
 	db := database.DB.Db
-	customer := new(registration.Customer)
+	customer := new(customerRegistration.Customer)
 	// Store the body in the customer and return error if encountered
 	err := c.BodyParser(customer)
 	if err != nil {
@@ -27,7 +27,7 @@ func CreateCustomer(c *fiber.Ctx) error {
 // Get All customers from db
 func GetAllCustomers(c *fiber.Ctx) error {
 	db := database.DB.Db
-	var customers []registration.Customer
+	var customers []customerRegistration.Customer
 	// find all customers in the database
 	db.Find(&customers)
 	// If no customer found, return an error
@@ -43,7 +43,7 @@ func GetSingleCustomer(c *fiber.Ctx) error {
 	db := database.DB.Db
 	// get id params
 	id := c.Params("id")
-	var customer registration.Customer
+	var customer customerRegistration.Customer
 	// find single customer in the database by id
 	db.Find(&customer, "id = ?", id)
 	if customer.ID == 0 {
@@ -68,7 +68,7 @@ func UpdateCustomer(c *fiber.Ctx) error {
 		UpdatedBy   string `json:"updated_by"`
 	}
 	db := database.DB.Db
-	var customer registration.Customer
+	var customer customerRegistration.Customer
 	// get id params
 	id := c.Params("id")
 	// find single customer in the database by id
@@ -101,7 +101,7 @@ func UpdateCustomer(c *fiber.Ctx) error {
 // delete customer in db by ID
 func DeleteCustomerByID(c *fiber.Ctx) error {
 	db := database.DB.Db
-	var customer registration.Customer
+	var customer customerRegistration.Customer
 	// get id params
 	id := c.Params("id")
 	// find single customer in the database by id
