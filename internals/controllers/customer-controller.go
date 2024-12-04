@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"github.com/patrck23/carbond/internals/database"
-	"github.com/patrck23/carbond/internals/models/customerRegistration"
+	"car-bond/internals/database"
+	"car-bond/internals/models/customerRegistration"
 
 	"github.com/gofiber/fiber/v2"
 )

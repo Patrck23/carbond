@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"github.com/patrck23/carbond/internals/controllers"
+	"car-bond/internals/controllers"
 
 	"github.com/gofiber/fiber/v2"
 )

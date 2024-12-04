@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/patrck23/carbond/internals/config"
-	"github.com/patrck23/carbond/internals/models/customerRegistration"
+	"car-bond/internals/config"
+	"car-bond/internals/models/customerRegistration"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

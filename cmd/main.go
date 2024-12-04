@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/patrck23/carbond/internals/database"
-	"github.com/patrck23/carbond/internals/routes"
+	"car-bond/internals/database"
+	"car-bond/internals/routes"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
