@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"psi-src/internals/database"
-	"psi-src/internals/models/registration"
+	"psi-src/internals/models/customerRegistration"
 
 	"github.com/gofiber/fiber/v2"
 )

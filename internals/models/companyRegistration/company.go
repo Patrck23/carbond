@@ -1,0 +1,27 @@
+package companyRegistration
+
+import (
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type Company struct {
+	gorm.Model
+	ID          uint      `gorm:"primary key;autoIncrement" json:"id"`
+	CompanyUUID uuid.UUID `json:"company_uuid"`
+	Name   		string    `json:"name"`
+	StartDate   string    `gorm:"type:date" json:"dob"`
+	CreatedBy   string    `json:"created_by"`
+	UpdatedBy   string    `json:"updated_by"`
+}
+
+// Companies struct
+type Companies struct {
+	Companies       []Company
+	CurrentCompany int
+}
+
+func (company *Company) BeforeCreate(tx *gorm.DB) (err error) {
+	company.CompanyUUID = uuid.New()
+	return
+}

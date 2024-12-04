@@ -1,4 +1,4 @@
-package registration
+package customerRegistration
 
 import (
 	"errors"

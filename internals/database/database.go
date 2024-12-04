@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"psi-src/internals/config"
-	"psi-src/internals/models/registration"
+	"psi-src/internals/models/customerRegistration"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -37,14 +37,14 @@ func Connect() {
 	log.Println("Connected")
 	db.Logger = logger.Default.LogMode(logger.Info)
 	log.Println("running migrations")
-	db.AutoMigrate(&registration.ClientAddress{})
-	db.AutoMigrate(&registration.ClientAllergy{})
-	db.AutoMigrate(&registration.ClientChronicCondition{})
-	db.AutoMigrate(&registration.ClientContact{})
-	db.AutoMigrate(&registration.Client{})
-	db.AutoMigrate(&registration.ClientIdentifier{})
-	db.AutoMigrate(&registration.ClientQueue{})
-	db.AutoMigrate(&registration.ClientVisit{})
+	db.AutoMigrate(&customerRegistration.ClientAddress{})
+	db.AutoMigrate(&customerRegistration.ClientAllergy{})
+	db.AutoMigrate(&customerRegistration.ClientChronicCondition{})
+	db.AutoMigrate(&customerRegistration.ClientContact{})
+	db.AutoMigrate(&customerRegistration.Client{})
+	db.AutoMigrate(&customerRegistration.ClientIdentifier{})
+	db.AutoMigrate(&customerRegistration.ClientQueue{})
+	db.AutoMigrate(&customerRegistration.ClientVisit{})
 	DB = Dbinstance{
 		Db: db,
 	}
