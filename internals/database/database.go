@@ -8,6 +8,8 @@ import (
 
 	"car-bond/internals/config"
 	"car-bond/internals/models/customerRegistration"
+	"car-bond/internals/models/companyRegistration"
+	"car-bond/internals/models/carRegistration"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -44,9 +46,14 @@ func Connect() {
 	log.Println("Connected")
 	db.Logger = logger.Default.LogMode(logger.Info)
 	log.Println("running migrations")
+	// --- Customer --- //
 	db.AutoMigrate(&customerRegistration.CustomerAddress{})
 	db.AutoMigrate(&customerRegistration.CustomerContact{})
 	db.AutoMigrate(&customerRegistration.Customer{})
+	// --- Company --- //
+	db.AutoMigrate(&companyRegistration.Company{})
+	// --- Car --- //
+	db.AutoMigrate(&carRegistration.Car{})
 	DB = Dbinstance{
 		Db: db,
 	}

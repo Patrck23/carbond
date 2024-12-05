@@ -10,7 +10,7 @@ type Company struct {
 	ID          uint      `gorm:"primary key;autoIncrement" json:"id"`
 	CompanyUUID uuid.UUID `json:"company_uuid"`
 	Name   		string    `json:"name"`
-	StartDate   string    `gorm:"type:date" json:"dob"`
+	StartDate   string    `gorm:"type:date" json:"start_date"`
 	CreatedBy   string    `json:"created_by"`
 	UpdatedBy   string    `json:"updated_by"`
 }
