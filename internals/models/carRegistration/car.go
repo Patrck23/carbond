@@ -15,6 +15,7 @@ type Car struct {
 	CarModel     string                       `gorm:"size:100;not null" json:"model"`
 	Year         int                          `gorm:"not null" json:"year"`
 	BidPrice     float64                      `gorm:"type:numeric;not null" json:"bid_price"`
+	VATTax     float64                      `gorm:"type:numeric;not null" json:"vat_tax"`
 	PurchaseDate string                       `gorm:"type:date;not null" json:"purchase_date"`
 	// FromCompanyID int                         `gorm:"references:ID"`
 	// FromCompany  companyRegistration.Company  `gorm:"foreignKey:FromCompanyID"`

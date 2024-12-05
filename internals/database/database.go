@@ -54,6 +54,7 @@ func Connect() {
 	db.AutoMigrate(&companyRegistration.Company{})
 	// --- Car --- //
 	db.AutoMigrate(&carRegistration.Car{})
+	db.AutoMigrate(&carRegistration.CarExpense{})
 	DB = Dbinstance{
 		Db: db,
 	}
