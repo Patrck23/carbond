@@ -10,6 +10,8 @@ import (
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/models/carRegistration"
+	"car-bond/internals/models/saleRegistration"
+	"car-bond/internals/models/userRegistration"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -53,9 +55,16 @@ func Connect() {
 	// --- Company --- //
 	db.AutoMigrate(&companyRegistration.Company{})
 	db.AutoMigrate(&companyRegistration.CompanyLocation{})
+	db.AutoMigrate(&companyRegistration.CompanyExpense{})
 	// --- Car --- //
 	db.AutoMigrate(&carRegistration.Car{})
 	db.AutoMigrate(&carRegistration.CarExpense{})
+	// --- Sale --- //
+	db.AutoMigrate(&saleRegistration.Sale{})
+	db.AutoMigrate(&saleRegistration.SalePayment{})
+	db.AutoMigrate(&saleRegistration.SalePaymentMode{})
+	// --- User --- //
+	db.AutoMigrate(&userRegistration.User{})
 	DB = Dbinstance{
 		Db: db,
 	}
