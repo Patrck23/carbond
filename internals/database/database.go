@@ -52,6 +52,7 @@ func Connect() {
 	db.AutoMigrate(&customerRegistration.Customer{})
 	// --- Company --- //
 	db.AutoMigrate(&companyRegistration.Company{})
+	db.AutoMigrate(&companyRegistration.CompanyLocation{})
 	// --- Car --- //
 	db.AutoMigrate(&carRegistration.Car{})
 	db.AutoMigrate(&carRegistration.CarExpense{})

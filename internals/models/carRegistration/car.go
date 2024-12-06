@@ -23,6 +23,7 @@ type Car struct {
 	// ToCompany    companyRegistration.Company  `gorm:"foreignKey:FromCompanyID"`
 	FromCompany  companyRegistration.Company  `gorm:"foreignKey:FromCompanyID;references:ID" json:"from_company"`
 	ToCompany    companyRegistration.Company  `gorm:"foreignKey:ToCompanyID;references:ID" json:"to_company"`
+	Destination	 string						  `json:"destination"`
 	FromCompanyID uint                        `json:"from_company_id"`
 	ToCompanyID   uint                        `json:"to_company_id"`
 	CreatedBy    string                       `gorm:"size:100" json:"created_by"`
