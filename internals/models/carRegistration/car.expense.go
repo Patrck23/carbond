@@ -17,7 +17,7 @@ type CarExpense struct {
 	Car    		Car    `gorm:"references:ID"`
 }
 
-type CarExpensees struct {
+type CarExpenses struct {
 	CarExpenses []CarExpense
 	CurrentCar   int
 }
