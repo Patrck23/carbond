@@ -5,6 +5,7 @@ import (
 
 	"car-bond/internals/database"
 	"car-bond/internals/models/userRegistration"
+	"car-bond/internals/models/companyRegistration"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -87,7 +88,16 @@ func CreateUser(c *fiber.Ctx) error {
 // UpdateUser update user
 func UpdateUser(c *fiber.Ctx) error {
 	type UpdateUserInput struct {
-		Names string `json:"names"`
+		Surname    string                     `gorm:"size:100;not null" json:"surname"`
+		Firstname  string                     `gorm:"size:100;not null" json:"firstname"`
+		Othername  string                     `gorm:"size:100" json:"othername"`
+		Gender     string                     `gorm:"size:10;not null" json:"gender"`
+		Title      string                     `gorm:"size:50" json:"title"`
+		Email      string 					  `gorm:"uniqueIndex;not null" json:"email"`
+		Password   string                     `gorm:"size:255;not null" json:"password"`
+		CompanyID  uint                       `json:"company_id"`
+		Company    companyRegistration.Company `gorm:"foreignKey:CompanyID;references:ID" json:"company"`
+		UpdatedBy  string                     `gorm:"size:100" json:"updated_by"`
 	}
 	var uui UpdateUserInput
 	if err := c.BodyParser(&uui); err != nil {

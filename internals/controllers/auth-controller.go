@@ -23,7 +23,7 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 func getUserByEmail(e string) (*userRegistration.User, error) {
-	db := database.DB
+	db := database.DB.Db
 	var user userRegistration.User
 	if err := db.Where(&userRegistration.User{Email: e}).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -35,7 +35,7 @@ func getUserByEmail(e string) (*userRegistration.User, error) {
 }
 
 func getUserByUsername(u string) (*userRegistration.User, error) {
-	db := database.DB
+	db := database.DB.Db
 	var user userRegistration.User
 	if err := db.Where(&userRegistration.User{Username: u}).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
