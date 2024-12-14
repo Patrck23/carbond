@@ -10,11 +10,12 @@ import (
 func SetupRoutes(app *fiber.App) {
 	// grouping
 	api := app.Group("/api")
-	v1 := api.Group("/customer")
-	// routes
-	v1.Get("/", controllers.GetAllCustomers)
-	v1.Get("/:id", controllers.GetSingleCustomer)
-	v1.Post("/", controllers.CreateCustomer)
-	v1.Put("/:id", controllers.UpdateCustomer)
-	v1.Delete("/:id", controllers.DeleteCustomerByID)
+	customer := api.Group("/customer")
+	
+	// customer
+	customer.Get("/", controllers.GetAllCustomers)
+	customer.Get("/:id", controllers.GetSingleCustomer)
+	customer.Post("/", controllers.CreateCustomer)
+	customer.Put("/:id", controllers.UpdateCustomer)
+	customer.Delete("/:id", controllers.DeleteCustomerByID)
 }
