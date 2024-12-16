@@ -7,9 +7,9 @@ import (
 	"strconv"
 
 	"car-bond/internals/config"
-	"car-bond/internals/models/customerRegistration"
-	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/models/carRegistration"
+	"car-bond/internals/models/companyRegistration"
+	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/models/userRegistration"
 
@@ -30,12 +30,12 @@ func Connect() {
 	if err != nil {
 		fmt.Println("Error parsing str to int")
 	}
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s", 
-		config.Config("DB_HOST"), 
-		config.Config("DB_USER"), 
-		config.Config("DB_PASS"), 
-		config.Config("DB_NAME"), 
-		port, 
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
+		config.Config("DB_HOST"),
+		config.Config("DB_USER"),
+		config.Config("DB_PASS"),
+		config.Config("DB_NAME"),
+		port,
 		config.Config("DB_SSLMODE"),
 	)
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{

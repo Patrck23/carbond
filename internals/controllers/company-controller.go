@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"car-bond/internal/database"
-	"car-bond/internal/models/companyRegistration"
+	"car-bond/internals/database"
+	"car-bond/internals/models/companyRegistration"
 
 	"github.com/gofiber/fiber/v2"
 )
