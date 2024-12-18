@@ -98,10 +98,85 @@ func DeleteCompanyById(c *fiber.Ctx) error {
 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company deleted"})
 }
 
-//Update Company Expenses by
+// Get Company Expenses by ID
 
-func UpdateCompanyExpenses(c *fiber.Ctx) error {
-	type UpdateCompanyExpenses struct {
+func GetCompanyExpenseById(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+
+	// Retrieve the expense ID and company ID from the request parameters
+	id := c.Params("id")
+	companyId := c.Params("companyId")
+
+	// Query the database for the expense by its ID and company ID
+	var expense companyRegistration.CompanyExpenses
+	result := db.Where("id = ? AND company_id = ?", id, companyId).First(&expense)
+
+	// Handle potential database query errors
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Expense not found for the specified company",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch the expense",
+			"error":   result.Error.Error(),
+		})
+	}
+
+	// Return the fetched expense
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Expense fetched successfully",
+		"data":    expense,
+	})
+}
+
+// Get Company Expenses by Company ID
+
+func GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+
+	// Retrieve companyId from the request parameters
+	companyId := c.Params("companyId")
+
+	// Query the database for company expenses
+	var expenses []companyRegistration.CompanyExpenses
+	result := db.Where("company_id = ?", companyId).Find(&expenses)
+
+	// Handle potential database errors
+	if result.Error != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve company expenses",
+			"error":   result.Error.Error(),
+		})
+	}
+
+	// Handle the case where no expenses are found
+	if len(expenses) == 0 {
+		return c.Status(404).JSON(fiber.Map{
+			"status":  "error",
+			"message": "No expenses found for the specified company",
+		})
+	}
+
+	// Return a success response with the fetched data
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// Update Company Expenses by
+
+func UpdateCompanyExpense(c *fiber.Ctx) error {
+	type UpdateCompanyExpense struct {
 		Description string  `json:"description"`
 		Currency    string  `json:"currency"`
 		Amount      float64 `json:"amount"`
@@ -117,23 +192,23 @@ func UpdateCompanyExpenses(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
 	}
 
-	var updateCompanyExpenses UpdateCompanyExpenses
-	err := c.BodyParser(&updateCompanyExpenses)
+	var UpdateCompanyExpense UpdateCompanyExpense
+	err := c.BodyParser(&UpdateCompanyExpense)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
 	}
-	updateCompanyExpenses.Description = updateCompanyExpenses.Description
-	updateCompanyExpenses.Currency = updateCompanyExpenses.Currency
-	updateCompanyExpenses.Amount = updateCompanyExpenses.Amount
-	updateCompanyExpenses.ExpenseDate = updateCompanyExpenses.ExpenseDate
-	updateCompanyExpenses.UpdatedBy = updateCompanyExpenses.UpdatedBy
+	UpdateCompanyExpense.Description = UpdateCompanyExpense.Description
+	UpdateCompanyExpense.Currency = UpdateCompanyExpense.Currency
+	UpdateCompanyExpense.Amount = UpdateCompanyExpense.Amount
+	UpdateCompanyExpense.ExpenseDate = UpdateCompanyExpense.ExpenseDate
+	UpdateCompanyExpense.UpdatedBy = UpdateCompanyExpense.UpdatedBy
 	db.Save(&company)
 	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses updated successfully", "data": company})
 }
 
 // Delete Company Expenses by ID
 
-func DeleteCompanyExpensesById(c *fiber.Ctx) error {
+func DeleteCompanyExpenseById(c *fiber.Ctx) error {
 	db := database.DB.Db
 	id := c.Params("id")
 	var company companyRegistration.Company
@@ -142,7 +217,7 @@ func DeleteCompanyExpensesById(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
 	}
 
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.First(&expense, id)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -153,34 +228,6 @@ func DeleteCompanyExpensesById(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Failed to delete company expenses", "data": err})
 	}
 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company Expenses deleted"})
-}
-
-// Get Company Expenses by ID
-
-func GetCompanyExpensesById(c *fiber.Ctx) error {
-	db := database.DB.Db
-	id := c.Params("id")
-	var expense companyRegistration.CompanyExpenses
-	db.First(&expense, id)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
-}
-
-// Get Company Expenses by Company ID
-
-func GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
-	db := database.DB.Db
-	id := c.Params("id")
-	var expenses []companyRegistration.CompanyExpenses
-	db.Where("company_id = ?", id).Find(&expenses)
-	if len(expenses) == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expenses})
 }
 
 // Get Company Expenses by Company ID and Expense Date
