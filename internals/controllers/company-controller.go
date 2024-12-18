@@ -202,7 +202,7 @@ func UpdateCompanyExpense(c *fiber.Ctx) error {
 		Currency    string  `json:"currency"`
 		Amount      float64 `json:"amount"`
 		ExpenseDate string  `gorm:"type:date" json:"expense_date"`
-		UpdatedBy   int     `json:"updated_by"`
+		UpdatedBy   string  `json:"updated_by"`
 	}
 
 	db := database.DB.Db

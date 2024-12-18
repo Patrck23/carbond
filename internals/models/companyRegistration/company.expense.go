@@ -13,7 +13,7 @@ type CompanyExpense struct {
 	Amount	 	float64  `json:"amount"`
 	ExpenseDate string   `gorm:"type:date" json:"expense_date"`
 	CreatedBy 	string   `json:"created_by"`
-	UpdatedBy 	int      `json:"updated_by"`
+	UpdatedBy 	string   `json:"updated_by"`
 	Company    	Company  `gorm:"references:ID"`
 }
 
