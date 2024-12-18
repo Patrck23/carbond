@@ -7,7 +7,6 @@ import (
 
 type Company struct {
 	gorm.Model
-	ID          uint      `gorm:"primary key;autoIncrement" json:"id"`
 	CompanyUUID uuid.UUID `json:"company_uuid"`
 	Name   		string    `json:"name"`
 	StartDate   string    `gorm:"type:date" json:"start_date"`

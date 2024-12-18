@@ -6,7 +6,6 @@ import (
 
 type CustomerAddress struct {
 	gorm.Model
-	ID          uint    `json:"id,omitempty"`
 	CustomerID  uint    `json:"customer_id"`
 	District  	string `json:"district"`
 	Subcounty 	string `json:"subcounty"`

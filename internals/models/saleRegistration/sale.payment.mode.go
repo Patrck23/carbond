@@ -6,7 +6,6 @@ import (
 
 type SalePaymentMode struct {
 	gorm.Model
-	ID           	uint                `gorm:"primaryKey;autoIncrement" json:"id,omitempty"`
 	ModeOfPayment   string              `json:"mode_of_payment"`
 	transactionId 	string 				`gorm:"unique" json:"transaction_id"`
 	SalePaymentID   uint                	`gorm:"references:ID"`

@@ -6,7 +6,6 @@ import (
 
 type SalePayment struct {
 	gorm.Model
-	ID           uint                       `gorm:"primaryKey;autoIncrement" json:"id,omitempty"`
 	AmountPayed   float64                   `gorm:"type:numeric;not null" json:"amount_payed"`
 	PaymentDate   string                    `gorm:"type:date;not null" json:"payment_date"`
 	SaleID 		 uint                        `gorm:"references:ID"`

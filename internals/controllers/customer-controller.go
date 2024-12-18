@@ -60,7 +60,7 @@ func UpdateCustomer(c *fiber.Ctx) error {
 		Othername   string `json:"othername"`
 		Gender      string `json:"gender"`
 		Nationality string `json:"nationality"`
-		Age         int    `json:"age"`
+		Age         uint    `json:"age"`
 		DOB         string `gorm:"type:date" json:"dob"`
 		Telephone   string `json:"telephone"`
 		Email		string `json:"email"`

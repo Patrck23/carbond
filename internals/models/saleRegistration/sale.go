@@ -8,7 +8,7 @@ import (
 
 type Sale struct {
 	gorm.Model
-	ID           uint                         `gorm:"primaryKey;autoIncrement" json:"id"`
+	// ID           uint                         `gorm:"primaryKey;autoIncrement" json:"id"`
 	TotalPrice   float64                     `gorm:"type:numeric;not null" json:"total_price"`
 	SaleDate 	 string                       `gorm:"type:date;not null" json:"sale_date"`
 	CarID 		 int                          `gorm:"references:ID"`

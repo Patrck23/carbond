@@ -6,7 +6,6 @@ import (
 
 type CarPort struct {
 	gorm.Model
-	ID          uint    `json:"id,omitempty"`
 	CarID  		uint    `json:"car_id"`
 	Name 		string `json:"name"`
 	Category 	string `json:"category"`

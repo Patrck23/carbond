@@ -9,7 +9,6 @@ import (
 
 type Car struct {
 	gorm.Model
-	ID           uint                         `gorm:"primaryKey;autoIncrement" json:"id"`
 	CarUUID      uuid.UUID                    `json:"car_uuid"`
 	VinNumber    string                       `gorm:"size:100;not null" json:"vin_number"`
 	Make         string                       `gorm:"size:100;not null" json:"make"`

@@ -6,7 +6,6 @@ import (
 
 type CustomerContact struct {
 	gorm.Model
-	ID                 uint    `json:"id,omitempty"`
 	CustomerID         uint    `json:"customer_id"`
 	ContactType        string  `json:"contact_type"`
 	ContactInformation string `json:"contact_information"`

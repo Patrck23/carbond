@@ -7,7 +7,6 @@ import (
 
 type Customer struct {
 	gorm.Model
-	ID          uint      `gorm:"primary key;autoIncrement" json:"id"`
 	CustomerUUID  uuid.UUID `json:"customer_uuid"`
 	Surname     string    `json:"surname"`
 	Firstname   string    `json:"firstname"`
