@@ -38,7 +38,6 @@ func SetupRoutes(app *fiber.App) {
 	company.Put("/expenses/:id", controllers.UpdateCompanyExpense)
 	company.Delete("/expenses/:id", controllers.DeleteCompanyExpenseById)
 
-	
 	// Customer
 	api.Get("/customers", controllers.GetAllCustomers)
 	customer := api.Group("/customer")
