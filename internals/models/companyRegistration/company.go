@@ -15,12 +15,6 @@ type Company struct {
 	UpdatedBy   string    `json:"updated_by"`
 }
 
-// Companies struct
-type Companies struct {
-	Companies       []Company
-	CurrentCompany int
-}
-
 func (company *Company) BeforeCreate(tx *gorm.DB) (err error) {
 	company.CompanyUUID = uuid.New()
 	return

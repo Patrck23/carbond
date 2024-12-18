@@ -15,7 +15,4 @@ type CustomerContact struct {
 	UpdatedBy          int    `json:"updated_by"`
 	Customer           Customer `gorm:"references:ID"`
 }
-type CustomerContacts struct {
-	CustomerContacts []CustomerContact
-	CurrentCustomer  int
-}
+

@@ -16,8 +16,3 @@ type CompanyExpense struct {
 	UpdatedBy 	string   `json:"updated_by"`
 	Company    	Company  `gorm:"references:ID"`
 }
-
-type CompanyExpenses struct {
-	CompanyExpenses []CompanyExpense
-	CurrentCompany   int
-}

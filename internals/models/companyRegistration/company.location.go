@@ -13,9 +13,3 @@ type CompanyLocation struct {
 	CreatedBy   string    `json:"created_by"`
 	UpdatedBy   string    `json:"updated_by"`
 }
-
-// CompanyLocations struct
-type CompanyLocations struct {
-	CompanyLocations       []CompanyLocation
-	CurrentCompany int
-}

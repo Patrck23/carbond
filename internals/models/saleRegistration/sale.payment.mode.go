@@ -14,9 +14,3 @@ type SalePaymentMode struct {
 	CreatedBy    	string              `gorm:"size:100" json:"created_by"`
 	UpdatedBy    	string              `gorm:"size:100" json:"updated_by"`
 }
-
-// SalePaymentModes struct
-type SalePaymentModes struct {
-	SalePaymentModes       []SalePaymentMode
-	CurrentSale int
-}

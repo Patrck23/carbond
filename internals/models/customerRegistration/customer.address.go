@@ -16,8 +16,3 @@ type CustomerAddress struct {
 	UpdatedBy 	int    `json:"updated_by"`
 	Customer    Customer `gorm:"references:ID"`
 }
-
-type CustomerAddresses struct {
-	CustomerAddresses []CustomerAddress
-	CurrentCustomer   int
-}

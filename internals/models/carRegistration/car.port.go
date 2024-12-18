@@ -14,8 +14,3 @@ type CarPort struct {
 	UpdatedBy 	int    `json:"updated_by"`
 	Car    		Car    `gorm:"references:ID"`
 }
-
-type CarPorts struct {
-	CarPorts []CarPort
-	CurrentCar   int
-}

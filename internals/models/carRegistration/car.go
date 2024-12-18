@@ -18,10 +18,6 @@ type Car struct {
 	BidPrice     float64                      `gorm:"type:numeric;not null" json:"bid_price"`
 	VATTax     float64                      `gorm:"type:numeric;not null" json:"vat_tax"`
 	PurchaseDate string                       `gorm:"type:date;not null" json:"purchase_date"`
-	// FromCompanyID int                         `gorm:"references:ID"`
-	// FromCompany  companyRegistration.Company  `gorm:"foreignKey:FromCompanyID"`
-	// ToCompanyID   int                         `gorm:"references:ID"`
-	// ToCompany    companyRegistration.Company  `gorm:"foreignKey:FromCompanyID"`
 	FromCompany  companyRegistration.Company  `gorm:"foreignKey:FromCompanyID;references:ID" json:"from_company"`
 	ToCompany    companyRegistration.Company  `gorm:"foreignKey:ToCompanyID;references:ID" json:"to_company"`
 	Destination	 string						  `json:"destination"`
@@ -31,12 +27,6 @@ type Car struct {
 	Customer     customerRegistration.Customer  `gorm:"foreignKey:CustomerID"`
 	CreatedBy    string                       `gorm:"size:100" json:"created_by"`
 	UpdatedBy    string                       `gorm:"size:100" json:"updated_by"`
-}
-
-// Cars struct
-type Cars struct {
-	Cars       []Car
-	CurrentCar int
 }
 
 func (car *Car) BeforeCreate(tx *gorm.DB) (err error) {

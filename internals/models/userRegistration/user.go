@@ -24,12 +24,6 @@ type User struct {
 	UpdatedBy  string                     `gorm:"size:100" json:"updated_by"`
 }
 
-// Users struct
-type Users struct {
-	Users       []User
-	CurrentUser int
-}
-
 func (user *User) BeforeCreate(tx *gorm.DB) (err error) {
 	user.UserUUID = uuid.New()
 	return nil
