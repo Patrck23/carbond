@@ -6,8 +6,8 @@ import (
 
 type CompanyExpense struct {
 	gorm.Model
-	ID          int      `json:"id,omitempty"`
-	CompanyID  	int      `json:"company_id"`
+	ID          uint      `json:"id,omitempty"`
+	CompanyID  	uint      `json:"company_id"`
 	Description string   `json:"description"`
 	Currency	string   `json:"currency"`
 	Amount	 	float64  `json:"amount"`
