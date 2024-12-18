@@ -6,7 +6,7 @@ import (
 
 type CarExpense struct {
 	gorm.Model
-	ID          int    `json:"id"`
+	ID          int    `json:"id,omitempty"`
 	CarID  		int    `json:"car_id"`
 	Description string `json:"description"`
 	Currency	string `json:"currency"`
@@ -14,5 +14,5 @@ type CarExpense struct {
 	ExpenseDate string  `gorm:"type:date" json:"expense_date"`
 	CreatedBy 	string `json:"created_by"`
 	UpdatedBy 	int    `json:"updated_by"`
-	Car    		Car    `gorm:"references:ID"`
+	Car    		Car    `gorm:"foreignKey:CarID;references:ID" json:"car"`
 }

@@ -6,7 +6,7 @@ import (
 
 type CustomerAddress struct {
 	gorm.Model
-	ID          int    `json:"id"`
+	ID          int    `json:"id,omitempty"`
 	CustomerID  int    `json:"customer_id"`
 	District  	string `json:"district"`
 	Subcounty 	string `json:"subcounty"`
@@ -14,5 +14,5 @@ type CustomerAddress struct {
 	Village   	string `json:"village"`
 	CreatedBy 	string `json:"created_by"`
 	UpdatedBy 	int    `json:"updated_by"`
-	Customer    Customer `gorm:"references:ID"`
+	Customer    Customer `gorm:"foreignKey:CustomerID;references:ID" json:"customer"`
 }

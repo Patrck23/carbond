@@ -130,7 +130,7 @@ func GetCompanyExpenseById(c *fiber.Ctx) error {
 
 	// Query the database for the expense by its ID and company ID
 	var expense companyRegistration.CompanyExpense
-	result := db.Where("id = ? AND company_id = ?", id, companyId).First(&expense)
+	result := db.Preload("Company").Where("id = ? AND company_id = ?", id, companyId).First(&expense)
 
 	// Handle potential database query errors
 	if result.Error != nil {
@@ -166,7 +166,7 @@ func GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
 
 	// Query the database for company expenses
 	var expenses []companyRegistration.CompanyExpense
-	result := db.Where("company_id = ?", companyId).Find(&expenses)
+	result := db.Preload("Company").Where("company_id = ?", companyId).Find(&expenses)
 
 	// Handle potential database errors
 	if result.Error != nil {
