@@ -17,7 +17,7 @@ type CompanyExpense struct {
 	Company    	Company  `gorm:"references:ID"`
 }
 
-type CompanyExpensees struct {
+type CompanyExpenses struct {
 	CompanyExpenses []CompanyExpense
 	CurrentCompany   int
 }
