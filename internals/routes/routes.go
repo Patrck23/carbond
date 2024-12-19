@@ -33,10 +33,16 @@ func SetupRoutes(app *fiber.App) {
 	company.Delete("/:id", middleware.Protected(), controllers.DeleteCompanyById)
 	// Company Expenses
 	company.Get("/expenses/:companyId", controllers.GetCompanyExpensesByCompanyId)
-	company.Get("/expenses/:companyId/:id", controllers.GetCompanyExpenseById)
-	company.Post("/expenses", controllers.CreateCompanyExpense)
-	company.Put("/expenses/:id", controllers.UpdateCompanyExpense)
-	company.Delete("/expenses/:id", controllers.DeleteCompanyExpenseById)
+	company.Get("/expense/:companyId/:id", controllers.GetCompanyExpenseById)
+	company.Post("/expense", controllers.CreateCompanyExpense)
+	company.Put("/expense/:id", controllers.UpdateCompanyExpense)
+	company.Delete("/expense/:id", controllers.DeleteCompanyExpenseById)
+	// Company Locations
+	company.Get("/locations", controllers.GetCompanyLocations)
+	company.Get("/location/:companyId/:id", controllers.GetCompanyLocationById)
+	company.Post("/location", controllers.CreateCompanyLocation)
+	company.Put("/location/:id", controllers.UpdateCompanyLocation)
+	company.Delete("/location/:companyId/:id", controllers.DeleteCompanyLocationById)
 
 	// Customer
 	api.Get("/customers", controllers.GetAllCustomers)

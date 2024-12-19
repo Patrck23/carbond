@@ -100,6 +100,8 @@ func DeleteCompanyById(c *fiber.Ctx) error {
 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company deleted"})
 }
 
+// ==================================================================================================================
+
 // Create a company expense
 
 func CreateCompanyExpense(c *fiber.Ctx) error {
@@ -247,25 +249,25 @@ func UpdateCompanyExpense(c *fiber.Ctx) error {
 
 func DeleteCompanyExpenseById(c *fiber.Ctx) error {
 	db := database.DB.Db
-	id := c.Params("id")
-	var company companyRegistration.Company
-	db.First(&company, id)
-	if company.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
-	}
 
+	// Parse companyId and expenseId from the URL
+	companyId := c.Params("companyId")
+	expenseId := c.Params("id")
+
+	// Check if the expense exists and belongs to the specified company
 	var expense companyRegistration.CompanyExpense
-	db.First(&expense, id)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
+	if err := db.Where("id = ? AND company_id = ?", expenseId, companyId).First(&expense).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company expense not found or does not belong to the specified company"})
 	}
 
-	err := db.Delete(&expense, id).Error
-	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Failed to delete company expenses", "data": err})
+	// Delete the expense
+	if err := db.Delete(&expense).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete company expense", "data": err.Error()})
 	}
-	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company Expenses deleted"})
+
+	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company expense deleted successfully"})
 }
+
 
 // Get Company Expenses by Company ID and Expense Date
 
@@ -359,4 +361,153 @@ func GetCompanyExpensesFilters(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
+}
+
+// ==================================================================================================================
+
+// Create a company location
+
+func CreateCompanyLocation(c *fiber.Ctx) error {
+	db := database.DB.Db
+	companyLocation := new(companyRegistration.CompanyLocation)
+	err := c.BodyParser(companyLocation)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
+	}
+
+	err = db.Create(&companyLocation).Error
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to create company location", "data": err})
+	}
+
+	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Company created successfully", "data": companyLocation})
+}
+
+// Get Company Locations
+
+func GetCompanyLocations(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+	var companyLocations []companyRegistration.CompanyLocation
+	db.Preload("Company").Find(&companyLocations)
+	if len(companyLocations) == 0 {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company locations not found"})
+	}
+
+	return c.JSON(fiber.Map{"status": "success", "message": "Company locations fetched successfully", "data": companyLocations})
+}
+
+// Get Company Location by ID
+
+func GetCompanyLocationById(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+
+	// Retrieve the location ID and company ID from the request parameters
+	id := c.Params("id")
+	companyId := c.Params("companyId")
+
+	// Query the database for the location by its ID and company ID
+	var location companyRegistration.CompanyLocation
+	result := db.Preload("Company").Where("id = ? AND company_id = ?", id, companyId).First(&location)
+
+	// Handle potential database query errors
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Location not found for the specified company",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch the location",
+			"error":   result.Error.Error(),
+		})
+	}
+
+	// Return the fetched location
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Location fetched successfully",
+		"data":    location,
+	})
+}
+
+// Update Company Location
+
+func UpdateCompanyLocation(c *fiber.Ctx) error {
+	// Define a struct for input validation
+	type UpdateCompanyLocationInput struct {
+		Address 	string	  `json:"address"`
+		Telephone	string	  `json:"telephone"`
+		Country   	string    `json:"country"`
+		UpdatedBy   string    `json:"updated_by"`
+	}
+
+	db := database.DB.Db
+	locationID := c.Params("id")
+
+	// Find the location record by ID
+	var location companyRegistration.CompanyLocation
+	if err := db.First(&location, locationID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Location not found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Database error", "error": err.Error()})
+	}
+
+	// Parse the request body into the input struct
+	var input UpdateCompanyLocationInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invalid input", "error": err.Error()})
+	}
+
+	// Update the fields of the location record
+	location.Address = input.Address
+	location.Telephone = input.Telephone
+	location.Country = input.Country
+	location.UpdatedBy = input.UpdatedBy
+
+	// Save the changes to the database
+	if err := db.Save(&location).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update location", "error": err.Error()})
+	}
+
+	// Return the updated location
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Location updated successfully",
+		"data":    location,
+	})
+}
+
+// Delete Company Location by ID
+
+func DeleteCompanyLocationById(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+
+	// Parse parameters
+	id := c.Params("id")
+	companyId := c.Params("companyId")
+
+	// Check if the company exists
+	var company companyRegistration.Company
+	if err := db.First(&company, companyId).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
+	}
+
+	// Check if the company location exists and belongs to the company
+	var companyLocation companyRegistration.CompanyLocation
+	if err := db.Where("id = ? AND company_id = ?", id, companyId).First(&companyLocation).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company location not found or does not belong to the specified company"})
+	}
+
+	// Delete the company location
+	if err := db.Delete(&companyLocation).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete company location", "data": err.Error()})
+	}
+
+	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company location deleted successfully"})
 }
