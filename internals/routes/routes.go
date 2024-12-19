@@ -38,7 +38,6 @@ func SetupRoutes(app *fiber.App) {
 	company.Put("/expense/:id", controllers.UpdateCompanyExpense)
 	company.Delete("/expense/:id", controllers.DeleteCompanyExpenseById)
 	// Company Locations
-	company.Get("/locations", controllers.GetCompanyLocations)
 	company.Get("/location/:companyId/:id", controllers.GetCompanyLocationById)
 	company.Post("/location", controllers.CreateCompanyLocation)
 	company.Put("/location/:id", controllers.UpdateCompanyLocation)

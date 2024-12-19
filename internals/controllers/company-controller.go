@@ -383,20 +383,6 @@ func CreateCompanyLocation(c *fiber.Ctx) error {
 	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Company created successfully", "data": companyLocation})
 }
 
-// Get Company Locations
-
-func GetCompanyLocations(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-	var companyLocations []companyRegistration.CompanyLocation
-	db.Preload("Company").Find(&companyLocations)
-	if len(companyLocations) == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company locations not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company locations fetched successfully", "data": companyLocations})
-}
-
 // Get Company Location by ID
 
 func GetCompanyLocationById(c *fiber.Ctx) error {
