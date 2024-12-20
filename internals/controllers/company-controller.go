@@ -4,9 +4,8 @@ import (
 	"car-bond/internals/database"
 	"car-bond/internals/models/companyRegistration"
 
-
-    "gorm.io/gorm"
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 // Create a company registration
@@ -54,32 +53,65 @@ func GetSingleCompanyById(c *fiber.Ctx) error {
 }
 
 // Update a company
-
 func UpdateCompany(c *fiber.Ctx) error {
+	// Struct to parse and validate input
 	type UpdateCompany struct {
 		Name      string `json:"name"`
-		StartDate string `gorm:"type:date" json:"start_date"`
-		CreatedBy string `json:"created_by"`
+		StartDate string `json:"start_date"`
 		UpdatedBy string `json:"updated_by"`
 	}
+
+	// Initialize database instance
 	db := database.DB.Db
+
+	// Fetch company ID from URL params
 	id := c.Params("id")
 	var company companyRegistration.Company
-	db.First(&company, id)
-	if company.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
+
+	// Find the company by ID
+	if err := db.First(&company, id).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Company not found",
+		})
 	}
 
-	err := c.BodyParser(&company)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
+	// Parse request body into the UpdateCompany struct
+	var updateData UpdateCompany
+	if err := c.BodyParser(&updateData); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
 	}
-	company.Name = company.Name
-	company.StartDate = company.StartDate
-	company.UpdatedBy = company.UpdatedBy
 
-	db.Save(&company)
-	return c.JSON(fiber.Map{"status": "success", "message": "Company updated successfully", "data": company})
+	// Update the company fields
+	if updateData.Name != "" {
+		company.Name = updateData.Name
+	}
+	if updateData.StartDate != "" {
+		company.StartDate = updateData.StartDate
+	}
+	if updateData.UpdatedBy != "" {
+		company.UpdatedBy = updateData.UpdatedBy
+	}
+
+	// Save the updated company to the database
+	if err := db.Save(&company).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update company",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company updated successfully",
+		"data":    company,
+	})
 }
 
 // Delete a company by ID
@@ -268,7 +300,6 @@ func DeleteCompanyExpenseById(c *fiber.Ctx) error {
 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company expense deleted successfully"})
 }
 
-
 // Get Company Expenses by Company ID and Expense Date
 
 func GetCompanyExpensesByCompanyIdAndExpenseDate(c *fiber.Ctx) error {
@@ -425,10 +456,10 @@ func GetCompanyLocationById(c *fiber.Ctx) error {
 func UpdateCompanyLocation(c *fiber.Ctx) error {
 	// Define a struct for input validation
 	type UpdateCompanyLocationInput struct {
-		Address 	string	  `json:"address"`
-		Telephone	string	  `json:"telephone"`
-		Country   	string    `json:"country"`
-		UpdatedBy   string    `json:"updated_by"`
+		Address   string `json:"address"`
+		Telephone string `json:"telephone"`
+		Country   string `json:"country"`
+		UpdatedBy string `json:"updated_by"`
 	}
 
 	db := database.DB.Db
