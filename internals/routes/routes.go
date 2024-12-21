@@ -67,4 +67,14 @@ func SetupRoutes(app *fiber.App) {
 	customer.Post("/address", controllers.CreateCustomerAddress)
 	customer.Put("/address/:id", controllers.UpdateCustomerAddress)
 	customer.Delete("/:customerId/address/:id", controllers.DeleteCustomerAddressById)
+
+	// Car
+	api.Get("/cars", controllers.GetAllCars)
+	car := api.Group("/customer")
+	car.Get("/:id", controllers.GetSingleCar)
+	car.Post("/", controllers.CreateCar)
+	car.Put("/:id", controllers.UpdateCar)
+	car.Delete("/:id", controllers.DeleteCarByID)
+	// Car expense
+	// Car port
 }
