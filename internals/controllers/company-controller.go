@@ -394,6 +394,21 @@ func GetCompanyExpensesFilters(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
 }
 
+func GetAllExpenses(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+	var expenses []companyRegistration.CompanyExpense
+
+	// Fetch all locations without requiring a Company association
+	if err := db.Preload("Company").Find(&expenses).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch locations",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(expenses)
+}
+
 // ==================================================================================================================
 
 // Create a company location
@@ -412,6 +427,23 @@ func CreateCompanyLocation(c *fiber.Ctx) error {
 	}
 
 	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Company created successfully", "data": companyLocation})
+}
+
+func GetAllCompanyLocations(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+	companyId := c.Params("companyId")
+
+	var locations []companyRegistration.CompanyLocation
+
+	// Fetch all locations with associated company details
+	if err := db.Preload("Company").Where("company_id = ?", companyId).Find(&locations).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch company locations",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(locations)
 }
 
 // Get Company Location by ID
@@ -527,4 +559,19 @@ func DeleteCompanyLocationById(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company location deleted successfully"})
+}
+
+func GetAllLocations(c *fiber.Ctx) error {
+	// Initialize database instance
+	db := database.DB.Db
+	var locations []companyRegistration.CompanyLocation
+
+	// Fetch all locations without requiring a Company association
+	if err := db.Preload("Company").Find(&locations).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to fetch locations",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(locations)
 }
