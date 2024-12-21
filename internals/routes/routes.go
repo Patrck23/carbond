@@ -70,7 +70,7 @@ func SetupRoutes(app *fiber.App) {
 
 	// Car
 	api.Get("/cars", controllers.GetAllCars)
-	car := api.Group("/customer")
+	car := api.Group("/car")
 	car.Get("/:id", controllers.GetSingleCar)
 	car.Post("/", controllers.CreateCar)
 	car.Put("/:id", controllers.UpdateCar)
