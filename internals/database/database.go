@@ -49,16 +49,25 @@ func Connect() {
 	log.Println("Connected")
 	db.Logger = logger.Default.LogMode(logger.Info)
 	log.Println("running migrations")
-	// --- Customer --- //
-	db.AutoMigrate(&customerRegistration.Customer{}, &customerRegistration.CustomerContact{}, &customerRegistration.CustomerAddress{})
-	// --- Company --- //
-	db.AutoMigrate(&companyRegistration.Company{}, &companyRegistration.CompanyLocation{}, &companyRegistration.CompanyExpense{})
-	// --- Car --- //
-	db.AutoMigrate(&carRegistration.Car{}, &carRegistration.CarExpense{}, &carRegistration.CarPort{})
-	// --- Sale --- //
-	db.AutoMigrate(&saleRegistration.Sale{}, &saleRegistration.SalePayment{}, &saleRegistration.SalePaymentMode{})
-	// --- User --- //
-	db.AutoMigrate(&userRegistration.User{})
+	db.AutoMigrate(
+		// --- Customer --- //
+		&customerRegistration.Customer{},
+		&customerRegistration.CustomerContact{},
+		&customerRegistration.CustomerAddress{},
+		// --- Company --- //
+		&companyRegistration.Company{},
+		&companyRegistration.CompanyLocation{},
+		&companyRegistration.CompanyExpense{},
+		// --- Car --- //
+		&carRegistration.Car{},
+		&carRegistration.CarExpense{},
+		&carRegistration.CarPort{},
+		// --- Sale --- //
+		&saleRegistration.Sale{},
+		&saleRegistration.SalePayment{},
+		&saleRegistration.SalePaymentMode{},
+		// --- User --- //
+		&userRegistration.User{})
 	DB = Dbinstance{
 		Db: db,
 	}
