@@ -16,24 +16,17 @@ func hashPassword(password string) (string, error) {
 
 func SeedDatabase(db *gorm.DB) {
 
-	// Seed data
 	companies := []companyRegistration.Company{
 		{
-			Name:      "Shen Company (U) ltd",
+			Name:      "SHERAZ TRADING (u) ltd",
 			StartDate: "1990-12-01",
-			CreatedBy: "Admin",
+			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		},
 		{
-			Name:      "Dajima Company (U) ltd",
+			Name:      "DAJIMA MOTORS (U) ltd",
 			StartDate: "1992-07-01",
-			CreatedBy: "Admin",
-			UpdatedBy: "",
-		},
-		{
-			Name:      "Ford Motor Company",
-			StartDate: "2000-10-01",
-			CreatedBy: "Admin",
+			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		},
 	}
