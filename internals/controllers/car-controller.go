@@ -156,6 +156,7 @@ func UpdateCar(c *fiber.Ctx) error {
 		Make          string  `json:"make"`
 		CarModel      string  `json:"model"`
 		Year          int     `json:"year"`
+		Currency      string  `json:"currency"`
 		BidPrice      float64 `json:"bid_price"`
 		VATTax        float64 `json:"vat_tax"`
 		PurchaseDate  string  `json:"purchase_date"`
@@ -203,6 +204,7 @@ func UpdateCar(c *fiber.Ctx) error {
 	car.Make = updateCarData.Make
 	car.CarModel = updateCarData.CarModel
 	car.Year = updateCarData.Year
+	car.Currency = updateCarData.Currency
 	car.BidPrice = updateCarData.BidPrice
 	car.VATTax = updateCarData.VATTax
 	car.PurchaseDate = updateCarData.PurchaseDate

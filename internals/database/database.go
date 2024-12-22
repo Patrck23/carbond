@@ -12,6 +12,7 @@ import (
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/models/userRegistration"
+	"car-bond/internals/seeder"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -61,4 +62,7 @@ func Connect() {
 	DB = Dbinstance{
 		Db: db,
 	}
+	// Seed database
+	log.Println("Seeding database...")
+	seeder.SeedDatabase(db)
 }
