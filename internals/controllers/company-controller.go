@@ -142,7 +142,7 @@ func DeleteCompanyExpensesById(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
 	}
 
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.First(&expense, id)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -160,7 +160,7 @@ func DeleteCompanyExpensesById(c *fiber.Ctx) error {
 func GetCompanyExpensesById(c *fiber.Ctx) error {
 	db := database.DB.Db
 	id := c.Params("id")
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.First(&expense, id)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -174,7 +174,7 @@ func GetCompanyExpensesById(c *fiber.Ctx) error {
 func GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
 	db := database.DB.Db
 	id := c.Params("id")
-	var expenses []companyRegistration.CompanyExpenses
+	var expenses []companyRegistration.CompanyExpense
 	db.Where("company_id = ?", id).Find(&expenses)
 	if len(expenses) == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -189,7 +189,7 @@ func GetCompanyExpensesByCompanyIdAndExpenseDate(c *fiber.Ctx) error {
 	db := database.DB.Db
 	companyId := c.Params("id")
 	expenseDate := c.Params("expense_date")
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.Where("company_id = ? AND expense_date = ?", companyId, expenseDate).First(&expense)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -204,7 +204,7 @@ func GetCompanyExpensesByCompanyIdAndExpenseDescription(c *fiber.Ctx) error {
 	db := database.DB.Db
 	companyId := c.Params("id")
 	expenseDescription := c.Params("expense_description")
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.Where("company_id = ? AND description = ?", companyId, expenseDescription).First(&expense)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -219,7 +219,7 @@ func GetCompanyExpensesByCompanyIdAndCurrency(c *fiber.Ctx) error {
 	db := database.DB.Db
 	companyId := c.Params("id")
 	currency := c.Params("currency")
-	var expenses []companyRegistration.CompanyExpenses
+	var expenses []companyRegistration.CompanyExpense
 	db.Where("company_id = ? AND currency = ?", companyId, currency).Find(&expenses)
 	if len(expenses) == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -235,7 +235,7 @@ func GetCompanyExpensesByThree(c *fiber.Ctx) error {
 	companyId := c.Params("id")
 	expenseDate := c.Params("expense_date")
 	currency := c.Params("currency")
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.Where("company_id = ? AND expense_date = ? AND currency = ?", companyId, expenseDate, currency).First(&expense)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -251,7 +251,7 @@ func GetCompanyExpensesByThreeDec(c *fiber.Ctx) error {
 	companyId := c.Params("id")
 	expenseDescription := c.Params("expense_description")
 	currency := c.Params("currency")
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.Where("company_id = ? AND description = ? AND currency = ?", companyId, expenseDescription, currency).First(&expense)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
@@ -268,7 +268,7 @@ func GetCompanyExpensesFilters(c *fiber.Ctx) error {
 	expenseDate := c.Params("expense_date")
 	expenseDescription := c.Params("expense_description")
 	currency := c.Params("currency")
-	var expense companyRegistration.CompanyExpenses
+	var expense companyRegistration.CompanyExpense
 	db.Where("company_id = ? AND expense_date = ? AND description = ? AND currency = ?", companyId, expenseDate, expenseDescription, currency).First(&expense)
 	if expense.ID == 0 {
 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
