@@ -116,7 +116,7 @@ func Login(c *fiber.Ctx) error {
 	claims := token.Claims.(jwt.MapClaims)
 	claims["username"] = user.Username
 	claims["user_id"] = user.ID
-	claims["exp"] = time.Now().Add(72 * time.Hour).Unix()
+	claims["exp"] = time.Now().Add(1 * time.Hour).Unix()
 
 	secretKey := config.Config("SECRET")
 	if secretKey == "" {
