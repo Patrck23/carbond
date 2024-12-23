@@ -90,4 +90,28 @@ func SetupRoutes(app *fiber.App) {
 	car.Post("/port", controllers.CreateCarPort)
 	car.Put("/port/:id", controllers.UpdateCarPort)
 	car.Delete("/:carId/port/:id", controllers.DeleteCarPortById)
+
+	//Sale
+	api.Get("/sales", controllers.GetAllCarSales)
+	sale := api.Group("/sale")
+	sale.Get("/:id", controllers.GetCarSale)
+	sale.Post("/", controllers.CreateCarSale)
+	sale.Put("/:id", controllers.UpdateCarSale)
+	sale.Delete("/:id", controllers.DeleteCarSale)
+	sale.Get("/searchSales/:criteria", controllers.SearchByCriteria)
+	// Invoice
+	api.Get("/invoices", controllers.GetAllInvoices)
+	invoice := api.Group("/invoice")
+	invoice.Post("/:id", controllers.CreateInvoice)
+	invoice.Post("/", controllers.CreateInvoice)
+	invoice.Put("/:id", controllers.UpdateInvoice)
+	invoice.Delete("/:id", controllers.DeleteInvoiceByID)
+	// Payment
+	api.Get("/payments", controllers.GetAllPayments)
+	payment := api.Group("/payment")
+	payment.Get("/:id", controllers.GetPaymentByID)
+	payment.Post("/:id", controllers.CreatePayment)
+	payment.Get("/:mode", controllers.GetPaymentByModeOfPayment)
+	payment.Delete("/:id", controllers.DeletePaymentByID)
+	payment.Put("/:id", controllers.UpdatePayment)
 }
