@@ -148,7 +148,7 @@ func CreateInvoice(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&sale).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to create sale", "data": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to create invoice", "data": err.Error()})
 	}
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "success", "message": "Invoice created successfully", "data": sale})
 }
@@ -161,10 +161,10 @@ func GetAllInvoices(c *fiber.Ctx) error {
 
 	db.Find(&sales)
 	if len(sales) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "No sales found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "No invoices found"})
 	}
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Sales found", "data": sales})
+	return c.JSON(fiber.Map{"status": "success", "message": "Invoices found", "data": sales})
 }
 
 //Update an invoice
@@ -176,7 +176,7 @@ func UpdateInvoice(c *fiber.Ctx) error {
 
 	db.First(&sale, "id = ?", id)
 	if sale.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Sale not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Invoice not found"})
 	}
 
 	userID := c.Locals("user_id")
@@ -192,7 +192,7 @@ func UpdateInvoice(c *fiber.Ctx) error {
 	}
 	db.Model(&sale).Updates(updatedSale)
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Sale updated successfully", "data": sale})
+	return c.JSON(fiber.Map{"status": "success", "message": "Ivoice updated successfully", "data": sale})
 }
 
 //Delete invoice by ID
@@ -204,15 +204,17 @@ func DeleteInvoiceByID(c *fiber.Ctx) error {
 
 	db.First(&sale, "id = ?", id)
 	if sale.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Sale not found"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Invoice not found"})
 	}
 
 	if err := db.Delete(&sale, "id = ?", id).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to delete sale", "data": err.Error()})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to delete invoice", "data": err.Error()})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Sale deleted successfully"})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Invoice deleted successfully"})
 }
+
+// ===============================================================================================
 
 // Get all Payments
 
