@@ -137,6 +137,8 @@ func SearchByCriteria(c *fiber.Ctx) error {
 	}
 }
 
+// ===============================================================================================
+
 //Create an invoice for a customer
 
 func CreateInvoice(c *fiber.Ctx) error {
