@@ -209,9 +209,24 @@ func UpdateCar(c *fiber.Ctx) error {
 	car.VATTax = updateCarData.VATTax
 	car.PurchaseDate = updateCarData.PurchaseDate
 	car.Destination = updateCarData.Destination
-	car.FromCompanyID = updateCarData.FromCompanyID
-	car.ToCompanyID = updateCarData.ToCompanyID
-	car.CustomerID = updateCarData.CustomerID
+	// Assign foreign keys if provided
+	if updateCarData.FromCompanyID != 0 {
+		car.FromCompanyID = &updateCarData.FromCompanyID
+	} else {
+		car.FromCompanyID = nil
+	}
+
+	if updateCarData.ToCompanyID != 0 {
+		car.ToCompanyID = &updateCarData.ToCompanyID
+	} else {
+		car.ToCompanyID = nil
+	}
+
+	if updateCarData.CustomerID != 0 {
+		car.CustomerID = &updateCarData.CustomerID
+	} else {
+		car.CustomerID = nil
+	}
 	car.UpdatedBy = updateCarData.UpdatedBy
 
 	// Save the changes to the database
