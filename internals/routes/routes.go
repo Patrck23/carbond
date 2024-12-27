@@ -2,7 +2,7 @@ package routes
 
 import (
 	"car-bond/internals/controllers"
-	"car-bond/internals/middleware"
+	// "car-bond/internals/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -21,16 +21,16 @@ func SetupRoutes(app *fiber.App) {
 	user := api.Group("/user")
 	user.Get("/:id", controllers.GetUser)
 	user.Post("/", controllers.CreateUser)
-	user.Patch("/:id", middleware.Protected(), controllers.UpdateUser)
-	user.Delete("/:id", middleware.Protected(), controllers.DeleteUser)
+	user.Patch("/:id", controllers.UpdateUser)  // middleware.Protected(),
+	user.Delete("/:id", controllers.DeleteUser) // middleware.Protected(),
 
 	// Company
 	api.Get("/companies", controllers.GetAllCompanies)
 	company := api.Group("/company")
 	company.Get("/:id", controllers.GetSingleCompanyById)
 	company.Post("/", controllers.CreateCompany)
-	company.Patch("/:id", middleware.Protected(), controllers.UpdateCompany)
-	company.Delete("/:id", middleware.Protected(), controllers.DeleteCompanyById)
+	company.Patch("/:id", controllers.UpdateCompany)
+	company.Delete("/:id", controllers.DeleteCompanyById)
 	// Company Expenses
 	api.Get("/expenses", controllers.GetAllExpenses)
 	company.Get("/expenses/:companyId", controllers.GetCompanyExpensesByCompanyId)
