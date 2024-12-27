@@ -76,7 +76,7 @@ func GetAllCars(c *fiber.Ctx) error {
 	})
 }
 
-// GetSingleCar from db
+// GetSingleCar fetches a car with its associated ports and expenses from the database
 func GetSingleCar(c *fiber.Ctx) error {
 	// Get the database instance
 	db := database.DB.Db
@@ -84,20 +84,20 @@ func GetSingleCar(c *fiber.Ctx) error {
 	// Get the car ID from the route parameters
 	id := c.Params("id")
 
-	// Initialize a variable to hold the car
+	// Initialize variables for car, ports, and expenses
 	var car carRegistration.Car
+	var carPorts []carRegistration.CarPort
+	var expenses []carRegistration.CarExpense // Assuming you have an Expense model
 
-	// Query the database for the car by ID
+	// Query the car by ID and preload associated ports and expenses
 	err := db.First(&car, "id = ?", id).Error
 	if err != nil {
-		// Check if the error is due to the record not being found
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Car not found",
 			})
 		}
-		// Handle other database errors
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve car",
@@ -105,34 +105,63 @@ func GetSingleCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the found car
+	// Query the CarPorts associated with the car
+	err = db.Where("car_id = ?", car.ID).Find(&carPorts).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve car ports",
+			"data":    err.Error(),
+		})
+	}
+
+	// Query the Expenses associated with the car (assuming Expense model has CarID)
+	err = db.Where("car_id = ?", car.ID).Find(&expenses).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve expenses",
+			"data":    err.Error(),
+		})
+	}
+
+	// Combine the car, its ports, and expenses in a response
+	response := fiber.Map{
+		"car":       car,
+		"car_ports": carPorts,
+		"expenses":  expenses,
+	}
+
+	// Return the response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Car found",
-		"data":    car,
+		"message": "Car and associated data retrieved successfully",
+		"data":    response,
 	})
 }
 
+// GetSingleCar fetches a car with its associated ports and expenses using vin_number
 func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 	// Get the database instance
 	db := database.DB.Db
 
-	// Get the car ID from the route parameters
+	// Get the vin_number from the route parameters
 	vinNumber := c.Params("vinNumber")
 
-	// Initialize a variable to hold the car
+	// Initialize variables for car, ports, and expenses
 	var car carRegistration.Car
+	var carPorts []carRegistration.CarPort
+	var expenses []carRegistration.CarExpense // Assuming you have an Expense model
 
-	// Query the database for the car by ID
-	if err := db.First(&car, "vin_number = ?", vinNumber).Error; err != nil {
-		// Check if the error is due to the record not being found
-		if err == gorm.ErrRecordNotFound {
+	// Query the car by vin_number
+	err := db.First(&car, "vin_number = ?", vinNumber).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Car not found",
 			})
 		}
-		// Handle other database errors
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve car",
@@ -140,11 +169,38 @@ func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the found car
+	// Query the CarPorts associated with the car
+	err = db.Where("car_id = ?", car.ID).Find(&carPorts).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve car ports",
+			"data":    err.Error(),
+		})
+	}
+
+	// Query the Expenses associated with the car (assuming Expense model has CarID)
+	err = db.Where("car_id = ?", car.ID).Find(&expenses).Error
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve expenses",
+			"data":    err.Error(),
+		})
+	}
+
+	// Combine the car, its ports, and expenses in a response
+	response := fiber.Map{
+		"car":       car,
+		"car_ports": carPorts,
+		"expenses":  expenses,
+	}
+
+	// Return the response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Car found",
-		"data":    car,
+		"message": "Car and associated data retrieved successfully",
+		"data":    response,
 	})
 }
 
