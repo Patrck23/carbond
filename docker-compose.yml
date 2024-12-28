@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: pwaiswa
+      POSTGRES_DB: carbond
+    ports:
+      - "5432:5432"
+
+  app:
+    image: codecatalystlabs/carbond-app:latest
+    container_name: carbond-app
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: db
+      DB_USER: postgres
+      DB_PASSWORD: pwaiswa
+      DB_NAME: carbond
