@@ -1,144 +1,104 @@
 package controllers
 
-// import (
-// 	"car-bond/internals/database"
-// 	vehicleevaluation "car-bond/internals/models/vehicleEvaluation"
-// 	"fmt"
-// 	"log"
-// 	"os"
-// 	"path/filepath"
-// 	"strconv"
-// 	"strings"
+import (
+	vehicleevaluation "car-bond/internals/models/vehicleEvaluation"
+	"fmt"
+	"log"
+	"strconv"
+	"strings"
 
-// 	"github.com/gofiber/fiber/v2"
-// 	"rsc.io/pdf"
-// )
+	"github.com/gofiber/fiber/v2"
+	"github.com/ledongthuc/pdf"
+	"gorm.io/gorm"
+)
 
-// // ProcessPDFAndUpload processes a PDF file and inserts its content into the database
-// func ProcessPDFAndUpload(c *fiber.Ctx) error {
-// 	db := database.DB.Db
-// 	if db == nil {
-// 		return fiber.NewError(fiber.StatusInternalServerError, "Database connection not initialized")
-// 	}
+func UploadPDF(db *gorm.DB) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		// Parse PDF file from the request
+		file, err := c.FormFile("file")
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "Failed to upload file",
+			})
+		}
 
-// 	// Retrieve the uploaded file
-// 	file, err := c.FormFile("pdf")
-// 	if err != nil {
-// 		return fiber.NewError(fiber.StatusBadRequest, "Failed to retrieve uploaded file: "+err.Error())
-// 	}
+		filePath := fmt.Sprintf("./%s", file.Filename)
+		if err := c.SaveFile(file, filePath); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to save file",
+			})
+		}
 
-// 	// Save the uploaded file to a temporary location
-// 	tempDir := "./uploads"
-// 	if err := os.MkdirAll(tempDir, os.ModePerm); err != nil {
-// 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to create upload directory: "+err.Error())
-// 	}
+		// Open PDF file
+		f, r, err := pdf.Open(filePath)
+		defer f.Close()
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": "Failed to parse PDF",
+			})
+		}
 
-// 	tempFilePath := filepath.Join(tempDir, file.Filename)
-// 	if err := c.SaveFile(file, tempFilePath); err != nil {
-// 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to save uploaded file: "+err.Error())
-// 	}
-// 	defer func() {
-// 		if removeErr := os.Remove(tempFilePath); removeErr != nil {
-// 			log.Printf("Warning: Failed to remove temporary file: %v", removeErr)
-// 		}
-// 	}()
+		// Parse content
+		var content string
+		totalPage := r.NumPage()
+		for pageIndex := 1; pageIndex <= totalPage; pageIndex++ {
+			page := r.Page(pageIndex)
+			if !page.V.IsNull() {
+				// Use the Content() method to extract text
+				text, err := page.GetPlainText(nil)
+				if err != nil {
+					log.Printf("Failed to extract text from page %d: %v", pageIndex, err)
+					continue
+				}
+				content += text
+			}
+		}
 
-// 	// Extract table data from the PDF
-// 	data, extractErr := extractTableFromPDF(tempFilePath)
-// 	if extractErr != nil {
-// 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to extract table data from PDF: "+extractErr.Error())
-// 	}
+		// Extract structured data
+		lines := strings.Split(content, "\n")
+		for _, line := range lines {
+			fields := strings.Fields(line)
 
-// 	// Start a database transaction
-// 	tx := db.Begin()
+			// Ensure at least 5 fields (S/N, HSC Code, COO, Description, CC, CIF)
+			if len(fields) < 5 {
+				continue
+			}
 
-// 	// Optionally clear old data
-// 	if err := tx.Exec("DELETE FROM vehicle_evaluations").Error; err != nil {
-// 		tx.Rollback()
-// 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to clear old data: "+err.Error())
-// 	}
+			// Skip the first column (S/N)
+			hscCode := fields[1]
+			coo := fields[2]
+			description := strings.Join(fields[3:len(fields)-2], " ")
+			cc := fields[len(fields)-2]
 
-// 	// Insert new data
-// 	for _, record := range data {
-// 		cif, parseErr := strconv.Atoi(strings.ReplaceAll(record[4], " ", ""))
-// 		if parseErr != nil {
-// 			log.Printf("Failed to parse CIF for record: %v, error: %v", record, parseErr)
-// 			continue
-// 		}
+			// Parse CIF as decimal
+			cif, err := parseDecimal(fields[len(fields)-1])
+			if err != nil {
+				log.Println("Skipping invalid CIF value:", fields[len(fields)-1])
+				continue
+			}
 
-// 		vehicle := &vehicleevaluation.VehicleEvaluation{
-// 			HSCCode:     record[0],
-// 			COO:         record[1],
-// 			Description: record[2],
-// 			CC:          record[3],
-// 			CIF:         cif,
-// 			CreatedBy:   "admin", // Replace with actual user ID
-// 			UpdatedBy:   "admin",
-// 		}
+			// Create VehicleEvaluation entry
+			evaluation := vehicleevaluation.VehicleEvaluation{
+				HSCCode:     hscCode,
+				COO:         coo,
+				Description: description,
+				CC:          cc,
+				CIF:         cif,     // Decimal value
+				CreatedBy:   "admin", // Default CreatedBy
+			}
 
-// 		if err := tx.Create(vehicle).Error; err != nil {
-// 			tx.Rollback()
-// 			return fiber.NewError(fiber.StatusInternalServerError, "Failed to insert new data: "+err.Error())
-// 		}
-// 	}
+			// Save to the database
+			if err := db.Create(&evaluation).Error; err != nil {
+				log.Println("Failed to save entry:", err)
+			}
+		}
 
-// 	// Commit the transaction
-// 	if err := tx.Commit().Error; err != nil {
-// 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to commit transaction: "+err.Error())
-// 	}
+		return c.JSON(fiber.Map{
+			"message": "Data uploaded successfully",
+		})
+	}
+}
 
-// 	return c.JSON(fiber.Map{
-// 		"message": "PDF processed and data uploaded successfully",
-// 	})
-// }
-
-// // extractTableFromPDF extracts table data from the PDF file using a free library
-// func extractTableFromPDF(pdfPath string) ([][]string, error) {
-// 	// Open the PDF file
-// 	file, err := os.Open(pdfPath)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to open PDF file: %v", err)
-// 	}
-// 	defer file.Close()
-
-// 	// Load the PDF
-// 	doc, err := pdf.Open(file.Name())
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to open PDF document: %v", err)
-// 	}
-
-// 	var records [][]string
-
-// 	// Extract text from all pages
-// 	for i := 0; i < doc.NumPage(); i++ {
-// 		page := doc.Page(i + 1)
-// 		if page == nil {
-// 			continue
-// 		}
-
-// 		text := page.Text()
-// 		lines := strings.Split(text, "\n")
-
-// 		// Process each line as a potential row in the table
-// 		for _, line := range lines {
-// 			line = strings.TrimSpace(line)
-// 			if line == "" {
-// 				continue
-// 			}
-// 			records = append(records, strings.Split(line, ","))
-// 		}
-// 	}
-
-// 	return records, nil
-// }
-
-// // UploadPDFHandler handles the PDF upload request
-// func UploadPDFHandler(c *fiber.Ctx) error {
-// 	if err := ProcessPDFAndUpload(c); err != nil {
-// 		return err
-// 	}
-
-// 	return c.JSON(fiber.Map{
-// 		"message": "PDF processed and data uploaded successfully",
-// 	})
-// }
+func parseDecimal(input string) (float64, error) {
+	return strconv.ParseFloat(input, 64)
+}

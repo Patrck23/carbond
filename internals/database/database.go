@@ -12,6 +12,7 @@ import (
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/models/userRegistration"
+	vehicleevaluation "car-bond/internals/models/vehicleEvaluation"
 	"car-bond/internals/seeder"
 
 	"gorm.io/driver/postgres"
@@ -67,7 +68,10 @@ func Connect() {
 		&saleRegistration.SalePayment{},
 		&saleRegistration.SalePaymentMode{},
 		// --- User --- //
-		&userRegistration.User{})
+		&userRegistration.User{},
+		// --- Vehicle --- //
+		&vehicleevaluation.VehicleEvaluation{})
+
 	DB = Dbinstance{
 		Db: db,
 	}

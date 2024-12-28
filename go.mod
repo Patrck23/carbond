@@ -11,7 +11,6 @@ require (
 	golang.org/x/crypto v0.31.0
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
-	rsc.io/pdf v0.1.1
 )
 
 require (
@@ -24,6 +23,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
+	github.com/ledongthuc/pdf v0.0.0-20240201131950-da5b75280b06
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect

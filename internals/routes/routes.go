@@ -114,4 +114,10 @@ func SetupRoutes(app *fiber.App) {
 	payment.Get("/:mode", controllers.GetPaymentByModeOfPayment)
 	payment.Delete("/:id", controllers.DeletePaymentByID)
 	payment.Put("/:id", controllers.UpdatePayment)
+
+	//Upload PDF
+	upload := api.Group("/upload")
+
+	// Pass the database instance to the UploadPDF function
+	upload.Post("/upload", controllers.UploadPDF(db))
 }
