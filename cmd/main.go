@@ -11,7 +11,9 @@ import (
 
 func main() {
 	database.Connect()
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		BodyLimit: 20 * 1024 * 1024, // 20 MB
+	})
 	app.Use(logger.New())
 	app.Use(cors.New())
 	routes.SetupRoutes(app)
