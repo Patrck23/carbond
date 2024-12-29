@@ -116,5 +116,7 @@ func SetupRoutes(app *fiber.App) {
 	payment.Put("/:id", controllers.UpdatePayment)
 
 	// Meta data
-	api.Post("/vehicle-evaluation", controllers.UploadPDF)
+	// api.Post("/vehicle-evaluation", controllers.UploadPDF)
+	api.Post("/vehicle-evaluation", controllers.ProcessExcelAndUpload)
+
 }
