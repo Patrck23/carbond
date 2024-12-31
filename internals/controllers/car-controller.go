@@ -208,19 +208,19 @@ func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 func UpdateCar(c *fiber.Ctx) error {
 	// Define a struct for the update payload
 	type updateCar struct {
-		VinNumber     string  `json:"vin_number"`
-		Make          string  `json:"make"`
-		CarModel      string  `json:"model"`
-		Year          int     `json:"year"`
-		Currency      string  `json:"currency"`
-		BidPrice      float64 `json:"bid_price"`
-		VATTax        float64 `json:"vat_tax"`
-		PurchaseDate  string  `json:"purchase_date"`
-		Destination   string  `json:"destination"`
-		FromCompanyID uint    `json:"from_company_id"`
-		ToCompanyID   uint    `json:"to_company_id"`
-		CustomerID    int     `json:"customer_id"`
-		UpdatedBy     string  `json:"updated_by"`
+		VinNumber       string  `json:"vin_number"`
+		Make            string  `json:"make"`
+		CarModel        string  `json:"model"`
+		ManufactureYear int     `json:"maunufacture_year"`
+		Currency        string  `json:"currency"`
+		BidPrice        float64 `json:"bid_price"`
+		VATTax          float64 `json:"vat_tax"`
+		PurchaseDate    string  `json:"purchase_date"`
+		Destination     string  `json:"destination"`
+		FromCompanyID   uint    `json:"from_company_id"`
+		ToCompanyID     uint    `json:"to_company_id"`
+		CustomerID      int     `json:"customer_id"`
+		UpdatedBy       string  `json:"updated_by"`
 	}
 
 	// Get the database instance
@@ -259,7 +259,7 @@ func UpdateCar(c *fiber.Ctx) error {
 	car.VinNumber = updateCarData.VinNumber
 	car.Make = updateCarData.Make
 	car.CarModel = updateCarData.CarModel
-	car.Year = updateCarData.Year
+	car.ManufactureYear = updateCarData.ManufactureYear
 	car.Currency = updateCarData.Currency
 	car.BidPrice = updateCarData.BidPrice
 	car.VATTax = updateCarData.VATTax

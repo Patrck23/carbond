@@ -71,6 +71,9 @@ func Connect() {
 		&userRegistration.User{},
 		// --- Metadata-- //
 		&metaData.VehicleEvaluation{},
+		&metaData.WeightUnit{},
+		&metaData.LeightUnit{},
+		&metaData.ExpenseCategory{},
 	)
 	DB = Dbinstance{
 		Db: db,
