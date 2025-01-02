@@ -120,4 +120,6 @@ func SetupRoutes(app *fiber.App) {
 	// meta.Post("/vehicle-evaluation", controllers.UploadPDF)
 	meta.Post("/vehicle-evaluation", controllers.ProcessExcelAndUpload)
 
+	NotFoundRoute(app)
+
 }

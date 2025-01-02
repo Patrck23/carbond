@@ -9,14 +9,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
+
 	"github.com/gofiber/swagger"
 )
 
-//	@title			Carbond Inventory app
-//	@version		1.0
-//	@description	This is a sample swagger for Fiber
-//	@termsOfService	http://swagger.io/terms/
-//	@BasePath		/
+// @title			Carbond Inventory app
+// @version			1.0
+// @description		This is a sample swagger for the system
+// @termsOfService	http://swagger.io/terms/
 func main() {
 	database.Connect()
 	app := fiber.New(fiber.Config{
@@ -26,9 +26,5 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 	routes.SetupRoutes(app)
-	// handle unavailable route
-	app.Use(func(c *fiber.Ctx) error {
-		return c.SendStatus(404) // => 404 "Not Found"
-	})
 	app.Listen(":8080")
 }
