@@ -9,6 +9,17 @@ import (
 )
 
 // Create a company registration
+//
+//	@Summary		Creating Company
+//	@Description	Creating Company with given request
+//	@Tags			Companies
+//	@Accept			json
+//	@Produce		json
+//	@Param			x-correlationid	header		string						true	"code of Company"
+//	@Param			request			body		companyRegistration.CreateCompany	true	"Request of Creating Company Object"
+//	@Success		200				{string}	string
+//	@Failure		400				{string}	string	"Bad Request"
+//	@Router			/company [post]
 
 func CreateCompany(c *fiber.Ctx) error {
 	db := database.DB.Db
