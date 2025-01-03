@@ -25,6 +25,9 @@ func main() {
 	app.Get("/swagger/*", swagger.HandlerDefault)
 	app.Use(logger.New())
 	app.Use(cors.New())
+
+
+	
 	routes.SetupRoutes(app)
 	app.Listen(":8080")
 }
