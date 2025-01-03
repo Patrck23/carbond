@@ -8,8 +8,17 @@ import (
 	"gorm.io/gorm"
 )
 
-// Create a company registration
-
+// CreateCompany godoc
+// @Summary 	Create a new company
+// @Description Create a new company with the provided details
+// @Tags 		companies
+// @Accept 		json
+// @Produce 	json
+// @Param 		company body companyRegistration.Company true "Company registration details"
+// @Success 201 {object} fiber.Map{"status": string, "message": string, "data": companyRegistration.Company}
+// @Failure 400 {object} fiber.Map{"status": string, "message": string, "data": string} "Invalid input"
+// @Failure 500 {object} fiber.Map{"status": string, "message": string, "data": string} "Server error"
+// @Router /api/company [post]
 func CreateCompany(c *fiber.Ctx) error {
 	db := database.DB.Db
 	company := new(companyRegistration.Company)

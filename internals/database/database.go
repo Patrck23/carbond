@@ -10,6 +10,7 @@ import (
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/models/customerRegistration"
+	"car-bond/internals/models/metaData"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/models/userRegistration"
 	"car-bond/internals/seeder"
@@ -67,7 +68,13 @@ func Connect() {
 		&saleRegistration.SalePayment{},
 		&saleRegistration.SalePaymentMode{},
 		// --- User --- //
-		&userRegistration.User{})
+		&userRegistration.User{},
+		// --- Metadata-- //
+		&metaData.VehicleEvaluation{},
+		&metaData.WeightUnit{},
+		&metaData.LeightUnit{},
+		&metaData.ExpenseCategory{},
+	)
 	DB = Dbinstance{
 		Db: db,
 	}

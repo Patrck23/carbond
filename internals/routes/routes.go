@@ -117,4 +117,12 @@ func SetupRoutes(app *fiber.App) {
 	payment.Get("/:mode", controllers.GetPaymentByModeOfPayment)
 	payment.Delete("/:id", controllers.DeletePaymentByID)
 	payment.Put("/:id", controllers.UpdatePayment)
+
+	// Meta data
+	meta := api.Group("/meta")
+	// meta.Post("/vehicle-evaluation", controllers.UploadPDF)
+	meta.Post("/vehicle-evaluation", controllers.ProcessExcelAndUpload)
+
+	NotFoundRoute(app)
+
 }
