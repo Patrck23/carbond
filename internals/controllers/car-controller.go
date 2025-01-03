@@ -45,66 +45,6 @@ func CreateCar(c *fiber.Ctx) error {
 	})
 }
 
-// func GetAllCars(c *fiber.Ctx) error {
-// 	// Get the database instance
-// 	db := database.DB.Db
-
-// 	// Initialize a variable to hold all cars
-// 	var cars []carRegistration.Car
-
-// 	// Query all cars from the database
-// 	err := db.Find(&cars).Error
-// 	if err != nil {
-// 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-// 			"status":  "error",
-// 			"message": "Failed to retrieve cars",
-// 			"data":    err.Error(),
-// 		})
-// 	}
-
-// 	// Initialize a response slice to hold cars with their ports and expenses
-// 	var response []fiber.Map
-
-// 	// Iterate over all cars to fetch associated car ports and expenses
-// 	for _, car := range cars {
-// 		// Fetch car ports associated with the car
-// 		var carPorts []carRegistration.CarPort
-// 		err := db.Where("car_id = ?", car.ID).Find(&carPorts).Error
-// 		if err != nil {
-// 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-// 				"status":  "error",
-// 				"message": "Failed to retrieve car ports for car ID " + strconv.Itoa(int(car.ID)),
-// 				"data":    err.Error(),
-// 			})
-// 		}
-
-// 		// Fetch expenses associated with the car
-// 		var expenses []carRegistration.CarExpense
-// 		err = db.Where("car_id = ?", car.ID).Find(&expenses).Error
-// 		if err != nil {
-// 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-// 				"status":  "error",
-// 				"message": "Failed to retrieve expenses for car ID " + strconv.Itoa(int(car.ID)),
-// 				"data":    err.Error(),
-// 			})
-// 		}
-
-// 		// Combine car, ports, and expenses into a single response map
-// 		response = append(response, fiber.Map{
-// 			"car":       car,
-// 			"car_ports": carPorts,
-// 			"expenses":  expenses,
-// 		})
-// 	}
-
-// 	// Return the response
-// 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-// 		"status":  "success",
-// 		"message": "Cars and associated data retrieved successfully",
-// 		"data":    response,
-// 	})
-// }
-
 func GetAllCars(c *fiber.Ctx) error {
 	// Get the database instance
 	db := database.DB.Db
