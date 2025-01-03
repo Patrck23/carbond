@@ -147,9 +147,6 @@ func SeedDatabase(db *gorm.DB) {
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		},
-
-		// ==============
-
 		{
 			Name:      "Rent or lease and morgage",
 			Category:  "company",
@@ -217,6 +214,74 @@ func SeedDatabase(db *gorm.DB) {
 		}
 	} else {
 		log.Println("Expense category table already seeded, skipping...")
+	}
+
+	unitsLength := []metaData.LeightUnit{
+		{
+			Name:      "Meter",
+			Symbol:    "M",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Kilometer",
+			Symbol:    "KM",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Centimeter",
+			Symbol:    "CM",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Check if the lengthunits table already has data
+	var lenCount int64
+	db.Model(&metaData.LeightUnit{}).Count(&lenCount)
+	if lenCount == 0 {
+		if err := db.Create(&unitsLength).Error; err != nil {
+			log.Fatalf("Failed to seed Length Units: %v", err)
+		} else {
+			log.Println("Length units data seeded successfully")
+		}
+	} else {
+		log.Println("Length units table already seeded, skipping...")
+	}
+
+	unitsWeight := []metaData.LeightUnit{
+		{
+			Name:      "Gram",
+			Symbol:    "G",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Kilogram",
+			Symbol:    "KG",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Tonnes",
+			Symbol:    "Ton",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Check if the weightunits table already has data
+	var weiCount int64
+	db.Model(&metaData.WeightUnit{}).Count(&weiCount)
+	if weiCount == 0 {
+		if err := db.Create(&unitsWeight).Error; err != nil {
+			log.Fatalf("Failed to seed Weight Units: %v", err)
+		} else {
+			log.Println("Weight units data seeded successfully")
+		}
+	} else {
+		log.Println("Weight units table already seeded, skipping...")
 	}
 
 }
