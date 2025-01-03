@@ -21,8 +21,8 @@ func SetupRoutes(app *fiber.App) {
 	user := api.Group("/user")
 	user.Get("/:id", controllers.GetUser)
 	user.Post("/", controllers.CreateUser)
-	user.Patch("/:id", controllers.UpdateUser)  // middleware.Protected(),
-	user.Delete("/:id", controllers.DeleteUser) // middleware.Protected(),
+	user.Patch("/:id", controllers.UpdateUser)  
+	user.Delete("/:id", controllers.DeleteUser) 
 
 	// Company
 	api.Get("/companies", controllers.GetAllCompanies)
@@ -31,6 +31,7 @@ func SetupRoutes(app *fiber.App) {
 	company.Post("/", controllers.CreateCompany)
 	company.Patch("/:id", controllers.UpdateCompany)
 	company.Delete("/:id", controllers.DeleteCompanyById)
+
 	// Company Expenses
 	api.Get("/expenses", controllers.GetAllExpenses)
 	company.Get("/expenses/:companyId", controllers.GetCompanyExpensesByCompanyId)
@@ -38,6 +39,7 @@ func SetupRoutes(app *fiber.App) {
 	company.Post("/expense", controllers.CreateCompanyExpense)
 	company.Put("/expense/:id", controllers.UpdateCompanyExpense)
 	company.Delete("/expense/:id", controllers.DeleteCompanyExpenseById)
+
 	// Company Locations
 	api.Get("/locations", controllers.GetAllLocations)
 	company.Get("/locations/:companyId", controllers.GetAllCompanyLocations)
@@ -76,6 +78,7 @@ func SetupRoutes(app *fiber.App) {
 	car.Post("/", controllers.CreateCar)
 	car.Put("/:id", controllers.UpdateCar)
 	car.Delete("/:id", controllers.DeleteCarByID)
+
 	// Car expense
 	api.Get("/carExpenses", controllers.GetAllCarExpenses)
 	car.Get("/expenses/:carId", controllers.GetCarExpensesByCarId)
