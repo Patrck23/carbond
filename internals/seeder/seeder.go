@@ -25,7 +25,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
-			Name:      "DAJIMA MOTORS (U) ltd",
+			Name:      "K.K. MADNA (J) ltd",
 			StartDate: "1992-07-01",
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
