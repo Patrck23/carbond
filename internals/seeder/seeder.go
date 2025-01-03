@@ -2,6 +2,7 @@ package seeder
 
 import (
 	"car-bond/internals/models/companyRegistration"
+	"car-bond/internals/models/metaData"
 	"car-bond/internals/models/userRegistration"
 	"log"
 
@@ -77,4 +78,145 @@ func SeedDatabase(db *gorm.DB) {
 	} else {
 		log.Println("Users table already seeded, skipping...")
 	}
+
+	// Expense categories
+	expenses := []metaData.ExpenseCategory{
+		{
+			Name:      "Auction Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "VAT (Value Added Tax)",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Recycle Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Carrier car fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Commission Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Broker Commission Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Inspection Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Freight Cost",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Car Duty Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Maintenance and Repair Fees",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+
+		// ==============
+
+		{
+			Name:      "Rent or lease and morgage",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Marketing and advertising",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Licences and permits",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Utility Bills",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Employ Salaries",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Insurance",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Technology and software",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Transport costs",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Dealership Amenities",
+			Category:  "company",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Check if the expense category table already has data
+	var expenseCount int64
+	db.Model(&metaData.ExpenseCategory{}).Count(&expenseCount)
+	if expenseCount == 0 {
+		if err := db.Create(&expenses).Error; err != nil {
+			log.Fatalf("Failed to seed expense categories: %v", err)
+		} else {
+			log.Println("Expense category data seeded successfully")
+		}
+	} else {
+		log.Println("Expense category table already seeded, skipping...")
+	}
+
 }
