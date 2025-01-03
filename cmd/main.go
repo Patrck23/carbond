@@ -7,8 +7,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-
-	"github.com/gofiber/swagger"
 )
 
 func main() {
@@ -16,7 +14,6 @@ func main() {
 	app := fiber.New(fiber.Config{
 		BodyLimit: 20 * 1024 * 1024, // 20 MB
 	})
-	app.Get("/swagger/*", swagger.HandlerDefault)
 	app.Use(logger.New())
 	app.Use(cors.New())
 	routes.SetupRoutes(app)
