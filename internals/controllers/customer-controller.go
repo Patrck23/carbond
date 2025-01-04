@@ -3,6 +3,8 @@ package controllers
 import (
 	"car-bond/internals/database"
 	"car-bond/internals/models/customerRegistration"
+	"car-bond/internals/utils"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -27,16 +29,65 @@ func CreateCustomer(c *fiber.Ctx) error {
 
 // Get All customers from db
 func GetAllCustomers(c *fiber.Ctx) error {
+	// Get the database instance
 	db := database.DB.Db
-	var customers []customerRegistration.Customer
-	// find all customers in the database
-	db.Find(&customers)
-	// If no customer found, return an error
-	if len(customers) == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Customers not found"})
+
+	// Fetch paginated customers using the helper function
+	pagination, customers, err := utils.Paginate(c, db, &customerRegistration.Customer{})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Customers not found",
+			"data":    err.Error(),
+		})
 	}
-	// return customers
-	return c.Status(200).JSON(fiber.Map{"status": "sucess", "message": "Customers Found", "data": customers})
+
+	// Initialize a response slice to hold customers with their contacts and addresses
+	var response []fiber.Map
+
+	// Iterate over all customers to fetch associated customer contact and address
+	for _, customer := range customers {
+		// Fetch customer ports associated with the customer
+		var customerContacts []customerRegistration.CustomerContact
+		err := db.Where("customer_id = ?", customer.ID).Find(&customerContacts).Error
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to retrieve customer contacts for customer ID " + strconv.Itoa(int(customer.ID)),
+				"data":    err.Error(),
+			})
+		}
+
+		// Fetch addresses associated with the customer
+		var addresses []customerRegistration.CustomerAddress
+		err = db.Where("customer_id = ?", customer.ID).Find(&addresses).Error
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to retrieve addresses for customer ID " + strconv.Itoa(int(customer.ID)),
+				"data":    err.Error(),
+			})
+		}
+
+		// Combine customer, contacts, and addresses into a single response map
+		response = append(response, fiber.Map{
+			"customer":       customer,
+			"customer_ports": customerContacts,
+			"addresses":      addresses,
+		})
+	}
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Customers and associated data retrieved successfully",
+		"data":    response,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
 }
 
 // GetSingleCustomer from db
@@ -124,14 +175,15 @@ func DeleteCustomerByID(c *fiber.Ctx) error {
 func GetAllContacts(c *fiber.Ctx) error {
 	// Initialize database instance
 	db := database.DB.Db
-	var contacts []customerRegistration.CustomerContact
 
-	// Fetch all contacts with associated customers
-	if err := db.Preload("Customer").Find(&contacts).Error; err != nil {
+	// Fetch paginated contacts with associated customer details
+	pagination, contacts, err := utils.Paginate(c, db.Preload("Customer"), &customerRegistration.CustomerContact{})
+	if err != nil {
 		// Handle database query error
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to fetch contacts",
+			"error":   err.Error(),
 		})
 	}
 
@@ -143,11 +195,17 @@ func GetAllContacts(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return success response with contacts
+	// Return success response with paginated contacts
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Contacts found",
 		"data":    contacts,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
 	})
 }
 
@@ -307,14 +365,15 @@ func DeleteCustomerContactById(c *fiber.Ctx) error {
 func GetAllAddresses(c *fiber.Ctx) error {
 	// Initialize database instance
 	db := database.DB.Db
-	var addresses []customerRegistration.CustomerAddress
 
-	// Fetch all addresses with associated customers
-	if err := db.Preload("Customer").Find(&addresses).Error; err != nil {
+	// Fetch paginated addresses with associated customer details
+	pagination, addresses, err := utils.Paginate(c, db.Preload("Customer"), &customerRegistration.CustomerAddress{})
+	if err != nil {
 		// Handle database query error
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to fetch addresses",
+			"error":   err.Error(),
 		})
 	}
 
@@ -326,11 +385,17 @@ func GetAllAddresses(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return success response with addresses
+	// Return success response with paginated addresses
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Addresses found",
 		"data":    addresses,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
 	})
 }
 

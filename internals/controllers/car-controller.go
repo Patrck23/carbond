@@ -397,16 +397,29 @@ func CreateCarExpense(c *fiber.Ctx) error {
 func GetAllCarExpenses(c *fiber.Ctx) error {
 	// Initialize database instance
 	db := database.DB.Db
-	var expenses []carRegistration.CarExpense
 
-	// Fetch all expenses without requiring a Car association
-	if err := db.Preload("Car").Find(&expenses).Error; err != nil {
+	// Fetch paginated expenses with associated Car using the helper function
+	pagination, expenses, err := utils.Paginate(c, db.Preload("Car"), &carRegistration.CarExpense{})
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch expenses",
+			"status":  "error",
+			"message": "Failed to fetch car expenses",
+			"data":    err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(expenses)
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses retrieved successfully",
+		"data":    expenses,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
 }
 
 // Get Car Expenses by ID
@@ -447,7 +460,6 @@ func GetCarExpenseById(c *fiber.Ctx) error {
 }
 
 // Get Car Expenses by Car ID
-
 func GetCarExpensesByCarId(c *fiber.Ctx) error {
 	// Initialize database instance
 	db := database.DB.Db
@@ -455,32 +467,35 @@ func GetCarExpensesByCarId(c *fiber.Ctx) error {
 	// Retrieve carId from the request parameters
 	carId := c.Params("carId")
 
-	// Query the database for car expenses
-	var expenses []carRegistration.CarExpense
-	result := db.Preload("Car").Where("car_id = ?", carId).Find(&expenses)
-
-	// Handle potential database errors
-	if result.Error != nil {
-		return c.Status(500).JSON(fiber.Map{
+	// Fetch paginated car expenses with associated car details
+	pagination, expenses, err := utils.Paginate(c, db.Preload("Car").Where("car_id = ?", carId), &carRegistration.CarExpense{})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to retrieve car expenses",
-			"error":   result.Error.Error(),
+			"error":   err.Error(),
 		})
 	}
 
 	// Handle the case where no expenses are found
 	if len(expenses) == 0 {
-		return c.Status(404).JSON(fiber.Map{
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"status":  "error",
 			"message": "No expenses found for the specified car",
 		})
 	}
 
-	// Return a success response with the fetched data
-	return c.JSON(fiber.Map{
+	// Return a success response with paginated data
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Car expenses fetched successfully",
 		"data":    expenses,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
 	})
 }
 
@@ -677,16 +692,28 @@ func GetAllCarPorts(c *fiber.Ctx) error {
 	db := database.DB.Db
 	carId := c.Params("carId")
 
-	var ports []carRegistration.CarPort
-
-	// Fetch all ports with associated car details
-	if err := db.Preload("Car").Where("car_id = ?", carId).Find(&ports).Error; err != nil {
+	// Fetch paginated ports for the specified car ID with associated car details
+	pagination, ports, err := utils.Paginate(c, db.Preload("Car").Where("car_id = ?", carId), &carRegistration.CarPort{})
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch car ports",
+			"status":  "error",
+			"message": "Failed to fetch car ports",
+			"data":    err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(ports)
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car ports retrieved successfully",
+		"data":    ports,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
 }
 
 // Get car port by ID
@@ -805,14 +832,27 @@ func DeleteCarPortById(c *fiber.Ctx) error {
 func GetAllPorts(c *fiber.Ctx) error {
 	// Initialize database instance
 	db := database.DB.Db
-	var locations []carRegistration.CarPort
 
-	// Fetch all locations without requiring a Car association
-	if err := db.Preload("Car").Find(&locations).Error; err != nil {
+	// Fetch paginated ports with associated car details
+	pagination, locations, err := utils.Paginate(c, db.Preload("Car"), &carRegistration.CarPort{})
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch locations",
+			"status":  "error",
+			"message": "Failed to fetch locations",
+			"data":    err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(locations)
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Locations retrieved successfully",
+		"data":    locations,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
 }

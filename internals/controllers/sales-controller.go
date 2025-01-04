@@ -3,6 +3,8 @@ package controllers
 import (
 	"car-bond/internals/database"
 	"car-bond/internals/models/saleRegistration"
+	"car-bond/internals/utils"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -25,15 +27,71 @@ func CreateCarSale(c *fiber.Ctx) error {
 
 // Get all car sales
 func GetAllCarSales(c *fiber.Ctx) error {
+	// Get the database instance
 	db := database.DB.Db
-	var sales []saleRegistration.Sale
 
-	db.Find(&sales)
-	if len(sales) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "No sales found"})
+	// Fetch paginated sales using the helper function
+	pagination, sales, err := utils.Paginate(c, db, &saleRegistration.Sale{})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve car sales",
+			"error":   err.Error(),
+		})
 	}
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Sales found", "data": sales})
+	// Initialize a response slice to hold sales with their payments and payment modes
+	var response []fiber.Map
+
+	// Iterate over all sales to fetch associated payments and payment modes
+	for _, sale := range sales {
+		// Fetch sale payments associated with the sale
+		var payments []saleRegistration.SalePayment
+		if err := db.Where("sale_id = ?", sale.ID).Find(&payments).Error; err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to retrieve sale payments for sale ID " + strconv.Itoa(int(sale.ID)),
+				"error":   err.Error(),
+			})
+		}
+
+		// Iterate over payments to fetch associated payment modes
+		var allPaymentModes []fiber.Map
+		for _, payment := range payments {
+			var paymentModes []saleRegistration.SalePaymentMode
+			if err := db.Where("sale_payment_id = ?", payment.ID).Find(&paymentModes).Error; err != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"status":  "error",
+					"message": "Failed to retrieve payment modes for payment ID " + strconv.Itoa(int(payment.ID)),
+					"error":   err.Error(),
+				})
+			}
+
+			allPaymentModes = append(allPaymentModes, fiber.Map{
+				"payment":       payment,
+				"payment_modes": paymentModes,
+			})
+		}
+
+		// Combine sale, payments, and payment modes into a single response map
+		response = append(response, fiber.Map{
+			"sale":          sale,
+			"sale_payments": allPaymentModes,
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Sales and associated data retrieved successfully",
+		"data":    response,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
 }
 
 // Get a single car sale by ID
