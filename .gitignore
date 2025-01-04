@@ -26,3 +26,8 @@ go.work.sum
 
 cmd/*
 !cmd/*.go
+
+# docker files
+Dockerfile
+dockerignore
+docker-compose.yaml
