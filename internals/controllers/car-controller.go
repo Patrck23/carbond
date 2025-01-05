@@ -240,19 +240,36 @@ func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 func UpdateCar(c *fiber.Ctx) error {
 	// Define a struct for the update payload
 	type updateCar struct {
-		VinNumber       string  `json:"vin_number"`
-		Make            string  `json:"make"`
-		CarModel        string  `json:"model"`
-		ManufactureYear int     `json:"maunufacture_year"`
-		Currency        string  `json:"currency"`
-		BidPrice        float64 `json:"bid_price"`
-		VATTax          float64 `json:"vat_tax"`
-		PurchaseDate    string  `json:"purchase_date"`
-		Destination     string  `json:"destination"`
-		FromCompanyID   uint    `json:"from_company_id"`
-		ToCompanyID     uint    `json:"to_company_id"`
-		CustomerID      int     `json:"customer_id"`
-		UpdatedBy       string  `json:"updated_by"`
+		VinNumber             string  `json:"vin_number"`
+		EngineNumber          string  `json:"engine_number"`
+		EngineCapacity        string  `json:"engine_capacity"`
+		Make                  string  `json:"make"`
+		CarModel              string  `json:"model"`
+		MaximCarry            int     `json:"maxim_carry"`
+		Weight                int     `json:"weight"`
+		GrossWeight           int     `json:"gross_weight"`
+		FFWeight              int     `json:"ff_weight"`
+		RRWeight              int     `json:"rr_weight"`
+		FRWeight              int     `json:"fr_weight"`
+		RFWeight              int     `json:"rf_weight"`
+		WeightUnits           string  `json:"weight_units"`
+		Length                int     `json:"length"`
+		Width                 int     `json:"width"`
+		Height                int     `json:"height"`
+		LengthUnits           string  `json:"length_units"`
+		ManufactureYear       int     `json:"maunufacture_year"`
+		FirstRegistrationYear int     `json:"first_registration_year"`
+		Transmission          string  `json:"transmission"`
+		BodyType              string  `json:"body_type"`
+		Colour                string  `json:"colour"`
+		Auction               string  `json:"auction"`
+		Currency              string  `json:"currency"`
+		BidPrice              float64 `json:"bid_price"`
+		PurchaseDate          string  `json:"purchase_date"`
+		FromCompanyID         uint    `json:"from_company_id"`
+		ToCompanyID           uint    `json:"to_company_id"`
+		Destination           string  `json:"destination"`
+		UpdatedBy             string  `json:"updated_by"`
 	}
 
 	// Get the database instance
@@ -289,14 +306,31 @@ func UpdateCar(c *fiber.Ctx) error {
 
 	// Update the car fields
 	car.VinNumber = updateCarData.VinNumber
+	car.EngineNumber = updateCarData.EngineNumber
+	car.EngineCapacity = updateCarData.EngineCapacity
 	car.Make = updateCarData.Make
 	car.CarModel = updateCarData.CarModel
+	car.MaximCarry = updateCarData.MaximCarry
+	car.Weight = updateCarData.Weight
+	car.GrossWeight = updateCarData.GrossWeight
+	car.FFWeight = updateCarData.FFWeight
+	car.RRWeight = updateCarData.RRWeight
+	car.FRWeight = updateCarData.FRWeight
+	car.RFWeight = updateCarData.RFWeight
+	car.WeightUnits = updateCarData.WeightUnits
+	car.Length = updateCarData.Length
+	car.Width = updateCarData.Width
+	car.Height = updateCarData.Height
+	car.LengthUnits = updateCarData.LengthUnits
 	car.ManufactureYear = updateCarData.ManufactureYear
+	car.FirstRegistrationYear = updateCarData.FirstRegistrationYear
+	car.Transmission = updateCarData.Transmission
+	car.BodyType = updateCarData.BodyType
+	car.Colour = updateCarData.Colour
+	car.Auction = updateCarData.Auction
 	car.Currency = updateCarData.Currency
 	car.BidPrice = updateCarData.BidPrice
-	car.VATTax = updateCarData.VATTax
 	car.PurchaseDate = updateCarData.PurchaseDate
-	car.Destination = updateCarData.Destination
 	// Assign foreign keys if provided
 	if updateCarData.FromCompanyID != 0 {
 		car.FromCompanyID = &updateCarData.FromCompanyID
@@ -309,7 +343,75 @@ func UpdateCar(c *fiber.Ctx) error {
 	} else {
 		car.ToCompanyID = nil
 	}
+	car.Destination = updateCarData.Destination
+	car.UpdatedBy = updateCarData.UpdatedBy
 
+	// Save the changes to the database
+	if err := db.Save(&car).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update car",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the updated car
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car updated successfully",
+		"data":    car,
+	})
+}
+
+func UpdateCar2(c *fiber.Ctx) error {
+	// Define a struct for the update payload
+	type updateCar struct {
+		BrokerName   string  `json:"broker_name"`
+		BrokerNumber string  `json:"broker_number"`
+		VATTax       float64 `json:"vat_tax"`
+		NumberPlate  string  `json:"number_plate"`
+		CustomerID   int     `json:"customer_id"`
+		UpdatedBy    string  `json:"updated_by"`
+	}
+
+	// Get the database instance
+	db := database.DB.Db
+
+	// Get the car ID from the route parameters
+	id := c.Params("id")
+
+	// Find the car in the database by ID
+	var car carRegistration.Car
+	if err := db.First(&car, "id = ?", id).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve car",
+			"data":    err.Error(),
+		})
+	}
+
+	// Parse the request body into the updateCar struct
+	var updateCarData updateCar
+	if err := c.BodyParser(&updateCarData); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
+	}
+
+	// Update the car fields
+	car.BrokerName = updateCarData.BrokerName
+	car.BrokerNumber = updateCarData.BrokerNumber
+	car.NumberPlate = updateCarData.NumberPlate
+	car.VATTax = updateCarData.VATTax
+	// Assign foreign keys if provided
 	if updateCarData.CustomerID != 0 {
 		car.CustomerID = &updateCarData.CustomerID
 	} else {

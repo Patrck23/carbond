@@ -29,5 +29,5 @@ cmd/*
 
 # docker files
 Dockerfile
-dockerignore
+.dockerignore
 docker-compose.yaml

@@ -76,7 +76,8 @@ func SetupRoutes(app *fiber.App) {
 	car.Get("/id/:id", controllers.GetSingleCar)
 	car.Get("/vin/:vinNumber", controllers.GetSingleCarByVinNumber)
 	car.Post("/", controllers.CreateCar)
-	car.Put("/:id", controllers.UpdateCar)
+	car.Put("/:id/details", controllers.UpdateCar)
+	car.Put("/:id/sale", controllers.UpdateCar2)
 	car.Delete("/:id", controllers.DeleteCarByID)
 
 	// Car expense
