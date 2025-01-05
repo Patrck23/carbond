@@ -74,6 +74,7 @@ func Connect() {
 		&metaData.WeightUnit{},
 		&metaData.LeightUnit{},
 		&metaData.ExpenseCategory{},
+		&metaData.Currency{},
 	)
 	DB = Dbinstance{
 		Db: db,

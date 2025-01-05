@@ -28,9 +28,9 @@ func SetupRoutes(app *fiber.App) {
 	api.Get("/companies", controllers.GetAllCompanies)
 	company := api.Group("/company")
 	company.Get("/:id", controllers.GetSingleCompanyById)
-	company.Post("/", controllers.CreateCompany)
+	// company.Post("/", controllers.CreateCompany)
 	company.Patch("/:id", controllers.UpdateCompany)
-	company.Delete("/:id", controllers.DeleteCompanyById)
+	// company.Delete("/:id", controllers.DeleteCompanyById)
 
 	// Company Expenses
 	api.Get("/expenses", controllers.GetAllExpenses)
@@ -125,6 +125,7 @@ func SetupRoutes(app *fiber.App) {
 	meta.Get("/vehicle-evaluation", controllers.FetchVehicleEvaluationsByDescription)
 	meta.Get("/weights", controllers.GetAllWeightUnits)
 	meta.Get("/lengths", controllers.GetAllLengthUnits)
+	meta.Get("/currency", controllers.GetAllCurrencies)
 	NotFoundRoute(app)
 
 }

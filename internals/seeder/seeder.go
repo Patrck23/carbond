@@ -19,7 +19,7 @@ func SeedDatabase(db *gorm.DB) {
 
 	companies := []companyRegistration.Company{
 		{
-			Name:      "SHERAZ TRADING (u) ltd",
+			Name:      "SHERAZ TRADING (U) ltd",
 			StartDate: "1990-12-01",
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
@@ -282,6 +282,82 @@ func SeedDatabase(db *gorm.DB) {
 		}
 	} else {
 		log.Println("Weight units table already seeded, skipping...")
+	}
+
+	curruncies := []metaData.Currency{
+		{
+			Name:      "Kenyan Shilling",
+			Symbol:    "KSh",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Ugandan Shilling",
+			Symbol:    "USh",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Tanzanian Shilling",
+			Symbol:    "TSh",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Rwandan Franc",
+			Symbol:    "RWF",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "South Sudanese Pound",
+			Symbol:    "SSP",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Sudanese Pound",
+			Symbol:    "SDG",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Japanese Yen",
+			Symbol:    "JPY",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Pound Sterling",
+			Symbol:    "GBP",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "United States Dollar",
+			Symbol:    "USD",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Chinese Yuan (Renminbi)",
+			Symbol:    "CNY",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Check if the currencies table already has data
+	var curCount int64
+	db.Model(&metaData.Currency{}).Count(&curCount)
+	if curCount == 0 {
+		if err := db.Create(&curruncies).Error; err != nil {
+			log.Fatalf("Failed to seed currencies: %v", err)
+		} else {
+			log.Println("Currency data seeded successfully")
+		}
+	} else {
+		log.Println("Currency table already seeded, skipping...")
 	}
 
 }

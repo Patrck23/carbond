@@ -219,3 +219,16 @@ func GetAllLengthUnits(c *fiber.Ctx) error {
 	// return users
 	return c.Status(200).JSON(fiber.Map{"status": "sucess", "message": "units Found", "data": units})
 }
+
+func GetAllCurrencies(c *fiber.Ctx) error {
+	db := database.DB.Db
+	var currencies []metaData.Currency
+	// find all users in the database
+	db.Find(&currencies)
+	// If no customer found, return an error
+	if len(currencies) == 0 {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Units not found"})
+	}
+	// return users
+	return c.Status(200).JSON(fiber.Map{"status": "sucess", "message": "units Found", "data": currencies})
+}
