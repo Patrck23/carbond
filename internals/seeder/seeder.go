@@ -250,7 +250,7 @@ func SeedDatabase(db *gorm.DB) {
 		log.Println("Length units table already seeded, skipping...")
 	}
 
-	unitsWeight := []metaData.LeightUnit{
+	unitsWeight := []metaData.WeightUnit{
 		{
 			Name:      "Gram",
 			Symbol:    "G",

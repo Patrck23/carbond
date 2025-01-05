@@ -14,6 +14,8 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// Vehicle Evaluation
+
 // ProcessExcelAndUpload processes an Excel file and inserts its content into the database
 func ProcessExcelAndUpload(c *fiber.Ctx) error {
 	db := database.DB.Db
@@ -154,8 +156,6 @@ func UploadExcelHandler(c *fiber.Ctx) error {
 	})
 }
 
-// =======================================================================
-
 // FetchVehicleEvaluationsByDescription fetches items from VehicleEvaluation that match a given description
 func FetchVehicleEvaluationsByDescription(c *fiber.Ctx) error {
 
@@ -188,4 +188,34 @@ func FetchVehicleEvaluationsByDescription(c *fiber.Ctx) error {
 		"message": "Records fetched successfully",
 		"data":    evaluations,
 	})
+}
+
+// =======================================================================
+
+// Meta Units
+
+func GetAllWeightUnits(c *fiber.Ctx) error {
+	db := database.DB.Db
+	var units []metaData.WeightUnit
+	// find all users in the database
+	db.Find(&units)
+	// If no customer found, return an error
+	if len(units) == 0 {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Units not found"})
+	}
+	// return users
+	return c.Status(200).JSON(fiber.Map{"status": "sucess", "message": "units Found", "data": units})
+}
+
+func GetAllLengthUnits(c *fiber.Ctx) error {
+	db := database.DB.Db
+	var units []metaData.LeightUnit
+	// find all users in the database
+	db.Find(&units)
+	// If no customer found, return an error
+	if len(units) == 0 {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Units not found"})
+	}
+	// return users
+	return c.Status(200).JSON(fiber.Map{"status": "sucess", "message": "units Found", "data": units})
 }
