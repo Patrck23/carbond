@@ -122,7 +122,7 @@ func SetupRoutes(app *fiber.App) {
 	// Meta data
 	meta := api.Group("/meta")
 	meta.Post("/vehicle-evaluation", controllers.ProcessExcelAndUpload)
-
+	meta.Get("/vehicle-evaluation", controllers.FetchVehicleEvaluationsByDescription)
 	NotFoundRoute(app)
 
 }
