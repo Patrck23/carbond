@@ -55,6 +55,7 @@ func Connect() {
 		&customerRegistration.Customer{},
 		&customerRegistration.CustomerContact{},
 		&customerRegistration.CustomerAddress{},
+		&customerRegistration.CustomerScan{},
 		// --- Company --- //
 		&companyRegistration.Company{},
 		&companyRegistration.CompanyLocation{},

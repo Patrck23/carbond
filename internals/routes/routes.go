@@ -55,6 +55,10 @@ func SetupRoutes(app *fiber.App) {
 	customer.Post("/", controllers.CreateCustomer)
 	customer.Put("/:id", controllers.UpdateCustomer)
 	customer.Delete("/:id", controllers.DeleteCustomerByID)
+	// Upload
+	customer.Post("/upload", controllers.UploadCustomerFile)
+	customer.Get("/:id/files", controllers.GetCustomerFiles)
+	customer.Get("/files/:file_id", controllers.GetFile)
 	// Customer contact
 	api.Get("/contacts", controllers.GetAllContacts)
 	customer.Get("/contacts/:customerId", controllers.GetCustomerContacts)
