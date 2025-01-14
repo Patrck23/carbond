@@ -51,6 +51,204 @@ func SeedDatabase(db *gorm.DB) {
 		log.Fatalf("Error hashing password: %v", err)
 	}
 
+	groups := []userRegistration.Group{
+		{
+			Code:        "admin_group",
+			Name:        "Admin Group",
+			Description: "Group for administrative users",
+			Internal:    true,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "manager_group",
+			Name:        "Manager Group",
+			Description: "Group for manager users",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "user_group",
+			Name:        "User Group",
+			Description: "Group for regular users",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+	}
+
+	// Seed Roles
+	roles := []userRegistration.Role{
+		{
+			Code:        "admin_role",
+			Name:        "Admin Role",
+			Description: "Role with full permissions",
+			Internal:    true,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "manager_role",
+			Name:        "Manager Role",
+			Description: "Role with permissions to manage resources and settings, but no full admin rights",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "user_role",
+			Name:        "User Role",
+			Description: "Role with limited permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+	}
+
+	// Seed Resources
+	resources := []userRegistration.Resource{
+		{
+			Code:        "resource.dashboard",
+			Name:        "Dashboard",
+			Description: "Access to the dashboard",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "resource.settings",
+			Name:        "Settings",
+			Description: "Access to settings page",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+	}
+
+	// Seed RoleResourcePermissions
+	roleResourcePermissions := []userRegistration.RoleResourcePermission{
+		{
+			RoleCode:     "admin_role",
+			ResourceCode: "resource.*",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: true, D: true},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "manager_role",
+			ResourceCode: "resource.settings",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false}, // Allow read and write, but no execute or delete
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "user_role",
+			ResourceCode: "resource.dashboard",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: false, X: false, D: false},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Seed RoleWildCardPermissions
+	roleWildCardPermissions := []userRegistration.RoleWildCardPermission{
+		{
+			RoleCode:        "admin_role",
+			ResourcePattern: "resource.*",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: true, D: true},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		}, {
+			RoleCode:        "manager_role",
+			ResourcePattern: "resource.*",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:        "user_role",
+			ResourcePattern: "resource.settings",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: true, D: true},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Check if the tables have data before seeding
+	// Check Group
+	var groupCount int64
+	db.Model(&userRegistration.Group{}).Count(&groupCount)
+	if groupCount == 0 {
+		if err := db.Create(&groups).Error; err != nil {
+			log.Fatalf("Failed to seed Group data: %v", err)
+		} else {
+			log.Println("Group data seeded successfully")
+		}
+	}
+
+	// Check Role
+	var roleCount int64
+	db.Model(&userRegistration.Role{}).Count(&roleCount)
+	if roleCount == 0 {
+		if err := db.Create(&roles).Error; err != nil {
+			log.Fatalf("Failed to seed Role data: %v", err)
+		} else {
+			log.Println("Role data seeded successfully")
+		}
+	}
+
+	// Check Resource
+	var resourceCount int64
+	db.Model(&userRegistration.Resource{}).Count(&resourceCount)
+	if resourceCount == 0 {
+		if err := db.Create(&resources).Error; err != nil {
+			log.Fatalf("Failed to seed Resource data: %v", err)
+		} else {
+			log.Println("Resource data seeded successfully")
+		}
+	}
+
+	// Check RoleResourcePermission
+	var roleResourcePermissionCount int64
+	db.Model(&userRegistration.RoleResourcePermission{}).Count(&roleResourcePermissionCount)
+	if roleResourcePermissionCount == 0 {
+		if err := db.Create(&roleResourcePermissions).Error; err != nil {
+			log.Fatalf("Failed to seed RoleResourcePermission data: %v", err)
+		} else {
+			log.Println("RoleResourcePermission data seeded successfully")
+		}
+	}
+
+	// Check RoleWildCardPermission
+	var roleWildCardPermissionCount int64
+	db.Model(&userRegistration.RoleWildCardPermission{}).Count(&roleWildCardPermissionCount)
+	if roleWildCardPermissionCount == 0 {
+		if err := db.Create(&roleWildCardPermissions).Error; err != nil {
+			log.Fatalf("Failed to seed RoleWildCardPermission data: %v", err)
+		} else {
+			log.Println("RoleWildCardPermission data seeded successfully")
+		}
+	}
+
 	users := []userRegistration.User{
 		{
 			Surname:   "",

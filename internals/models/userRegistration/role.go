@@ -1,0 +1,86 @@
+package userRegistration
+
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+
+	"gorm.io/gorm"
+)
+
+type Group struct {
+	gorm.Model
+	Code        string `gorm:"unique;not null"` // Unique and not null
+	Name        string `gorm:"not null"`        // Not null
+	Description string `gorm:"size:255"`        // Limits string size
+	Internal    bool   `gorm:"default:false"`   // Defaults to false
+	CreatedBy   string `gorm:"size:100" json:"created_by"`
+	UpdatedBy   string `gorm:"size:100" json:"updated_by"`
+}
+
+type Role struct {
+	gorm.Model
+	Code        string `gorm:"unique;not null"` // Unique and not null
+	Name        string `gorm:"not null"`        // Not null
+	Description string `gorm:"size:255"`        // Limits string size
+	Internal    bool   `gorm:"default:false"`   // Defaults to false
+	CreatedBy   string `gorm:"size:100" json:"created_by"`
+	UpdatedBy   string `gorm:"size:100" json:"updated_by"`
+}
+
+type Resource struct {
+	gorm.Model
+	Code        string `gorm:"unique;not null"` // Unique and not null
+	Name        string `gorm:"not null"`        // Not null
+	Description string `gorm:"size:255"`        // Limits string size
+	Internal    bool   `gorm:"default:false"`   // Defaults to false
+	CreatedBy   string `gorm:"size:100" json:"created_by"`
+	UpdatedBy   string `gorm:"size:100" json:"updated_by"`
+}
+
+// RWXD represents a set of permissions (Read, Write, Execute, Delete)
+type RWXD struct {
+	R bool `json:"r"` // Read
+	W bool `json:"w"` // Write
+	X bool `json:"x"` // Execute
+	D bool `json:"d"` // Delete
+}
+
+// Implement the Valuer interface for RWXD (convert to JSON for database storage)
+func (r RWXD) Value() (driver.Value, error) {
+	return json.Marshal(r) // Convert RWXD to JSON
+}
+
+// Implement the Scanner interface for RWXD (convert JSON from database to struct)
+func (r *RWXD) Scan(value interface{}) error {
+	bytes, ok := value.([]byte)
+	if !ok {
+		return fmt.Errorf("failed to convert database value to byte slice")
+	}
+	return json.Unmarshal(bytes, r) // Convert JSON to RWXD
+}
+
+// Permissions specifies allow/deny permissions on a resource
+type Permissions struct {
+	Allow RWXD `gorm:"type:json"` // Store Allow as JSON
+	Deny  RWXD `gorm:"type:json"` // Store Deny as JSON
+}
+
+type RoleResourcePermission struct {
+	gorm.Model
+	RoleCode     string      `gorm:"index"` // Foreign key to the role
+	ResourceCode string      `gorm:"index"` // Foreign key to the resource
+	Permissions  Permissions `gorm:"type:json"`
+	CreatedBy    string      `gorm:"size:100" json:"created_by"`
+	UpdatedBy    string      `gorm:"size:100" json:"updated_by"`
+}
+
+// RoleWildCardPermission permissions for resource/role
+type RoleWildCardPermission struct {
+	gorm.Model
+	RoleCode        string      `gorm:"size:50;index"` // Restrict RoleCode to 50 characters
+	ResourcePattern string      `gorm:"size:100"`      // Restrict ResourcePattern to 100 characters    // ResourcePattern allows define resource mask using "*" ("resource.*")
+	Permissions     Permissions `gorm:"type:json"`
+	CreatedBy       string      `gorm:"size:100" json:"created_by"`
+	UpdatedBy       string      `gorm:"size:100" json:"updated_by"`
+}

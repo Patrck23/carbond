@@ -70,6 +70,11 @@ func Connect() {
 		&saleRegistration.SalePaymentMode{},
 		// --- User --- //
 		&userRegistration.User{},
+		&userRegistration.Role{},
+		&userRegistration.Group{},
+		&userRegistration.Resource{},
+		&userRegistration.RoleResourcePermission{},
+		&userRegistration.RoleWildCardPermission{},
 		// --- Metadata-- //
 		&metaData.VehicleEvaluation{},
 		&metaData.WeightUnit{},
