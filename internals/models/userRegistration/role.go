@@ -16,6 +16,8 @@ type Group struct {
 	Internal    bool   `gorm:"default:false"`   // Defaults to false
 	CreatedBy   string `gorm:"size:100" json:"created_by"`
 	UpdatedBy   string `gorm:"size:100" json:"updated_by"`
+	Users       []User `gorm:"foreignKey:GroupID" json:"users"`
+	Roles       []Role `gorm:"foreignKey:GroupID" json:"roles"`
 }
 
 type Role struct {
@@ -26,6 +28,9 @@ type Role struct {
 	Internal    bool   `gorm:"default:false"`   // Defaults to false
 	CreatedBy   string `gorm:"size:100" json:"created_by"`
 	UpdatedBy   string `gorm:"size:100" json:"updated_by"`
+	GroupID     uint   `json:"group_id"`                                      // Foreign key to Group
+	Group       Group  `gorm:"foreignKey:GroupID;references:ID" json:"group"` // Belongs to a Group
+	// Users       []User `gorm:"many2many:user_roles" json:"users"` // Many-to-Many relationship with User
 }
 
 type Resource struct {
