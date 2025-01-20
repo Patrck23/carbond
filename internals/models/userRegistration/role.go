@@ -16,21 +16,19 @@ type Group struct {
 	Internal    bool   `gorm:"default:false"`   // Defaults to false
 	CreatedBy   string `gorm:"size:100" json:"created_by"`
 	UpdatedBy   string `gorm:"size:100" json:"updated_by"`
-	Users       []User `gorm:"foreignKey:GroupID" json:"users"`
 	Roles       []Role `gorm:"foreignKey:GroupID" json:"roles"`
 }
 
 type Role struct {
 	gorm.Model
-	Code        string `gorm:"unique;not null"` // Unique and not null
-	Name        string `gorm:"not null"`        // Not null
-	Description string `gorm:"size:255"`        // Limits string size
-	Internal    bool   `gorm:"default:false"`   // Defaults to false
+	Code        string `gorm:"not null"`      // Unique and not null
+	Name        string `gorm:"not null"`      // Not null
+	Description string `gorm:"size:255"`      // Limits string size
+	Internal    bool   `gorm:"default:false"` // Defaults to false
 	CreatedBy   string `gorm:"size:100" json:"created_by"`
 	UpdatedBy   string `gorm:"size:100" json:"updated_by"`
-	GroupID     uint   `json:"group_id"`                                      // Foreign key to Group
-	Group       Group  `gorm:"foreignKey:GroupID;references:ID" json:"group"` // Belongs to a Group
-	// Users       []User `gorm:"many2many:user_roles" json:"users"` // Many-to-Many relationship with User
+	GroupID     uint   `json:"group_id"`                         // Foreign key to Group
+	Group       Group  `gorm:"foreignKey:GroupID;references:ID"` // Belongs to a Group
 }
 
 type Resource struct {

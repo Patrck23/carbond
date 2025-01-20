@@ -202,24 +202,39 @@ func CreateWildCardPermission(c *fiber.Ctx) error {
 }
 
 // GetGrantedPermissions calculates permissions for roles on a resource
+// GetGrantedPermissions calculates permissions for roles on a resource
 func GetGrantedPermissions(c *fiber.Ctx) error {
 	db := database.DB.Db
 	roleCode := c.Query("role_code")
 	resourceCode := c.Query("resource_code")
 
-	var permissions userRegistration.Permissions
-	if err := db.Raw(`
-        SELECT 
-            COALESCE(MAX(permissions.allow_r), false) AS r,
-            COALESCE(MAX(permissions.allow_w), false) AS w,
-            COALESCE(MAX(permissions.allow_x), false) AS x,
-            COALESCE(MAX(permissions.allow_d), false) AS d
-        FROM role_resource_permissions
-        WHERE role_code = ? AND resource_code = ?
-    `, roleCode, resourceCode).Scan(&permissions.Allow).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Cannot calculate permissions"})
+	// Validate input parameters
+	if roleCode == "" || resourceCode == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Both role_code and resource_code are required",
+		})
 	}
 
+	// Struct to hold the permissions
+	var permissions userRegistration.Permissions
+
+	// Query to calculate the permissions
+	if err := db.Raw(`
+        SELECT 
+            COALESCE(MAX(role_resource_permissions.allow_r), false) AS r,
+            COALESCE(MAX(role_resource_permissions.allow_w), false) AS w,
+            COALESCE(MAX(role_resource_permissions.allow_x), false) AS x,
+            COALESCE(MAX(role_resource_permissions.allow_d), false) AS d
+        FROM role_resource_permissions
+        WHERE role_code = ? AND resource_code = ?
+    `, roleCode, resourceCode).Scan(&permissions).Error; err != nil {
+		// Return an internal server error if the query fails
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve permissions",
+		})
+	}
+
+	// Return the permissions as JSON
 	return c.JSON(permissions)
 }
 
@@ -356,132 +371,3 @@ func GetPermissions(c *fiber.Ctx) error {
 
 	return c.JSON(permissions)
 }
-
-type SecurityService interface {
-	// GetGroup retrieves a group by code
-	GetGroup(code string) (*userRegistration.Group, error)
-	// GetAllGroups retrieves all not deleted groups
-	GetAllGroups() ([]*userRegistration.Group, error)
-	// GetRole retrieves a role by code
-	GetRole(code string) (*userRegistration.Role, error)
-	// GetAllRoles retrieves all not deleted roles
-	GetAllRoles() ([]*userRegistration.Role, error)
-	// GetRolesForGroups retrieves roles assigned on groups
-	GetRolesForGroups(groups []string) ([]string, error)
-	// GetResource retrieves a resource by code
-	GetResource(code string) (*userRegistration.Resource, error)
-	// GetAllResources retrieves all not deleted resources
-	GetAllResources() ([]*userRegistration.Resource, error)
-	// GetGrantedPermissions calculates permissions on the resource for the roles and applies allow/deny logic
-	GetGrantedPermissions(resource string, roles []string) (*userRegistration.RWXD, error)
-	// CheckPermissions checks if the roles have the requested perms on the given resource
-	CheckPermissions(resource string, roles []string, requestedPermissions []string) (bool, error)
-	// GetExplicitPermissions returns permissions on resource / roles setup explicitly
-	GetExplicitPermissions(resources []string, roles []string) ([]*userRegistration.RoleResourcePermission, error)
-	// GetWildCardPermissions returns wildcard permissions on roles
-	GetWildCardPermissions(roles []string) ([]*userRegistration.RoleWildCardPermission, error)
-}
-
-type SecurityStorage interface {
-	// GetGroup retrieves a group by code
-	GetGroup(code string) (*userRegistration.Group, error)
-	// GetGroups retrieves all not deleted groups
-	GetGroups() ([]*userRegistration.Group, error)
-	// GetRole retrieves a role by code
-	GetRole(code string) (*userRegistration.Role, error)
-	// GetAllRoles retrieves all not deleted roles
-	GetAllRoles() ([]*userRegistration.Role, error)
-	// GetAllRoleCodes retrieves all role codes
-	GetAllRoleCodes() ([]string, error)
-	// GetResource retrieves a resource by code
-	GetResource(code string) (*userRegistration.Resource, error)
-	// GetAllResources retrieves all not deleted resources
-	GetAllResources() ([]*userRegistration.Resource, error)
-	// ResourceExplicitPermissionsExists checks if there are explicit (no wildcard) permissions on the resource
-	ResourceExplicitPermissionsExists(code string) (bool, error)
-	// GetRoleCodesForGroups retrieves role codes for groups
-	GetRoleCodesForGroups(groups []string) ([]string, error)
-	// GroupsWithRoleExists checks if there are groups with assigned role
-	GroupsWithRoleExists(role string) (bool, error)
-	// GetPermissions retrieves permissions granted to roles on resource
-	GetPermissions(resource string, roles []string) ([]*userRegistration.Permissions, error)
-	// GetWildcardPermissions retrieves wildcard permissions granted to roles on resource
-	GetWildcardPermissions(resource string, roles []string) ([]*userRegistration.Permissions, error)
-}
-
-// // SecurityServiceWrapper is a wrapper for the concrete implementation of userRegistration.SecurityService
-// type SecurityServiceWrapper struct {
-// 	Service SecurityService
-// }
-
-// // ConcreteSecurityStorage represents the actual implementation of userRegistration.SecurityStorage
-// type ConcreteSecurityStorage struct {
-// 	Storage SecurityStorage
-// }
-
-// // GetGrantedPermissions retrieves and merges permissions
-// func (s *ConcreteSecurityStorage) GetGrantedPermissions(c *fiber.Ctx, resource string, roles []string) (*userRegistration.RWXD, error) {
-// 	// Get explicit permissions
-// 	explicitPermissions, err := s.Storage.GetPermissions(resource, roles)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	// Get wildcard permissions
-// 	wildCardPermissions, err := s.Storage.GetWildcardPermissions(resource, roles)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	permissions := append(explicitPermissions, wildCardPermissions...)
-
-// 	// Merge all roles' permissions (explicit and wildcard)
-// 	resPermissions := &userRegistration.RWXD{}
-// 	for _, p := range permissions {
-// 		resPermissions.R = (resPermissions.R || p.Allow.R) && !p.Deny.R
-// 		resPermissions.W = (resPermissions.W || p.Allow.W) && !p.Deny.W
-// 		resPermissions.X = (resPermissions.X || p.Allow.X) && !p.Deny.X
-// 		resPermissions.D = (resPermissions.D || p.Allow.D) && !p.Deny.D
-// 	}
-
-// 	return resPermissions, nil
-// }
-
-// // CheckPermissions checks if the given roles allow access to the requested resource
-// func (s *SecurityServiceWrapper) CheckPermissions(c *fiber.Ctx, resource string, roles []string, requestedPermissions []string) (bool, error) {
-// 	// Empty request means no access
-// 	if len(requestedPermissions) == 0 {
-// 		return false, nil
-// 	}
-
-// 	// Get granted permissions
-// 	grantedPerms, err := s.Service.GetGrantedPermissions(resource, roles)
-// 	if err != nil {
-// 		return false, err
-// 	}
-
-// 	// Check all requested permissions are granted
-// 	for _, p := range requestedPermissions {
-// 		if !isPermissionGranted(p, grantedPerms) {
-// 			return false, nil
-// 		}
-// 	}
-
-// 	return true, nil
-// }
-
-// // Helper function to check if a specific permission is granted
-// func isPermissionGranted(permission string, perms *userRegistration.RWXD) bool {
-// 	switch permission {
-// 	case "R":
-// 		return perms.R
-// 	case "W":
-// 		return perms.W
-// 	case "X":
-// 		return perms.X
-// 	case "D":
-// 		return perms.D
-// 	default:
-// 		return false
-// 	}
-// }

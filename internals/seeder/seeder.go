@@ -53,7 +53,7 @@ func SeedDatabase(db *gorm.DB) {
 
 	groups := []userRegistration.Group{
 		{
-			Code:        "admin_group",
+			Code:        "admin",
 			Name:        "Admin Group",
 			Description: "Group for administrative users",
 			Internal:    true,
@@ -61,7 +61,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy:   "",
 		},
 		{
-			Code:        "manager_group",
+			Code:        "manager",
 			Name:        "Manager Group",
 			Description: "Group for manager users",
 			Internal:    false,
@@ -69,7 +69,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy:   "",
 		},
 		{
-			Code:        "user_group",
+			Code:        "user",
 			Name:        "User Group",
 			Description: "Group for regular users",
 			Internal:    false,
@@ -80,32 +80,116 @@ func SeedDatabase(db *gorm.DB) {
 
 	// Seed Roles
 	roles := []userRegistration.Role{
+		// Admin Group Roles
 		{
-			Code:        "admin_role",
+			Code:        "resource.admin",
 			Name:        "Admin Role",
-			Description: "Role with full permissions",
-			GroupID:     1,
+			Description: "Full resource permissions",
 			Internal:    true,
 			CreatedBy:   "Seeder",
 			UpdatedBy:   "",
+			GroupID:     1,
 		},
 		{
-			Code:        "manager_role",
+			Code:        "users.admin",
+			Name:        "Admin Role",
+			Description: "Full user permissions",
+			Internal:    true,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     1,
+		},
+		{
+			Code:        "documents.admin",
+			Name:        "Admin Role",
+			Description: "Full document permissions",
+			Internal:    true,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     1,
+		},
+		// Manager Group Roles
+		{
+			Code:        "resource.read",
 			Name:        "Manager Role",
-			Description: "Role with permissions to manage resources and settings, but no full admin rights",
-			GroupID:     2,
+			Description: "Read-only resource permissions",
 			Internal:    false,
 			CreatedBy:   "Seeder",
 			UpdatedBy:   "",
+			GroupID:     2,
 		},
 		{
-			Code:        "user_role",
-			Name:        "User Role",
-			Description: "Role with limited permissions",
-			GroupID:     3,
+			Code:        "resource.write",
+			Name:        "Manager Role",
+			Description: "Write resource permissions",
 			Internal:    false,
 			CreatedBy:   "Seeder",
 			UpdatedBy:   "",
+			GroupID:     2,
+		},
+		{
+			Code:        "users.read",
+			Name:        "Manager Role",
+			Description: "Read-only user permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     2,
+		},
+		{
+			Code:        "users.write",
+			Name:        "Manager Role",
+			Description: "Write user permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     2,
+		},
+		{
+			Code:        "documents.read",
+			Name:        "Manager Role",
+			Description: "Read-only document permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     2,
+		},
+		{
+			Code:        "documents.write",
+			Name:        "Manager Role",
+			Description: "Write document permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     2,
+		},
+		// User Group Roles
+		{
+			Code:        "resource.write",
+			Name:        "User Role",
+			Description: "Write resource permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     3,
+		},
+		{
+			Code:        "users.write",
+			Name:        "User Role",
+			Description: "Write user permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     3,
+		},
+		{
+			Code:        "documents.write",
+			Name:        "User Role",
+			Description: "Write document permissions",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+			GroupID:     3,
 		},
 	}
 
@@ -120,7 +204,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy:   "",
 		},
 		{
-			Code:        "resource.dashboard",
+			Code:        "resource.all",
 			Name:        "Dashboard",
 			Description: "Access to the dashboard",
 			Internal:    false,
@@ -128,7 +212,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy:   "",
 		},
 		{
-			Code:        "resource.settings",
+			Code:        "resource.my",
 			Name:        "Settings",
 			Description: "Access to settings page",
 			Internal:    false,
@@ -136,7 +220,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy:   "",
 		},
 		{
-			Code:        "users.admin",
+			Code:        "users.*",
 			Name:        "Dashboard",
 			Description: "Access to all users",
 			Internal:    true,
@@ -144,7 +228,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy:   "",
 		},
 		{
-			Code:        "users.read",
+			Code:        "users.all",
 			Name:        "Dashboard",
 			Description: "Read users",
 			Internal:    false,
@@ -152,9 +236,33 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy:   "",
 		},
 		{
-			Code:        "users.write",
+			Code:        "users.my",
 			Name:        "Dashboard",
 			Description: "Edit users",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "documents.*",
+			Name:        "Dashboard",
+			Description: "Access to all documents",
+			Internal:    true,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "documents.all",
+			Name:        "Dashboard",
+			Description: "Read all documents",
+			Internal:    false,
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Code:        "documents.my",
+			Name:        "Dashboard",
+			Description: "Edit my documents",
 			Internal:    false,
 			CreatedBy:   "Seeder",
 			UpdatedBy:   "",
@@ -164,7 +272,7 @@ func SeedDatabase(db *gorm.DB) {
 	// Seed RoleResourcePermissions
 	roleResourcePermissions := []userRegistration.RoleResourcePermission{
 		{
-			RoleCode:     "admin_role",
+			RoleCode:     "resource.admin",
 			ResourceCode: "resource.*",
 			Permissions: userRegistration.Permissions{
 				Allow: userRegistration.RWXD{R: true, W: true, X: true, D: true},
@@ -174,20 +282,80 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
-			RoleCode:     "manager_role",
-			ResourceCode: "resource.settings",
+			RoleCode:     "resource.reader",
+			ResourceCode: "resource.all",
 			Permissions: userRegistration.Permissions{
-				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false}, // Allow read and write, but no execute or delete
+				Allow: userRegistration.RWXD{R: true, W: false, X: false, D: false},
 				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
 			},
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		},
 		{
-			RoleCode:     "user_role",
-			ResourceCode: "resource.dashboard",
+			RoleCode:     "resource.writer",
+			ResourceCode: "resource.my",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "users.admin",
+			ResourceCode: "users.*",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: true, D: true},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "users.reader",
+			ResourceCode: "users.all",
 			Permissions: userRegistration.Permissions{
 				Allow: userRegistration.RWXD{R: true, W: false, X: false, D: false},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "users.writer",
+			ResourceCode: "users.my",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "documents.admin",
+			ResourceCode: "documents.*",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: true, D: true},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "documents.reader",
+			ResourceCode: "documents.all",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: false, X: false, D: false},
+				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
+			},
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			RoleCode:     "documents.writer",
+			ResourceCode: "documents.my",
+			Permissions: userRegistration.Permissions{
+				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
 				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
 			},
 			CreatedBy: "Seeder",
@@ -198,7 +366,7 @@ func SeedDatabase(db *gorm.DB) {
 	// Seed RoleWildCardPermissions
 	roleWildCardPermissions := []userRegistration.RoleWildCardPermission{
 		{
-			RoleCode:        "admin_role",
+			RoleCode:        "resource.admin",
 			ResourcePattern: "resource.*",
 			Permissions: userRegistration.Permissions{
 				Allow: userRegistration.RWXD{R: true, W: true, X: true, D: true},
@@ -207,8 +375,8 @@ func SeedDatabase(db *gorm.DB) {
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		}, {
-			RoleCode:        "manager_role",
-			ResourcePattern: "resource.*",
+			RoleCode:        "resource.writer",
+			ResourcePattern: "resource.my",
 			Permissions: userRegistration.Permissions{
 				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
 				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
@@ -217,10 +385,10 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
-			RoleCode:        "user_role",
-			ResourcePattern: "resource.settings",
+			RoleCode:        "resource.reader",
+			ResourcePattern: "resource.all",
 			Permissions: userRegistration.Permissions{
-				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
+				Allow: userRegistration.RWXD{R: true, W: false, X: false, D: false},
 				Deny:  userRegistration.RWXD{R: false, W: false, X: true, D: true},
 			},
 			CreatedBy: "Seeder",

@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -52,7 +53,6 @@ func isEmail(email string) bool {
 }
 
 func Login(c *fiber.Ctx) error {
-	// Input struct for login
 	type LoginInput struct {
 		Identity string `json:"identity"`
 		Password string `json:"password"`
@@ -60,9 +60,10 @@ func Login(c *fiber.Ctx) error {
 
 	// Struct for user data
 	type UserData struct {
-		ID       uint   `json:"id"`
-		Username string `json:"username"`
-		Email    string `json:"email"`
+		ID       uint     `json:"id"`
+		Username string   `json:"username"`
+		Email    string   `json:"email"`
+		Roles    []string `json:"roles"` // Added roles to the response
 	}
 
 	// Parse the request body
@@ -111,11 +112,44 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
+	// Fetch roles based on the user's GroupID
+	var roles []userRegistration.Role
+	db := database.DB.Db
+	if err := db.Where("group_id = ?", user.GroupID).Find(&roles).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Error retrieving roles",
+			"data":    err.Error(),
+		})
+	}
+
+	// Extract role codes from the roles
+	roleCodes := []string{}
+	for _, role := range roles {
+		roleCodes = append(roleCodes, role.Code)
+	}
+
+	// Retrieve session from context
+	session := c.Locals("session").(*session.Session)
+
+	// Store userId, username and roles in the session
+	session.Set("username", user.Username)
+	session.Set("userId", user.ID)
+	session.Set("roles", roleCodes)
+
+	if err := session.Save(); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to save session",
+		})
+	}
+
 	// Create JWT token
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
 	claims["username"] = user.Username
 	claims["user_id"] = user.ID
+	claims["roles"] = roleCodes // Include roles in the token
 	claims["exp"] = time.Now().Add(1 * time.Hour).Unix()
 
 	secretKey := config.Config("SECRET")
@@ -140,6 +174,7 @@ func Login(c *fiber.Ctx) error {
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
+		Roles:    roleCodes,
 	}
 
 	// Return the token and user data

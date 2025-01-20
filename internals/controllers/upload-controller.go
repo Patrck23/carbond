@@ -38,6 +38,17 @@ func UploadCustomerFile(c *fiber.Ctx) error {
 		})
 	}
 
+	// Get the current user from the context
+	// currentUser := c.Locals("currentUser")
+
+	// var requestedResource string
+	// 	currentUserId := nil
+	// 	if doc.userId == currentUserId {
+	// 	requestedResource = "documents.my"
+	// 	} else {
+	// 	requestedResource = "documents.all"
+	// 	}
+
 	// Ensure the  Customer exists
 	var customer customerRegistration.Customer
 	if err := db.First(&customer, "id = ?", customerID).Error; err != nil {
