@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/gofiber/fiber/v2"
+
 	"gorm.io/gorm"
 )
 
@@ -86,4 +88,56 @@ type RoleWildCardPermission struct {
 	Permissions     Permissions `gorm:"type:json"`
 	CreatedBy       string      `gorm:"size:100" json:"created_by"`
 	UpdatedBy       string      `gorm:"size:100" json:"updated_by"`
+}
+
+type SecurityService interface {
+	// GetGroup retrieves a group by code
+	GetGroup(c *fiber.Ctx, code string) (*Group, error)
+	// GetAllGroups retrieves all not deleted groups
+	GetAllGroups(c *fiber.Ctx) ([]*Group, error)
+	// GetRole retrieves a role by code
+	GetRole(c *fiber.Ctx, code string) (*Role, error)
+	// GetAllRoles retrieves all not deleted roles
+	GetAllRoles(c *fiber.Ctx) ([]*Role, error)
+	// GetRolesForGroups retrieves roles assigned on groups
+	GetRolesForGroups(c *fiber.Ctx, groups []string) ([]string, error)
+	// GetResource retrieves a resource by code
+	GetResource(c *fiber.Ctx, code string) (*Resource, error)
+	// GetAllResources retrieves all not deleted resources
+	GetAllResources(c *fiber.Ctx) ([]*Resource, error)
+	// GetGrantedPermissions calculates permissions on the resource for the roles and applies allow/deny logic
+	GetGrantedPermissions(c *fiber.Ctx, resource string, roles []string) (*RWXD, error)
+	// CheckPermissions checks if the roles have the requested perms on the given resource
+	CheckPermissions(c *fiber.Ctx, resource string, roles []string, requestedPermissions []string) (bool, error)
+	// GetExplicitPermissions returns permissions on resource / roles setup explicitly
+	GetExplicitPermissions(c *fiber.Ctx, resources []string, roles []string) ([]*RoleResourcePermission, error)
+	// GetWildCardPermissions returns wildcard permissions on roles
+	GetWildCardPermissions(c *fiber.Ctx, roles []string) ([]*RoleWildCardPermission, error)
+}
+
+type SecurityStorage interface {
+	// GetGroup retrieves a group by code
+	GetGroup(c *fiber.Ctx, code string) (*Group, error)
+	// GetGroups retrieves all not deleted groups
+	GetGroups(c *fiber.Ctx) ([]*Group, error)
+	// GetRole retrieves a role by code
+	GetRole(c *fiber.Ctx, code string) (*Role, error)
+	// GetAllRoles retrieves all not deleted roles
+	GetAllRoles(c *fiber.Ctx) ([]*Role, error)
+	// GetAllRoleCodes retrieves all role codes
+	GetAllRoleCodes(c *fiber.Ctx) ([]string, error)
+	// GetResource retrieves a resource by code
+	GetResource(c *fiber.Ctx, code string) (*Resource, error)
+	// GetAllResources retrieves all not deleted resources
+	GetAllResources(c *fiber.Ctx) ([]*Resource, error)
+	// ResourceExplicitPermissionsExists checks if there are explicit (no wildcard) permissions on the resource
+	ResourceExplicitPermissionsExists(c *fiber.Ctx, code string) (bool, error)
+	// GetRoleCodesForGroups retrieves role codes for groups
+	GetRoleCodesForGroups(c *fiber.Ctx, groups []string) ([]string, error)
+	// GroupsWithRoleExists checks if there are groups with assigned role
+	GroupsWithRoleExists(c *fiber.Ctx, role string) (bool, error)
+	// GetPermissions retrieves permissions granted to roles on resource
+	GetPermissions(c *fiber.Ctx, resource string, roles []string) ([]*Permissions, error)
+	// GetWildcardPermissions retrieves wildcard permissions granted to roles on resource
+	GetWildcardPermissions(c *fiber.Ctx, resource string, roles []string) ([]*Permissions, error)
 }

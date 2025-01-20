@@ -17,7 +17,7 @@ func SetupRoutes(app *fiber.App) {
 	auth.Post("/login", controllers.Login)
 
 	// User
-	api.Get("/users", middleware.Protected(), middleware.CheckPermissionsMiddleware("expenses", []string{"R", "W"}), controllers.GetAllUsers)
+	api.Get("/users", middleware.Protected(), middleware.CheckPermissionsMiddleware("resource.*", []string{"R", "W"}), controllers.GetAllUsers)
 	user := api.Group("/user")
 	user.Get("/:id", middleware.Protected(), controllers.GetUser)
 	user.Post("/", middleware.Protected(), controllers.CreateUser)

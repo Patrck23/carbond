@@ -202,7 +202,6 @@ func CreateWildCardPermission(c *fiber.Ctx) error {
 }
 
 // GetGrantedPermissions calculates permissions for roles on a resource
-// GetGrantedPermissions calculates permissions for roles on a resource
 func GetGrantedPermissions(c *fiber.Ctx) error {
 	db := database.DB.Db
 	roleCode := c.Query("role_code")
