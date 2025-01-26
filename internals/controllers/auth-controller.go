@@ -6,25 +6,17 @@ import (
 	"time"
 
 	"car-bond/internals/config"
-	"car-bond/internals/database"
+	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/models/userRegistration"
-
-	"gorm.io/gorm"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-// CheckPasswordHash compare password with hash
-func CheckPasswordHash(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	return err == nil
-}
-
-func getUserByEmail(e string) (*userRegistration.User, error) {
-	db := database.DB.Db
+func getUserByEmail(e string, db *gorm.DB) (*userRegistration.User, error) {
 	var user userRegistration.User
 	if err := db.Where(&userRegistration.User{Email: e}).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -35,8 +27,7 @@ func getUserByEmail(e string) (*userRegistration.User, error) {
 	return &user, nil
 }
 
-func getUserByUsername(u string) (*userRegistration.User, error) {
-	db := database.DB.Db
+func getUserByUsername(u string, db *gorm.DB) (*userRegistration.User, error) {
 	var user userRegistration.User
 	if err := db.Where(&userRegistration.User{Username: u}).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -47,23 +38,30 @@ func getUserByUsername(u string) (*userRegistration.User, error) {
 	return &user, nil
 }
 
+// Utility function to validate email format
 func isEmail(email string) bool {
 	_, err := mail.ParseAddress(email)
 	return err == nil
 }
 
-func Login(c *fiber.Ctx) error {
+// CheckPasswordHash compares the password with its hash
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
+}
+
+func Login(c *fiber.Ctx, db *gorm.DB) error {
 	type LoginInput struct {
 		Identity string `json:"identity"`
 		Password string `json:"password"`
 	}
 
-	// Struct for user data
 	type UserData struct {
-		ID       uint     `json:"id"`
-		Username string   `json:"username"`
-		Email    string   `json:"email"`
-		Roles    []string `json:"roles"` // Added roles to the response
+		ID       uint   `json:"id"`
+		Username string `json:"username"`
+		Email    string `json:"email"`
+		Group    string `json:"group"`
+		Location string `json:"location"`
 	}
 
 	// Parse the request body
@@ -83,9 +81,9 @@ func Login(c *fiber.Ctx) error {
 
 	// Fetch user by email or username
 	if isEmail(identity) {
-		user, err = getUserByEmail(identity)
+		user, err = getUserByEmail(identity, db)
 	} else {
-		user, err = getUserByUsername(identity)
+		user, err = getUserByUsername(identity, db)
 	}
 
 	// Handle errors during user retrieval
@@ -114,7 +112,6 @@ func Login(c *fiber.Ctx) error {
 
 	// Fetch roles based on the user's GroupID
 	var roles []userRegistration.Role
-	db := database.DB.Db
 	if err := db.Where("group_id = ?", user.GroupID).Find(&roles).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -129,10 +126,93 @@ func Login(c *fiber.Ctx) error {
 		roleCodes = append(roleCodes, role.Code)
 	}
 
+	// Ensure that user.GroupID is valid
+	if user.GroupID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "User does not belong to a valid group",
+			"data":    nil,
+		})
+	}
+
+	// Fetch the group based on the user's GroupID
+	var group userRegistration.Group
+	if err := db.Where("id = ?", user.GroupID).First(&group).Error; err != nil {
+		// Check if the error is due to a record not being found
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Group not found",
+				"data":    nil,
+			})
+		}
+
+		// Handle other errors
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Error retrieving group",
+			"data":    err.Error(),
+		})
+	}
+
+	group_code := group.Code
+
+	// company_id
+
+	// Ensure that user.GroupID is valid
+	if user.GroupID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "User does not belong to a valid group",
+			"data":    nil,
+		})
+	}
+
+	// Fetch the group based on the user's GroupID
+	var company companyRegistration.Company
+	if err := db.Where("id = ?", user.CompanyID).First(&company).Error; err != nil {
+		// Check if the error is due to a record not being found
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Group not found",
+				"data":    nil,
+			})
+		}
+
+		// Handle other errors
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Error retrieving group",
+			"data":    err.Error(),
+		})
+	}
+
+	var companyLocation companyRegistration.CompanyLocation
+	if err := db.Where("company_id = ?", company.ID).First(&companyLocation).Error; err != nil {
+		// Check if the error is due to a record not being found
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Location not found",
+				"data":    nil,
+			})
+		}
+
+		// Handle other errors
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Error retrieving location",
+			"data":    err.Error(),
+		})
+	}
+
+	country := companyLocation.Country
+
 	// Retrieve session from context
 	session := c.Locals("session").(*session.Session)
 
-	// Store userId, username and roles in the session
+	// Store userId, username, and roles in the session
 	session.Set("username", user.Username)
 	session.Set("userId", user.ID)
 	session.Set("roles", roleCodes)
@@ -149,7 +229,7 @@ func Login(c *fiber.Ctx) error {
 	claims := token.Claims.(jwt.MapClaims)
 	claims["username"] = user.Username
 	claims["user_id"] = user.ID
-	claims["roles"] = roleCodes // Include roles in the token
+	claims["roles"] = roleCodes
 	claims["exp"] = time.Now().Add(1 * time.Hour).Unix()
 
 	secretKey := config.Config("SECRET")
@@ -174,7 +254,8 @@ func Login(c *fiber.Ctx) error {
 		ID:       user.ID,
 		Username: user.Username,
 		Email:    user.Email,
-		Roles:    roleCodes,
+		Group:    group_code,
+		Location: country,
 	}
 
 	// Return the token and user data

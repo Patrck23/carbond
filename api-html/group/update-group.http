@@ -1,0 +1,11 @@
+Put http://127.0.0.1:8080/api/group/m\u0026eqw
+Content-Type: application/json
+
+{
+    "code": "m&eqw",
+	"name": "Monitoring and Evaluation",
+	"description": "Only Viewing Rights",
+	"internal": false,
+	"created_by": "admin",
+	"updated_by": ""
+}

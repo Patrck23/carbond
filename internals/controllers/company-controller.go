@@ -1,82 +1,229 @@
 package controllers
 
 import (
-	"car-bond/internals/database"
 	"car-bond/internals/models/companyRegistration"
+	"car-bond/internals/utils"
+	"errors"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
-func CreateCompany(c *fiber.Ctx) error {
-	db := database.DB.Db
+type CompanyRepository interface {
+	CreateCompany(company *companyRegistration.Company) error
+	GetPaginatedCompanies(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.Company, error)
+	GetCompanyByID(id string) (companyRegistration.Company, error)
+	GetCompanyLocations(companyID uint) ([]companyRegistration.CompanyLocation, error)
+	UpdateCompany(company *companyRegistration.Company) error
+	DeleteByID(id string) error
+
+	// Expenses
+	CreateCompanyExpense(expense *companyRegistration.CompanyExpense) error
+	GetPaginatedExpenses(c *fiber.Ctx, companyId string) (*utils.Pagination, []companyRegistration.CompanyExpense, error)
+	FindCompanyExpenseByIdAndCompanyId(id, companyId string) (*companyRegistration.CompanyExpense, error)
+	FindCompanyExpenseById(id string) (*companyRegistration.CompanyExpense, error)
+	UpdateCompanyExpense(expense *companyRegistration.CompanyExpense) error
+	FindCompanyExpenseByCompanyAndId(companyId, expenseId string) (*companyRegistration.CompanyExpense, error)
+	DeleteCompanyExpense(expense *companyRegistration.CompanyExpense) error
+	FindCompanyExpensesByCompanyIdAndExpenseDate(companyId, expenseDate string) ([]companyRegistration.CompanyExpense, error)
+	FindCompanyExpensesByCompanyIdAndExpenseDescription(companyId, expenseDescription string) ([]companyRegistration.CompanyExpense, error)
+	FindCompanyExpensesByCompanyIdAndCurrency(companyId, currency string) ([]companyRegistration.CompanyExpense, error)
+	FindCompanyExpensesByThree(companyId, expenseDate, currency string) ([]companyRegistration.CompanyExpense, error)
+	GetCompanyExpensesByFour(companyId, expenseDate, expenseDescription, currency string) ([]companyRegistration.CompanyExpense, error)
+	GetPaginatedAllExpenses(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.CompanyExpense, error)
+
+	// Locations
+	CreateCompanyLocation(location *companyRegistration.CompanyLocation) error
+	GetAllCompanyLocations(companyId string) ([]companyRegistration.CompanyLocation, error)
+	GetLocationByCompanyId(id, companyId string) (*companyRegistration.CompanyLocation, error)
+	FindLocationById(Id string) (*companyRegistration.CompanyLocation, error)
+	UpdateCompanyLocation(location *companyRegistration.CompanyLocation) error
+	DeleteLocationByID(id string) error
+}
+
+type CompanyRepositoryImpl struct {
+	db *gorm.DB
+}
+
+func NewCompanyRepository(db *gorm.DB) CompanyRepository {
+	return &CompanyRepositoryImpl{db: db}
+}
+
+type CompanyController struct {
+	repo CompanyRepository
+}
+
+func NewCompanyController(repo CompanyRepository) *CompanyController {
+	return &CompanyController{repo: repo}
+}
+
+// ============================================
+
+func (r *CompanyRepositoryImpl) CreateCompany(company *companyRegistration.Company) error {
+	return r.db.Create(company).Error
+}
+
+func (h *CompanyController) CreateCompany(c *fiber.Ctx) error {
+	// Initialize a new Company instance
 	company := new(companyRegistration.Company)
-	err := c.BodyParser(company)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
-	}
 
-	err = db.Create(&company).Error
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to create company", "data": err})
-	}
-
-	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Company created successfully", "data": company})
-}
-
-// Get all companies
-func GetAllCompanies(c *fiber.Ctx) error {
-	db := database.DB.Db
-	var companies []companyRegistration.Company
-	db.Find(&companies)
-	if len(companies) == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Companies not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Companies fetched successfully", "data": companies})
-}
-
-// Get a single company by ID
-
-func GetSingleCompanyById(c *fiber.Ctx) error {
-	db := database.DB.Db
-	id := c.Params("id")
-	var company companyRegistration.Company
-	db.First(&company, id)
-	if company.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company fetched successfully", "data": company})
-}
-
-// Update a company
-func UpdateCompany(c *fiber.Ctx) error {
-	// Struct to parse and validate input
-	type UpdateCompany struct {
-		Name      string `json:"name"`
-		StartDate string `json:"start_date"`
-		UpdatedBy string `json:"updated_by"`
-	}
-
-	// Initialize database instance
-	db := database.DB.Db
-
-	// Fetch company ID from URL params
-	id := c.Params("id")
-	var company companyRegistration.Company
-
-	// Find the company by ID
-	if err := db.First(&company, id).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{
+	// Parse the request body into the company instance
+	if err := c.BodyParser(company); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Company not found",
+			"message": "Invalid input provided",
+			"data":    err.Error(),
 		})
 	}
 
-	// Parse request body into the UpdateCompany struct
-	var updateData UpdateCompany
-	if err := c.BodyParser(&updateData); err != nil {
+	// Attempt to create the company record using the repository
+	if err := h.repo.CreateCompany(company); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create company",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the newly created company record
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company created successfully",
+		"data":    company,
+	})
+}
+
+// ===================
+
+func (r *CompanyRepositoryImpl) GetPaginatedCompanies(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.Company, error) {
+	pagination, companies, err := utils.Paginate(c, r.db, companyRegistration.Company{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, companies, nil
+}
+
+func (h *CompanyController) GetAllCompanies(c *fiber.Ctx) error {
+	// Fetch paginated Companies using the repository
+	pagination, companies, err := h.repo.GetPaginatedCompanies(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve Companies",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Companies retrieved successfully",
+		"data":    companies,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
+}
+
+// =====================
+
+func (r *CompanyRepositoryImpl) GetCompanyLocations(companyID uint) ([]companyRegistration.CompanyLocation, error) {
+	var locations []companyRegistration.CompanyLocation
+	err := r.db.Where("company_id = ?", companyID).Find(&locations).Error
+	return locations, err
+}
+
+func (r *CompanyRepositoryImpl) GetCompanyByID(id string) (companyRegistration.Company, error) {
+	var company companyRegistration.Company
+	err := r.db.First(&company, "id = ?", id).Error
+	return company, err
+}
+
+// GetSingleCompany fetches a company with its associated locations and expenses from the database
+func (h *CompanyController) GetSingleCompany(c *fiber.Ctx) error {
+	// Get the company ID from the route parameters
+	id := c.Params("id")
+
+	// Fetch the company by ID
+	company, err := h.repo.GetCompanyByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Company not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve Company",
+			"data":    err.Error(),
+		})
+	}
+
+	// Fetch company locations associated with the company
+	companyLocations, err := h.repo.GetCompanyLocations(company.ID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve company locations",
+			"data":    err.Error(),
+		})
+	}
+
+	// Prepare the response
+	response := fiber.Map{
+		"company":          company,
+		"company_location": companyLocations,
+	}
+
+	// Return the response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company and associated data retrieved successfully",
+		"data":    response,
+	})
+}
+
+// ====================
+
+func (r *CompanyRepositoryImpl) UpdateCompany(company *companyRegistration.Company) error {
+	return r.db.Save(company).Error
+}
+
+// Define the UpdateCompany struct
+type UpdateCompanyPayload struct {
+	Name      string `json:"name"`
+	StartDate string `json:"start_date"`
+	UpdatedBy string `json:"updated_by"`
+}
+
+// UpdateCompany handler function
+func (h *CompanyController) UpdateCompany(c *fiber.Ctx) error {
+	// Get the company ID from the route parameters
+	id := c.Params("id")
+
+	// Find the company in the database
+	company, err := h.repo.GetCompanyByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Company not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve company",
+			"data":    err.Error(),
+		})
+	}
+
+	// Parse the request body into the UpdateCompanyPayload struct
+	var payload UpdateCompanyPayload
+	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid input",
@@ -84,19 +231,11 @@ func UpdateCompany(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update the company fields
-	if updateData.Name != "" {
-		company.Name = updateData.Name
-	}
-	if updateData.StartDate != "" {
-		company.StartDate = updateData.StartDate
-	}
-	if updateData.UpdatedBy != "" {
-		company.UpdatedBy = updateData.UpdatedBy
-	}
+	// Update the company fields using the payload
+	updateCompanyFields(&company, payload) // Pass the parsed payload
 
-	// Save the updated company to the database
-	if err := db.Save(&company).Error; err != nil {
+	// Save the changes to the database
+	if err := h.repo.UpdateCompany(&company); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to update company",
@@ -104,120 +243,523 @@ func UpdateCompany(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return success response
-	return c.JSON(fiber.Map{
+	// Return the updated company
+	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Company updated successfully",
+		"message": "company updated successfully",
 		"data":    company,
 	})
 }
 
-// Delete a company by ID
-
-func DeleteCompanyById(c *fiber.Ctx) error {
-	db := database.DB.Db
-	id := c.Params("id")
-	var company companyRegistration.Company
-	db.First(&company, id)
-	if company.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
-	}
-
-	err := db.Delete(&company, id).Error
-	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Failed to delete company", "data": err})
-	}
-	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company deleted"})
+// UpdateCompanyFields updates the fields of a company using the UpdateCompany struct
+func updateCompanyFields(company *companyRegistration.Company, updateCompanyData UpdateCompanyPayload) {
+	company.Name = updateCompanyData.Name
+	company.StartDate = updateCompanyData.StartDate
+	company.UpdatedBy = updateCompanyData.UpdatedBy
 }
 
-// ==================================================================================================================
+// ======================
 
-// Create a company expense
-
-func CreateCompanyExpense(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyExpense := new(companyRegistration.CompanyExpense)
-	err := c.BodyParser(companyExpense)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
+// DeleteByID deletes a company by ID
+func (r *CompanyRepositoryImpl) DeleteByID(id string) error {
+	if err := r.db.Delete(&companyRegistration.Company{}, "id = ?", id).Error; err != nil {
+		return err
 	}
-
-	err = db.Create(&companyExpense).Error
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to create company", "data": err})
-	}
-
-	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Company created successfully", "data": companyExpense})
+	return nil
 }
 
-// Get Company Expenses by ID
-
-func GetCompanyExpenseById(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-
-	// Retrieve the expense ID and company ID from the request parameters
+// DeleteCompanyByID deletes a Company by its ID
+func (h *CompanyController) DeleteCompanyByID(c *fiber.Ctx) error {
+	// Get the Company ID from the route parameters
 	id := c.Params("id")
-	companyId := c.Params("companyId")
 
-	// Query the database for the expense by its ID and company ID
-	var expense companyRegistration.CompanyExpense
-	result := db.Preload("Company").Where("id = ? AND company_id = ?", id, companyId).First(&expense)
-
-	// Handle potential database query errors
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
+	// Find the Company in the database
+	company, err := h.repo.GetCompanyByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
 			return c.Status(404).JSON(fiber.Map{
 				"status":  "error",
-				"message": "Expense not found for the specified company",
+				"message": "Company not found",
 			})
 		}
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
+			"message": "Failed to find Company",
+			"data":    err.Error(),
+		})
+	}
+
+	// Delete the Company
+	if err := h.repo.DeleteByID(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete Company",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company deleted successfully",
+		"data":    company,
+	})
+}
+
+// ==================================================================================================================
+// Create a company expense
+
+// CreateCompanyExpense creates a new company expense in the database
+func (r *CompanyRepositoryImpl) CreateCompanyExpense(expense *companyRegistration.CompanyExpense) error {
+	return r.db.Create(expense).Error
+}
+
+// CreateCompanyExpense handles the creation of a company expense
+func (h *CompanyController) CreateCompanyExpense(c *fiber.Ctx) error {
+	// Parse the request body into a companyExpense struct
+	companyExpense := new(companyRegistration.CompanyExpense)
+	if err := c.BodyParser(companyExpense); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
+	}
+
+	// Create the company expense in the database
+	if err := h.repo.CreateCompanyExpense(companyExpense); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create company expense",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company expense created successfully",
+		"data":    companyExpense,
+	})
+}
+
+// ========================
+
+func (r *CompanyRepositoryImpl) GetPaginatedExpenses(c *fiber.Ctx, companyId string) (*utils.Pagination, []companyRegistration.CompanyExpense, error) {
+	pagination, expenses, err := utils.Paginate(c, r.db.Preload("Company").Where("company_id = ?", companyId), companyRegistration.CompanyExpense{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, expenses, nil
+}
+
+func (h *CompanyController) GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
+	companyId := c.Params("companyId")
+
+	// Fetch paginated expenses using the repository
+	pagination, expenses, err := h.repo.GetPaginatedExpenses(c, companyId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve expenses",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Expenses and associated data retrieved successfully",
+		"data":    expenses,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
+}
+
+// ========================
+
+func (r *CompanyRepositoryImpl) FindCompanyExpenseByIdAndCompanyId(id, companyId string) (*companyRegistration.CompanyExpense, error) {
+	var expense companyRegistration.CompanyExpense
+	result := r.db.Preload("Company").Where("id = ? AND company_id = ?", id, companyId).First(&expense)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &expense, nil
+}
+
+func (h *CompanyController) GetCompanyExpenseById(c *fiber.Ctx) error {
+	// Retrieve the expense ID and Company ID from the request parameters
+	id := c.Params("id")
+	companyId := c.Params("companyId")
+
+	// Fetch the company expense from the repository
+	expense, err := h.repo.FindCompanyExpenseByIdAndCompanyId(id, companyId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Expense not found for the specified company",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
 			"message": "Failed to fetch the expense",
-			"error":   result.Error.Error(),
+			"error":   err.Error(),
 		})
 	}
 
 	// Return the fetched expense
-	return c.JSON(fiber.Map{
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Expense fetched successfully",
 		"data":    expense,
 	})
 }
 
-// Get Company Expenses by Company ID
+// ========================
 
-func GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
+func (r *CompanyRepositoryImpl) FindCompanyExpenseById(id string) (*companyRegistration.CompanyExpense, error) {
+	var expense companyRegistration.CompanyExpense
+	if err := r.db.First(&expense, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &expense, nil
+}
 
-	// Retrieve companyId from the request parameters
-	companyId := c.Params("companyId")
+func (r *CompanyRepositoryImpl) UpdateCompanyExpense(expense *companyRegistration.CompanyExpense) error {
+	return r.db.Save(expense).Error
+}
 
-	// Query the database for company expenses
-	var expenses []companyRegistration.CompanyExpense
-	result := db.Preload("Company").Where("company_id = ?", companyId).Find(&expenses)
+func (h *CompanyController) UpdateCompanyExpense(c *fiber.Ctx) error {
+	// Define a struct for input validation
+	type UpdateCompanyExpenseInput struct {
+		Description string  `json:"description" validate:"required"`
+		Currency    string  `json:"currency" validate:"required"`
+		Amount      float64 `json:"amount" validate:"required,gt=0"`
+		ExpenseDate string  `json:"expense_date" validate:"required"`
+		UpdatedBy   string  `json:"updated_by" validate:"required"`
+	}
 
-	// Handle potential database errors
-	if result.Error != nil {
-		return c.Status(500).JSON(fiber.Map{
+	// Parse the expense ID from the request parameters
+	expenseID := c.Params("id")
+
+	// Parse and validate the request body
+	var input UpdateCompanyExpenseInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to retrieve company expenses",
-			"error":   result.Error.Error(),
+			"message": "Invalid input",
+			"error":   err.Error(),
 		})
 	}
 
-	// Handle the case where no expenses are found
+	// Use a validation library to validate the input
+	if validationErr := utils.ValidateStruct(input); validationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Validation failed",
+			"errors":  validationErr,
+		})
+	}
+
+	// Fetch the expense record using the repository
+	expense, err := h.repo.FindCompanyExpenseById(expenseID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Expense not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch expense",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update the expense fields
+	expense.Description = input.Description
+	expense.Currency = input.Currency
+	expense.Amount = input.Amount
+	expense.ExpenseDate = input.ExpenseDate
+	expense.UpdatedBy = input.UpdatedBy
+
+	// Save the updated expense using the repository
+	if err := h.repo.UpdateCompanyExpense(expense); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update expense",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the updated expense
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Expense updated successfully",
+		"data":    expense,
+	})
+}
+
+// ====================
+
+func (r *CompanyRepositoryImpl) FindCompanyExpenseByCompanyAndId(companyId, expenseId string) (*companyRegistration.CompanyExpense, error) {
+	var expense companyRegistration.CompanyExpense
+	if err := r.db.Where("id = ? AND company_id = ?", expenseId, companyId).First(&expense).Error; err != nil {
+		return nil, err
+	}
+	return &expense, nil
+}
+
+func (r *CompanyRepositoryImpl) DeleteCompanyExpense(expense *companyRegistration.CompanyExpense) error {
+	return r.db.Delete(expense).Error
+}
+
+func (h *CompanyController) DeleteCompanyExpenseById(c *fiber.Ctx) error {
+	// Parse companyId and expenseId from the request parameters
+	companyId := c.Params("companyId")
+	expenseId := c.Params("id")
+
+	// Check if the expense exists and belongs to the specified company
+	expense, err := h.repo.FindCompanyExpenseByCompanyAndId(companyId, expenseId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Company expense not found or does not belong to the specified company",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch company expense",
+			"error":   err.Error(),
+		})
+	}
+
+	// Delete the expense using the repository
+	if err := h.repo.DeleteCompanyExpense(expense); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete company expense",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company expense deleted successfully",
+	})
+}
+
+// ====================
+
+// Get Company Expenses by Company ID and Expense Date
+
+func (r *CompanyRepositoryImpl) FindCompanyExpensesByCompanyIdAndExpenseDate(companyId, expenseDate string) ([]companyRegistration.CompanyExpense, error) {
+	var expenses []companyRegistration.CompanyExpense
+	if err := r.db.Where("company_id = ? AND expense_date = ?", companyId, expenseDate).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
+
+func (h *CompanyController) GetCompanyExpensesByCompanyIdAndExpenseDate(c *fiber.Ctx) error {
+	// Retrieve companyId and expenseDate from the request parameters
+	companyId := c.Params("id")
+	expenseDate := c.Params("expense_date")
+
+	// Fetch expenses using the repository
+	expenses, err := h.repo.FindCompanyExpensesByCompanyIdAndExpenseDate(companyId, expenseDate)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Company expenses not found for the specified date",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch company expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// =====================
+
+// Get Company Expenses by Company ID and Expense Description
+
+func (r *CompanyRepositoryImpl) FindCompanyExpensesByCompanyIdAndExpenseDescription(companyId, expenseDescription string) ([]companyRegistration.CompanyExpense, error) {
+	var expenses []companyRegistration.CompanyExpense
+	if err := r.db.Where("company_id = ? AND description = ?", companyId, expenseDescription).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
+
+func (h *CompanyController) GetCompanyExpensesByCompanyIdAndExpenseDescription(c *fiber.Ctx) error {
+	// Retrieve companyId and expenseDescription from the request parameters
+	companyId := c.Params("id")
+	expenseDescription := c.Params("expense_description")
+
+	// Fetch expenses using the repository
+	expenses, err := h.repo.FindCompanyExpensesByCompanyIdAndExpenseDescription(companyId, expenseDescription)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Company expenses not found for the specified description",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch company expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// ======================
+
+// // Get Company Expenses by Company ID and Currency
+
+func (r *CompanyRepositoryImpl) FindCompanyExpensesByCompanyIdAndCurrency(companyId, currency string) ([]companyRegistration.CompanyExpense, error) {
+	var expenses []companyRegistration.CompanyExpense
+	if err := r.db.Where("company_id = ? AND currency = ?", companyId, currency).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
+
+func (h *CompanyController) GetCompanyExpensesByCompanyIdAndCurrency(c *fiber.Ctx) error {
+	// Retrieve companyId and currency from the request parameters
+	companyId := c.Params("id")
+	currency := c.Params("currency")
+
+	// Fetch expenses using the repository
+	expenses, err := h.repo.FindCompanyExpensesByCompanyIdAndCurrency(companyId, currency)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Company expenses not found for the specified company and currency",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch company expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// =======================
+
+// Get Company Expenses by Company ID, Expense Date, and Currency
+
+func (r *CompanyRepositoryImpl) FindCompanyExpensesByThree(companyId, expenseDate, currency string) ([]companyRegistration.CompanyExpense, error) {
+	var expenses []companyRegistration.CompanyExpense
+	if err := r.db.Where("company_id = ? AND expense_date = ? AND currency = ?", companyId, expenseDate, currency).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
+
+func (h *CompanyController) GetCompanyExpensesByThree(c *fiber.Ctx) error {
+	// Retrieve companyId, expenseDate, and currency from the request parameters
+	companyId := c.Params("id")
+	expenseDate := c.Params("expense_date")
+	currency := c.Params("currency")
+
+	// Fetch company expenses using the repository
+	expenses, err := h.repo.FindCompanyExpensesByThree(companyId, expenseDate, currency)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Company expenses not found for the specified company, date, and currency",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch company expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// ==================
+
+// Get Company Expenses by Company ID, Expense Description, and Currency
+
+func (r *CompanyRepositoryImpl) GetCompanyExpensesByFour(companyId, expenseDate, expenseDescription, currency string) ([]companyRegistration.CompanyExpense, error) {
+	var expenses []companyRegistration.CompanyExpense
+	if err := r.db.Where("company_id = ? AND expense_date = ? AND description = ? AND currency = ?", companyId, expenseDate, expenseDescription, currency).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
+
+// GetCompanyExpensesFilters handles the request to get company expenses by filters.
+func (h *CompanyController) GetCompanyExpensesFilters(c *fiber.Ctx) error {
+	companyId := c.Params("id")
+	expenseDate := c.Params("expense_date")
+	expenseDescription := c.Params("expense_description")
+	currency := c.Params("currency")
+
+	// Fetch company expenses using the service layer
+	expenses, err := h.repo.GetCompanyExpensesByFour(companyId, expenseDate, expenseDescription, currency)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch company expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// If no expenses found
 	if len(expenses) == 0 {
 		return c.Status(404).JSON(fiber.Map{
 			"status":  "error",
-			"message": "No expenses found for the specified company",
+			"message": "Company expenses not found for the specified filters",
 		})
 	}
 
-	// Return a success response with the fetched data
+	// Return the fetched company expenses
 	return c.JSON(fiber.Map{
 		"status":  "success",
 		"message": "Company expenses fetched successfully",
@@ -225,351 +767,288 @@ func GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
 	})
 }
 
-// Update Company Expenses by
+// ==================
 
-func UpdateCompanyExpense(c *fiber.Ctx) error {
-	// Define a struct for input validation
-	type UpdateCompanyExpenseInput struct {
-		Description string  `json:"description"`
-		Currency    string  `json:"currency"`
-		Amount      float64 `json:"amount"`
-		ExpenseDate string  `gorm:"type:date" json:"expense_date"`
-		UpdatedBy   string  `json:"updated_by"`
+func (r *CompanyRepositoryImpl) GetPaginatedAllExpenses(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.CompanyExpense, error) {
+	pagination, expenses, err := utils.Paginate(c, r.db, companyRegistration.CompanyExpense{})
+	if err != nil {
+		return nil, nil, err
 	}
-
-	db := database.DB.Db
-	expenseID := c.Params("id")
-
-	// Find the expense record by ID
-	var expense companyRegistration.CompanyExpense
-	if err := db.First(&expense, expenseID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Expense not found"})
-		}
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Database error", "error": err.Error()})
-	}
-
-	// Parse the request body into the input struct
-	var input UpdateCompanyExpenseInput
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invalid input", "error": err.Error()})
-	}
-
-	// Update the fields of the expense record
-	expense.Description = input.Description
-	expense.Currency = input.Currency
-	expense.Amount = input.Amount
-	expense.ExpenseDate = input.ExpenseDate
-	expense.UpdatedBy = input.UpdatedBy
-
-	// Save the changes to the database
-	if err := db.Save(&expense).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update expense", "error": err.Error()})
-	}
-
-	// Return the updated expense
-	return c.JSON(fiber.Map{
-		"status":  "success",
-		"message": "Expense updated successfully",
-		"data":    expense,
-	})
+	return &pagination, expenses, nil
 }
 
-// Delete Company Expenses by ID
-
-func DeleteCompanyExpenseById(c *fiber.Ctx) error {
-	db := database.DB.Db
-
-	// Parse companyId and expenseId from the URL
-	companyId := c.Params("companyId")
-	expenseId := c.Params("id")
-
-	// Check if the expense exists and belongs to the specified company
-	var expense companyRegistration.CompanyExpense
-	if err := db.Where("id = ? AND company_id = ?", expenseId, companyId).First(&expense).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company expense not found or does not belong to the specified company"})
-	}
-
-	// Delete the expense
-	if err := db.Delete(&expense).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete company expense", "data": err.Error()})
-	}
-
-	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company expense deleted successfully"})
-}
-
-// Get Company Expenses by Company ID and Expense Date
-
-func GetCompanyExpensesByCompanyIdAndExpenseDate(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyId := c.Params("id")
-	expenseDate := c.Params("expense_date")
-	var expense companyRegistration.CompanyExpense
-	db.Where("company_id = ? AND expense_date = ?", companyId, expenseDate).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
-}
-
-// Get Company Expenses by Company ID and Expense Description
-
-func GetCompanyExpensesByCompanyIdAndExpenseDescription(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyId := c.Params("id")
-	expenseDescription := c.Params("expense_description")
-	var expense companyRegistration.CompanyExpense
-	db.Where("company_id = ? AND description = ?", companyId, expenseDescription).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
-}
-
-// Get Company Expenses by Company ID and Currency
-
-func GetCompanyExpensesByCompanyIdAndCurrency(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyId := c.Params("id")
-	currency := c.Params("currency")
-	var expenses []companyRegistration.CompanyExpense
-	db.Where("company_id = ? AND currency = ?", companyId, currency).Find(&expenses)
-	if len(expenses) == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expenses})
-}
-
-// Get Company Expenses by Company ID, Expense Date, and Currency
-
-func GetCompanyExpensesByThree(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyId := c.Params("id")
-	expenseDate := c.Params("expense_date")
-	currency := c.Params("currency")
-	var expense companyRegistration.CompanyExpense
-	db.Where("company_id = ? AND expense_date = ? AND currency = ?", companyId, expenseDate, currency).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
-}
-
-// Get Company Expenses by Company ID, Expense Description, and Currency
-
-func GetCompanyExpensesByThreeDec(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyId := c.Params("id")
-	expenseDescription := c.Params("expense_description")
-	currency := c.Params("currency")
-	var expense companyRegistration.CompanyExpense
-	db.Where("company_id = ? AND description = ? AND currency = ?", companyId, expenseDescription, currency).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
-}
-
-// Get Company Expenses by Company ID, Expense Date, Expense Description, and Currency
-
-func GetCompanyExpensesFilters(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyId := c.Params("id")
-	expenseDate := c.Params("expense_date")
-	expenseDescription := c.Params("expense_description")
-	currency := c.Params("currency")
-	var expense companyRegistration.CompanyExpense
-	db.Where("company_id = ? AND expense_date = ? AND description = ? AND currency = ?", companyId, expenseDate, expenseDescription, currency).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Company Expenses fetched successfully", "data": expense})
-}
-
-func GetAllExpenses(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-	var expenses []companyRegistration.CompanyExpense
-
-	// Fetch all locations without requiring a Company association
-	if err := db.Preload("Company").Find(&expenses).Error; err != nil {
+func (h *CompanyController) GetAllExpenses(c *fiber.Ctx) error {
+	// Fetch paginated Companies using the repository
+	pagination, companies, err := h.repo.GetPaginatedAllExpenses(c)
+	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch locations",
+			"status":  "error",
+			"message": "Failed to retrieve Companies",
+			"data":    err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(expenses)
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Companies retrieved successfully",
+		"data":    companies,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
 }
 
 // ==================================================================================================================
 
 // Create a company location
 
-func CreateCompanyLocation(c *fiber.Ctx) error {
-	db := database.DB.Db
-	companyLocation := new(companyRegistration.CompanyLocation)
-	err := c.BodyParser(companyLocation)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
-	}
-
-	err = db.Create(&companyLocation).Error
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to create company location", "data": err})
-	}
-
-	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Company created successfully", "data": companyLocation})
+func (r *CompanyRepositoryImpl) CreateCompanyLocation(location *companyRegistration.CompanyLocation) error {
+	return r.db.Create(location).Error
 }
 
-func GetAllCompanyLocations(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-	companyId := c.Params("companyId")
-
-	var locations []companyRegistration.CompanyLocation
-
-	// Fetch all locations with associated company details
-	if err := db.Preload("Company").Where("company_id = ?", companyId).Find(&locations).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch company locations",
+// CreateCompanyLocation handles the creation of a company location
+func (h *CompanyController) CreateCompanyLocation(c *fiber.Ctx) error {
+	// Parse the request body into a CompanyLocation struct
+	CompanyLocation := new(companyRegistration.CompanyLocation)
+	if err := c.BodyParser(CompanyLocation); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(locations)
+	// Create the company location in the database
+	if err := h.repo.CreateCompanyLocation(CompanyLocation); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create location",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Location created successfully",
+		"data":    CompanyLocation,
+	})
 }
 
-// Get Company Location by ID
+// ===============================
 
-func GetCompanyLocationById(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
+// Get Company Expenses by Company ID, Expense Description, and Currency
 
-	// Retrieve the location ID and company ID from the request parameters
-	id := c.Params("id")
-	companyId := c.Params("companyId")
+func (r *CompanyRepositoryImpl) GetAllCompanyLocations(companyId string) ([]companyRegistration.CompanyLocation, error) {
+	var locations []companyRegistration.CompanyLocation
+	if err := r.db.Preload("Company").Where("company_id = ?", companyId).Find(&locations).Error; err != nil {
+		return nil, err
+	}
+	return locations, nil
+}
 
-	// Query the database for the location by its ID and company ID
+// GetCompanyExpensesFilters handles the request to get company expenses by filters.
+func (h *CompanyController) GetAllCompanyLocations(c *fiber.Ctx) error {
+	companyId := c.Params("id")
+
+	// Fetch company expenses using the service layer
+	expenses, err := h.repo.GetAllCompanyLocations(companyId)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch company locations",
+			"error":   err.Error(),
+		})
+	}
+
+	// If no expenses found
+	if len(expenses) == 0 {
+		return c.Status(404).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Company locations not found for the specified filters",
+		})
+	}
+
+	// Return the fetched company expenses
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Company locations fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// ===============================
+
+func (r *CompanyRepositoryImpl) GetLocationByCompanyId(id, companyId string) (*companyRegistration.CompanyLocation, error) {
 	var location companyRegistration.CompanyLocation
-	result := db.Preload("Company").Where("id = ? AND company_id = ?", id, companyId).First(&location)
-
-	// Handle potential database query errors
+	result := r.db.Preload("Company").Where("company_id = ? AND id = ?", companyId).First(&location)
 	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{
+		return nil, result.Error
+	}
+	return &location, nil
+}
+
+func (h *CompanyController) GetLocationByCompanyId(c *fiber.Ctx) error {
+	companyId := c.Params("companyId")
+	id := c.Params("id")
+
+	// Fetch the company expense from the repository
+	expense, err := h.repo.GetLocationByCompanyId(id, companyId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Location not found for the specified company",
 			})
 		}
-		return c.Status(500).JSON(fiber.Map{
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to fetch the location",
-			"error":   result.Error.Error(),
+			"error":   err.Error(),
 		})
 	}
 
-	// Return the fetched location
-	return c.JSON(fiber.Map{
+	// Return the fetched expense
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Location fetched successfully",
-		"data":    location,
+		"data":    expense,
 	})
 }
 
-// Update Company Location
+// ===============================
 
-func UpdateCompanyLocation(c *fiber.Ctx) error {
+func (r *CompanyRepositoryImpl) FindLocationById(Id string) (*companyRegistration.CompanyLocation, error) {
+	var location companyRegistration.CompanyLocation
+	result := r.db.Preload("Company").Where("id = ?", Id).First(&location)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &location, nil
+}
+
+func (r *CompanyRepositoryImpl) UpdateCompanyLocation(location *companyRegistration.CompanyLocation) error {
+	return r.db.Save(location).Error
+}
+
+func (h *CompanyController) UpdateCompanyLocation(c *fiber.Ctx) error {
 	// Define a struct for input validation
 	type UpdateCompanyLocationInput struct {
-		Address   string `json:"address"`
-		Telephone string `json:"telephone"`
-		Country   string `json:"country"`
-		UpdatedBy string `json:"updated_by"`
+		Address   string `json:"address" validate:"required"`
+		Telephone string `json:"telephone" validate:"required"`
+		Country   string `json:"country" validate:"required"`
+		UpdatedBy string `json:"updated_by" validate:"required"`
 	}
 
-	db := database.DB.Db
+	// Parse the Location ID from the request parameters
 	locationID := c.Params("id")
 
-	// Find the location record by ID
-	var location companyRegistration.CompanyLocation
-	if err := db.First(&location, locationID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Location not found"})
-		}
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Database error", "error": err.Error()})
-	}
-
-	// Parse the request body into the input struct
+	// Parse and validate the request body
 	var input UpdateCompanyLocationInput
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invalid input", "error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"error":   err.Error(),
+		})
 	}
 
-	// Update the fields of the location record
+	// Use a validation library to validate the input
+	if validationErr := utils.ValidateStruct(input); validationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Validation failed",
+			"errors":  validationErr,
+		})
+	}
+
+	// Fetch the location record using the repository
+	location, err := h.repo.FindLocationById(locationID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "location not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch location",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update the location fields
 	location.Address = input.Address
-	location.Telephone = input.Telephone
 	location.Country = input.Country
+	location.Telephone = input.Telephone
 	location.UpdatedBy = input.UpdatedBy
 
-	// Save the changes to the database
-	if err := db.Save(&location).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update location", "error": err.Error()})
+	// Save the updated location using the repository
+	if err := h.repo.UpdateCompanyLocation(location); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update location",
+			"error":   err.Error(),
+		})
 	}
 
 	// Return the updated location
-	return c.JSON(fiber.Map{
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Location updated successfully",
+		"message": "location updated successfully",
 		"data":    location,
 	})
 }
 
+// ===============================
+
 // Delete Company Location by ID
-
-func DeleteCompanyLocationById(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-
-	// Parse parameters
-	id := c.Params("id")
-	companyId := c.Params("companyId")
-
-	// Check if the company exists
-	var company companyRegistration.Company
-	if err := db.First(&company, companyId).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company not found"})
+func (r *CompanyRepositoryImpl) DeleteLocationByID(id string) error {
+	if err := r.db.Delete(&companyRegistration.CompanyLocation{}, "id = ?", id).Error; err != nil {
+		return err
 	}
-
-	// Check if the company location exists and belongs to the company
-	var companyLocation companyRegistration.CompanyLocation
-	if err := db.Where("id = ? AND company_id = ?", id, companyId).First(&companyLocation).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Company location not found or does not belong to the specified company"})
-	}
-
-	// Delete the company location
-	if err := db.Delete(&companyLocation).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete company location", "data": err.Error()})
-	}
-
-	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Company location deleted successfully"})
+	return nil
 }
 
-func GetAllLocations(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-	var locations []companyRegistration.CompanyLocation
+// DeleteCompanyByID deletes a company by its ID
+func (h *CompanyController) DeleteLocationByID(c *fiber.Ctx) error {
+	// Get the company ID from the route parameters
+	id := c.Params("id")
 
-	// Fetch all locations without requiring a Company association
-	if err := db.Preload("Company").Find(&locations).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to fetch locations",
+	// Find the location in the database
+	location, err := h.repo.FindLocationById(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "location not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to find location",
+			"data":    err.Error(),
 		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(locations)
+	// Delete the location
+	if err := h.repo.DeleteLocationByID(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete port",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "location deleted successfully",
+		"data":    location,
+	})
 }

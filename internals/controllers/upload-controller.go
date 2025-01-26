@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"car-bond/internals/database"
 	"car-bond/internals/models/customerRegistration"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,9 +14,7 @@ import (
 )
 
 // Upload CustomerFile handles uploading either a photo or a PDF for a Customer
-func UploadCustomerFile(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+func UploadCustomerFile(c *fiber.Ctx, db *gorm.DB) error {
 
 	// Get the Customer ID from the request form
 	customerID := c.FormValue("customer_id")
@@ -37,17 +34,6 @@ func UploadCustomerFile(c *fiber.Ctx) error {
 			"data":    err.Error(),
 		})
 	}
-
-	// Get the current user from the context
-	// currentUser := c.Locals("currentUser")
-
-	// var requestedResource string
-	// 	currentUserId := nil
-	// 	if doc.userId == currentUserId {
-	// 	requestedResource = "documents.my"
-	// 	} else {
-	// 	requestedResource = "documents.all"
-	// 	}
 
 	// Ensure the  Customer exists
 	var customer customerRegistration.Customer
@@ -130,9 +116,7 @@ func contains(slice []string, item string) bool {
 }
 
 // GetCustomerFiles retrieves all files (photos or PDFs) associated with a specific customer
-func GetCustomerFiles(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+func GetCustomerFiles(c *fiber.Ctx, db *gorm.DB) error {
 
 	// Get the  customer ID from the route parameters
 	customerID := c.Params("id")
@@ -186,9 +170,7 @@ func GetCustomerFiles(c *fiber.Ctx) error {
 	})
 }
 
-func GetFile(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+func GetFile(c *fiber.Ctx, db *gorm.DB) error {
 
 	// Get the file ID from the route parameters
 	fileID := c.Params("file_id")

@@ -1,9 +1,9 @@
 package controllers
 
 import (
-	"car-bond/internals/database"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/utils"
+
 	"errors"
 	"strconv"
 
@@ -11,11 +11,62 @@ import (
 	"gorm.io/gorm"
 )
 
-// Create a car
-func CreateCar(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+type CarRepository interface {
+	CreateCar(car *carRegistration.Car) error
+	GetPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error)
+	GetCarPorts(carID uint) ([]carRegistration.CarPort, error)
+	GetCarExpenses(carID uint) ([]carRegistration.CarExpense, error)
+	GetCarByID(id string) (carRegistration.Car, error)
+	GetCarByVin(vinNumber string) (carRegistration.Car, error)
+	UpdateCar(car *carRegistration.Car) error
+	DeleteByID(id string) error
 
+	// Expense
+	CreateCarExpense(expense *carRegistration.CarExpense) error
+	GetPaginatedExpenses(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarExpense, error)
+	FindCarExpenseByIdAndCarId(id string, carId string) (*carRegistration.CarExpense, error)
+	GetPaginatedExpensesByCarId(c *fiber.Ctx, carId string) (*utils.Pagination, []carRegistration.CarExpense, error)
+	FindCarExpenseById(id string) (*carRegistration.CarExpense, error)
+	UpdateCarExpense(expense *carRegistration.CarExpense) error
+	DeleteCarExpense(expense *carRegistration.CarExpense) error
+	FindCarExpenseByCarAndId(carId, expenseId string) (*carRegistration.CarExpense, error)
+	FindCarExpensesByCarIdAndExpenseDate(carId, expenseDate string) ([]carRegistration.CarExpense, error)
+	FindCarExpensesByCarIdAndExpenseDescription(carId, expenseDescription string) ([]carRegistration.CarExpense, error)
+	FindCarExpensesByCarIdAndCurrency(carId, currency string) ([]carRegistration.CarExpense, error)
+	FindCarExpensesByThree(carId, expenseDate, currency string) ([]carRegistration.CarExpense, error)
+	GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency string) ([]carRegistration.CarExpense, error)
+
+	// Car Port
+	CreateCarPort(expense *carRegistration.CarPort) error
+	GetPaginatedPorts(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarPort, error)
+	FindPortById(Id string) (*carRegistration.CarPort, error)
+	UpdateCarPort(port *carRegistration.CarPort) error
+	DeletePortByID(id string) error
+}
+
+type CarRepositoryImpl struct {
+	db *gorm.DB
+}
+
+func NewCarRepository(db *gorm.DB) CarRepository {
+	return &CarRepositoryImpl{db: db}
+}
+
+type CarController struct {
+	repo CarRepository
+}
+
+func NewCarController(repo CarRepository) *CarController {
+	return &CarController{repo: repo}
+}
+
+// ==================
+
+func (r *CarRepositoryImpl) CreateCar(car *carRegistration.Car) error {
+	return r.db.Create(car).Error
+}
+
+func (h *CarController) CreateCar(c *fiber.Ctx) error {
 	// Initialize a new Car instance
 	car := new(carRegistration.Car)
 
@@ -28,8 +79,8 @@ func CreateCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Attempt to create the car record in the database
-	if err := db.Create(&car).Error; err != nil {
+	// Attempt to create the car record using the repository
+	if err := h.repo.CreateCar(car); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to create car",
@@ -45,12 +96,19 @@ func CreateCar(c *fiber.Ctx) error {
 	})
 }
 
-func GetAllCars(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+// ===================
 
-	// Fetch paginated cars using the helper function
-	pagination, cars, err := utils.Paginate(c, db, &carRegistration.Car{})
+func (r *CarRepositoryImpl) GetPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error) {
+	pagination, cars, err := utils.Paginate(c, r.db, carRegistration.Car{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, cars, nil
+}
+
+func (h *CarController) GetAllCars(c *fiber.Ctx) error {
+	// Fetch paginated cars using the repository
+	pagination, cars, err := h.repo.GetPaginatedCars(c)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -64,9 +122,8 @@ func GetAllCars(c *fiber.Ctx) error {
 
 	// Iterate over all cars to fetch associated car ports and expenses
 	for _, car := range cars {
-		// Fetch car ports associated with the car
-		var carPorts []carRegistration.CarPort
-		err := db.Where("car_id = ?", car.ID).Find(&carPorts).Error
+		// Fetch car ports and expenses
+		carPorts, err := h.repo.GetCarPorts(car.ID)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
@@ -75,9 +132,7 @@ func GetAllCars(c *fiber.Ctx) error {
 			})
 		}
 
-		// Fetch expenses associated with the car
-		var expenses []carRegistration.CarExpense
-		err = db.Where("car_id = ?", car.ID).Find(&expenses).Error
+		expenses, err := h.repo.GetCarExpenses(car.ID)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
@@ -108,21 +163,37 @@ func GetAllCars(c *fiber.Ctx) error {
 	})
 }
 
-// GetSingleCar fetches a car with its associated ports and expenses from the database
-func GetSingleCar(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+// =====================
 
+func (r *CarRepositoryImpl) GetCarPorts(carID uint) ([]carRegistration.CarPort, error) {
+	var carPorts []carRegistration.CarPort
+	err := r.db.Where("car_id = ?", carID).Find(&carPorts).Error
+	return carPorts, err
+}
+
+// ====================
+
+func (r *CarRepositoryImpl) GetCarExpenses(carID uint) ([]carRegistration.CarExpense, error) {
+	var expenses []carRegistration.CarExpense
+	err := r.db.Where("car_id = ?", carID).Find(&expenses).Error
+	return expenses, err
+}
+
+// ====================
+
+func (r *CarRepositoryImpl) GetCarByID(id string) (carRegistration.Car, error) {
+	var car carRegistration.Car
+	err := r.db.First(&car, "id = ?", id).Error
+	return car, err
+}
+
+// GetSingleCar fetches a car with its associated ports and expenses from the database
+func (h *CarController) GetSingleCar(c *fiber.Ctx) error {
 	// Get the car ID from the route parameters
 	id := c.Params("id")
 
-	// Initialize variables for car, ports, and expenses
-	var car carRegistration.Car
-	var carPorts []carRegistration.CarPort
-	var expenses []carRegistration.CarExpense // Assuming you have an Expense model
-
-	// Query the car by ID and preload associated ports and expenses
-	err := db.First(&car, "id = ?", id).Error
+	// Fetch the car by ID
+	car, err := h.repo.GetCarByID(id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -137,8 +208,8 @@ func GetSingleCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Query the CarPorts associated with the car
-	err = db.Where("car_id = ?", car.ID).Find(&carPorts).Error
+	// Fetch car ports associated with the car
+	carPorts, err := h.repo.GetCarPorts(car.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -147,8 +218,8 @@ func GetSingleCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Query the Expenses associated with the car (assuming Expense model has CarID)
-	err = db.Where("car_id = ?", car.ID).Find(&expenses).Error
+	// Fetch expenses associated with the car
+	expenses, err := h.repo.GetCarExpenses(car.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -157,7 +228,7 @@ func GetSingleCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Combine the car, its ports, and expenses in a response
+	// Prepare the response
 	response := fiber.Map{
 		"car":       car,
 		"car_ports": carPorts,
@@ -172,21 +243,20 @@ func GetSingleCar(c *fiber.Ctx) error {
 	})
 }
 
-// GetSingleCar fetches a car with its associated ports and expenses using vin_number
-func GetSingleCarByVinNumber(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+// ====================
 
-	// Get the vin_number from the route parameters
+func (r *CarRepositoryImpl) GetCarByVin(vinNumber string) (carRegistration.Car, error) {
+	var car carRegistration.Car
+	err := r.db.First(&car, "vin_number = ?", vinNumber).Error
+	return car, err
+}
+
+func (h *CarController) GetSingleCarByVinNumber(c *fiber.Ctx) error {
+	// Get the car ID from the route parameters
 	vinNumber := c.Params("vinNumber")
 
-	// Initialize variables for car, ports, and expenses
-	var car carRegistration.Car
-	var carPorts []carRegistration.CarPort
-	var expenses []carRegistration.CarExpense // Assuming you have an Expense model
-
-	// Query the car by vin_number
-	err := db.First(&car, "vin_number = ?", vinNumber).Error
+	// Fetch the car by ID
+	car, err := h.repo.GetCarByVin(vinNumber)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -201,8 +271,8 @@ func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 		})
 	}
 
-	// Query the CarPorts associated with the car
-	err = db.Where("car_id = ?", car.ID).Find(&carPorts).Error
+	// Fetch car ports associated with the car
+	carPorts, err := h.repo.GetCarPorts(car.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -211,8 +281,8 @@ func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 		})
 	}
 
-	// Query the Expenses associated with the car (assuming Expense model has CarID)
-	err = db.Where("car_id = ?", car.ID).Find(&expenses).Error
+	// Fetch expenses associated with the car
+	expenses, err := h.repo.GetCarExpenses(car.ID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -221,7 +291,7 @@ func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 		})
 	}
 
-	// Combine the car, its ports, and expenses in a response
+	// Prepare the response
 	response := fiber.Map{
 		"car":       car,
 		"car_ports": carPorts,
@@ -236,51 +306,63 @@ func GetSingleCarByVinNumber(c *fiber.Ctx) error {
 	})
 }
 
-// update a car in db
-func UpdateCar(c *fiber.Ctx) error {
-	// Define a struct for the update payload
-	type updateCar struct {
-		VinNumber             string  `json:"vin_number"`
-		EngineNumber          string  `json:"engine_number"`
-		EngineCapacity        string  `json:"engine_capacity"`
-		Make                  string  `json:"make"`
-		CarModel              string  `json:"model"`
-		MaximCarry            int     `json:"maxim_carry"`
-		Weight                int     `json:"weight"`
-		GrossWeight           int     `json:"gross_weight"`
-		FFWeight              int     `json:"ff_weight"`
-		RRWeight              int     `json:"rr_weight"`
-		FRWeight              int     `json:"fr_weight"`
-		RFWeight              int     `json:"rf_weight"`
-		WeightUnits           string  `json:"weight_units"`
-		Length                int     `json:"length"`
-		Width                 int     `json:"width"`
-		Height                int     `json:"height"`
-		LengthUnits           string  `json:"length_units"`
-		ManufactureYear       int     `json:"maunufacture_year"`
-		FirstRegistrationYear int     `json:"first_registration_year"`
-		Transmission          string  `json:"transmission"`
-		BodyType              string  `json:"body_type"`
-		Colour                string  `json:"colour"`
-		Auction               string  `json:"auction"`
-		Currency              string  `json:"currency"`
-		BidPrice              float64 `json:"bid_price"`
-		PurchaseDate          string  `json:"purchase_date"`
-		FromCompanyID         uint    `json:"from_company_id"`
-		ToCompanyID           uint    `json:"to_company_id"`
-		Destination           string  `json:"destination"`
-		UpdatedBy             string  `json:"updated_by"`
-	}
+// ====================
 
-	// Get the database instance
-	db := database.DB.Db
+func (r *CarRepositoryImpl) UpdateCar(car *carRegistration.Car) error {
+	return r.db.Save(car).Error
+}
 
+// Define the updateCar struct
+type UpdateCarPayload struct {
+	VinNumber             string  `json:"vin_number"`
+	EngineNumber          string  `json:"engine_number"`
+	EngineCapacity        string  `json:"engine_capacity"`
+	Make                  string  `json:"make"`
+	CarModel              string  `json:"model"`
+	MaximCarry            int     `json:"maxim_carry"`
+	Weight                int     `json:"weight"`
+	GrossWeight           int     `json:"gross_weight"`
+	FFWeight              int     `json:"ff_weight"`
+	RRWeight              int     `json:"rr_weight"`
+	FRWeight              int     `json:"fr_weight"`
+	RFWeight              int     `json:"rf_weight"`
+	WeightUnits           string  `json:"weight_units"`
+	Length                int     `json:"length"`
+	Width                 int     `json:"width"`
+	Height                int     `json:"height"`
+	LengthUnits           string  `json:"length_units"`
+	ManufactureYear       int     `json:"maunufacture_year"`
+	FirstRegistrationYear int     `json:"first_registration_year"`
+	Transmission          string  `json:"transmission"`
+	BodyType              string  `json:"body_type"`
+	Colour                string  `json:"colour"`
+	Auction               string  `json:"auction"`
+	Currency              string  `json:"currency"`
+	BidPrice              float64 `json:"bid_price"`
+	PurchaseDate          string  `json:"purchase_date"`
+	FromCompanyID         uint    `json:"from_company_id"`
+	ToCompanyID           uint    `json:"to_company_id"`
+	Destination           string  `json:"destination"`
+	UpdatedBy             string  `json:"updated_by"`
+}
+
+type UpdateCarPayload2 struct {
+	BrokerName   string  `json:"broker_name"`
+	BrokerNumber string  `json:"broker_number"`
+	VATTax       float64 `json:"vat_tax"`
+	NumberPlate  string  `json:"number_plate"`
+	CustomerID   int     `json:"customer_id"`
+	UpdatedBy    string  `json:"updated_by"`
+}
+
+// UpdateCar handler function
+func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 	// Get the car ID from the route parameters
 	id := c.Params("id")
 
-	// Find the car in the database by ID
-	var car carRegistration.Car
-	if err := db.First(&car, "id = ?", id).Error; err != nil {
+	// Find the car in the database
+	car, err := h.repo.GetCarByID(id)
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(404).JSON(fiber.Map{
 				"status":  "error",
@@ -294,9 +376,9 @@ func UpdateCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Parse the request body into the updateCar struct
-	var updateCarData updateCar
-	if err := c.BodyParser(&updateCarData); err != nil {
+	// Parse the request body into the UpdateCarPayload struct
+	var payload UpdateCarPayload
+	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid input",
@@ -304,7 +386,28 @@ func UpdateCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update the car fields
+	// Update the car fields using the payload
+	updateCarFields(&car, payload) // Pass the parsed payload
+
+	// Save the changes to the database
+	if err := h.repo.UpdateCar(&car); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update car",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the updated car
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car updated successfully",
+		"data":    car,
+	})
+}
+
+// UpdateCarFields updates the fields of a car using the updateCar struct
+func updateCarFields(car *carRegistration.Car, updateCarData UpdateCarPayload) {
 	car.VinNumber = updateCarData.VinNumber
 	car.EngineNumber = updateCarData.EngineNumber
 	car.EngineCapacity = updateCarData.EngineCapacity
@@ -331,7 +434,7 @@ func UpdateCar(c *fiber.Ctx) error {
 	car.Currency = updateCarData.Currency
 	car.BidPrice = updateCarData.BidPrice
 	car.PurchaseDate = updateCarData.PurchaseDate
-	// Assign foreign keys if provided
+
 	if updateCarData.FromCompanyID != 0 {
 		car.FromCompanyID = &updateCarData.FromCompanyID
 	} else {
@@ -343,46 +446,19 @@ func UpdateCar(c *fiber.Ctx) error {
 	} else {
 		car.ToCompanyID = nil
 	}
+
 	car.Destination = updateCarData.Destination
 	car.UpdatedBy = updateCarData.UpdatedBy
-
-	// Save the changes to the database
-	if err := db.Save(&car).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to update car",
-			"data":    err.Error(),
-		})
-	}
-
-	// Return the updated car
-	return c.Status(200).JSON(fiber.Map{
-		"status":  "success",
-		"message": "Car updated successfully",
-		"data":    car,
-	})
 }
 
-func UpdateCar2(c *fiber.Ctx) error {
-	// Define a struct for the update payload
-	type updateCar struct {
-		BrokerName   string  `json:"broker_name"`
-		BrokerNumber string  `json:"broker_number"`
-		VATTax       float64 `json:"vat_tax"`
-		NumberPlate  string  `json:"number_plate"`
-		CustomerID   int     `json:"customer_id"`
-		UpdatedBy    string  `json:"updated_by"`
-	}
-
-	// Get the database instance
-	db := database.DB.Db
-
+// UpdateCar handler function
+func (h *CarController) UpdateCar2(c *fiber.Ctx) error {
 	// Get the car ID from the route parameters
 	id := c.Params("id")
 
-	// Find the car in the database by ID
-	var car carRegistration.Car
-	if err := db.First(&car, "id = ?", id).Error; err != nil {
+	// Find the car in the database
+	car, err := h.repo.GetCarByID(id)
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(404).JSON(fiber.Map{
 				"status":  "error",
@@ -396,9 +472,9 @@ func UpdateCar2(c *fiber.Ctx) error {
 		})
 	}
 
-	// Parse the request body into the updateCar struct
-	var updateCarData updateCar
-	if err := c.BodyParser(&updateCarData); err != nil {
+	// Parse the request body into the UpdateCarPayload struct
+	var payload UpdateCarPayload2
+	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid input",
@@ -406,21 +482,11 @@ func UpdateCar2(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update the car fields
-	car.BrokerName = updateCarData.BrokerName
-	car.BrokerNumber = updateCarData.BrokerNumber
-	car.NumberPlate = updateCarData.NumberPlate
-	car.VATTax = updateCarData.VATTax
-	// Assign foreign keys if provided
-	if updateCarData.CustomerID != 0 {
-		car.CustomerID = &updateCarData.CustomerID
-	} else {
-		car.CustomerID = nil
-	}
-	car.UpdatedBy = updateCarData.UpdatedBy
+	// Update the car fields using the payload
+	updateCar2Fields(&car, payload) // Pass the parsed payload
 
 	// Save the changes to the database
-	if err := db.Save(&car).Error; err != nil {
+	if err := h.repo.UpdateCar(&car); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to update car",
@@ -436,17 +502,40 @@ func UpdateCar2(c *fiber.Ctx) error {
 	})
 }
 
-// delete car in db by ID
-func DeleteCarByID(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+// UpdateCarFields updates the fields of a car using the updateCar struct
+func updateCar2Fields(car *carRegistration.Car, updateCarData UpdateCarPayload2) {
+	// Update the car fields
+	car.BrokerName = updateCarData.BrokerName
+	car.BrokerNumber = updateCarData.BrokerNumber
+	car.NumberPlate = updateCarData.NumberPlate
+	car.VATTax = updateCarData.VATTax
+	// Assign foreign keys if provided
+	if updateCarData.CustomerID != 0 {
+		car.CustomerID = &updateCarData.CustomerID
+	} else {
+		car.CustomerID = nil
+	}
+	car.UpdatedBy = updateCarData.UpdatedBy
+}
 
+// ====================
+
+// DeleteByID deletes a car by ID
+func (r *CarRepositoryImpl) DeleteByID(id string) error {
+	if err := r.db.Delete(&carRegistration.Car{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteCarByID deletes a car by its ID
+func (h *CarController) DeleteCarByID(c *fiber.Ctx) error {
 	// Get the car ID from the route parameters
 	id := c.Params("id")
 
-	// Find the car in the database by ID
-	var car carRegistration.Car
-	if err := db.First(&car, "id = ?", id).Error; err != nil {
+	// Find the car in the database
+	car, err := h.repo.GetCarByID(id)
+	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(404).JSON(fiber.Map{
 				"status":  "error",
@@ -461,7 +550,7 @@ func DeleteCarByID(c *fiber.Ctx) error {
 	}
 
 	// Delete the car
-	if err := db.Delete(&car, "id = ?", id).Error; err != nil {
+	if err := h.repo.DeleteByID(id); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to delete car",
@@ -473,6 +562,7 @@ func DeleteCarByID(c *fiber.Ctx) error {
 	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Car deleted successfully",
+		"data":    car,
 	})
 }
 
@@ -480,32 +570,57 @@ func DeleteCarByID(c *fiber.Ctx) error {
 // ===================================================================================================
 // Create a car expense
 
-func CreateCarExpense(c *fiber.Ctx) error {
-	db := database.DB.Db
-	carExpense := new(carRegistration.CarExpense)
-	err := c.BodyParser(carExpense)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
-	}
-
-	err = db.Create(&carExpense).Error
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to create car expense", "data": err})
-	}
-
-	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Car expense created successfully", "data": carExpense})
+// CreateCarExpense creates a new car expense in the database
+func (r *CarRepositoryImpl) CreateCarExpense(expense *carRegistration.CarExpense) error {
+	return r.db.Create(expense).Error
 }
 
-func GetAllCarExpenses(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
+// CreateCarExpense handles the creation of a car expense
+func (h *CarController) CreateCarExpense(c *fiber.Ctx) error {
+	// Parse the request body into a CarExpense struct
+	carExpense := new(carRegistration.CarExpense)
+	if err := c.BodyParser(carExpense); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
+	}
 
-	// Fetch paginated expenses with associated Car using the helper function
-	pagination, expenses, err := utils.Paginate(c, db.Preload("Car"), &carRegistration.CarExpense{})
+	// Create the car expense in the database
+	if err := h.repo.CreateCarExpense(carExpense); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create car expense",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expense created successfully",
+		"data":    carExpense,
+	})
+}
+
+// ========================
+
+func (r *CarRepositoryImpl) GetPaginatedExpenses(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarExpense, error) {
+	pagination, expenses, err := utils.Paginate(c, r.db.Preload("Car"), carRegistration.CarExpense{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, expenses, nil
+}
+
+func (h *CarController) GetAllCarExpenses(c *fiber.Ctx) error {
+	// Fetch paginated expenses using the repository
+	pagination, expenses, err := h.repo.GetPaginatedExpenses(c)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to fetch car expenses",
+			"message": "Failed to retrieve expenses",
 			"data":    err.Error(),
 		})
 	}
@@ -513,7 +628,7 @@ func GetAllCarExpenses(c *fiber.Ctx) error {
 	// Return the paginated response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Car expenses retrieved successfully",
+		"message": "Expenses and associated data retrieved successfully",
 		"data":    expenses,
 		"pagination": fiber.Map{
 			"total_items":  pagination.TotalItems,
@@ -524,53 +639,64 @@ func GetAllCarExpenses(c *fiber.Ctx) error {
 	})
 }
 
+// =======================
+
 // Get Car Expenses by ID
 
-func GetCarExpenseById(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
+func (r *CarRepositoryImpl) FindCarExpenseByIdAndCarId(id string, carId string) (*carRegistration.CarExpense, error) {
+	var expense carRegistration.CarExpense
+	result := r.db.Preload("Car").Where("id = ? AND car_id = ?", id, carId).First(&expense)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &expense, nil
+}
 
+func (h *CarController) GetCarExpenseById(c *fiber.Ctx) error {
 	// Retrieve the expense ID and Car ID from the request parameters
 	id := c.Params("id")
 	carId := c.Params("carId")
 
-	// Query the database for the expense by its ID and car ID
-	var expense carRegistration.CarExpense
-	result := db.Preload("Car").Where("id = ? AND car_id = ?", id, carId).First(&expense)
-
-	// Handle potential database query errors
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{
+	// Fetch the car expense from the repository
+	expense, err := h.repo.FindCarExpenseByIdAndCarId(id, carId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Expense not found for the specified car",
 			})
 		}
-		return c.Status(500).JSON(fiber.Map{
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to fetch the expense",
-			"error":   result.Error.Error(),
+			"error":   err.Error(),
 		})
 	}
 
 	// Return the fetched expense
-	return c.JSON(fiber.Map{
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Expense fetched successfully",
 		"data":    expense,
 	})
 }
 
+// ===============
 // Get Car Expenses by Car ID
-func GetCarExpensesByCarId(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
+func (r *CarRepositoryImpl) GetPaginatedExpensesByCarId(c *fiber.Ctx, carId string) (*utils.Pagination, []carRegistration.CarExpense, error) {
+	pagination, expenses, err := utils.Paginate(c, r.db.Preload("Car").Where("car_id = ?", carId), carRegistration.CarExpense{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, expenses, nil
+}
 
+func (h *CarController) GetCarExpensesByCarId(c *fiber.Ctx) error {
 	// Retrieve carId from the request parameters
 	carId := c.Params("carId")
 
-	// Fetch paginated car expenses with associated car details
-	pagination, expenses, err := utils.Paginate(c, db.Preload("Car").Where("car_id = ?", carId), &carRegistration.CarExpense{})
+	// Fetch paginated car expenses using the repository
+	pagination, expenses, err := h.repo.GetPaginatedExpensesByCarId(c, carId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -601,171 +727,345 @@ func GetCarExpensesByCarId(c *fiber.Ctx) error {
 	})
 }
 
-// Update car Expenses by
+// ====================
 
-func UpdateCarExpense(c *fiber.Ctx) error {
+func (r *CarRepositoryImpl) FindCarExpenseById(id string) (*carRegistration.CarExpense, error) {
+	var expense carRegistration.CarExpense
+	if err := r.db.First(&expense, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &expense, nil
+}
+
+func (r *CarRepositoryImpl) UpdateCarExpense(expense *carRegistration.CarExpense) error {
+	return r.db.Save(expense).Error
+}
+
+func (h *CarController) UpdateCarExpense(c *fiber.Ctx) error {
 	// Define a struct for input validation
 	type UpdateCarExpenseInput struct {
-		Description string  `json:"description"`
-		Currency    string  `json:"currency"`
-		Amount      float64 `json:"amount"`
-		ExpenseDate string  `gorm:"type:date" json:"expense_date"`
-		UpdatedBy   string  `json:"updated_by"`
+		Description string  `json:"description" validate:"required"`
+		Currency    string  `json:"currency" validate:"required"`
+		Amount      float64 `json:"amount" validate:"required,gt=0"`
+		ExpenseDate string  `json:"expense_date" validate:"required"`
+		UpdatedBy   string  `json:"updated_by" validate:"required"`
 	}
 
-	db := database.DB.Db
+	// Parse the expense ID from the request parameters
 	expenseID := c.Params("id")
 
-	// Find the expense record by ID
-	var expense carRegistration.CarExpense
-	if err := db.First(&expense, expenseID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Expense not found"})
-		}
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Database error", "error": err.Error()})
-	}
-
-	// Parse the request body into the input struct
+	// Parse and validate the request body
 	var input UpdateCarExpenseInput
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invalid input", "error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"error":   err.Error(),
+		})
 	}
 
-	// Update the fields of the expense record
+	// Use a validation library to validate the input
+	if validationErr := utils.ValidateStruct(input); validationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Validation failed",
+			"errors":  validationErr,
+		})
+	}
+
+	// Fetch the expense record using the repository
+	expense, err := h.repo.FindCarExpenseById(expenseID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Expense not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch expense",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update the expense fields
 	expense.Description = input.Description
 	expense.Currency = input.Currency
 	expense.Amount = input.Amount
 	expense.ExpenseDate = input.ExpenseDate
 	expense.UpdatedBy = input.UpdatedBy
 
-	// Save the changes to the database
-	if err := db.Save(&expense).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update expense", "error": err.Error()})
+	// Save the updated expense using the repository
+	if err := h.repo.UpdateCarExpense(expense); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update expense",
+			"error":   err.Error(),
+		})
 	}
 
 	// Return the updated expense
-	return c.JSON(fiber.Map{
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Expense updated successfully",
 		"data":    expense,
 	})
 }
 
+// ============
+
 // Delete car Expenses by ID
 
-func DeleteCarExpenseById(c *fiber.Ctx) error {
-	db := database.DB.Db
+func (r *CarRepositoryImpl) FindCarExpenseByCarAndId(carId, expenseId string) (*carRegistration.CarExpense, error) {
+	var expense carRegistration.CarExpense
+	if err := r.db.Where("id = ? AND car_id = ?", expenseId, carId).First(&expense).Error; err != nil {
+		return nil, err
+	}
+	return &expense, nil
+}
 
-	// Parse carId and expenseId from the URL
+func (r *CarRepositoryImpl) DeleteCarExpense(expense *carRegistration.CarExpense) error {
+	return r.db.Delete(expense).Error
+}
+
+func (h *CarController) DeleteCarExpenseById(c *fiber.Ctx) error {
+	// Parse carId and expenseId from the request parameters
 	carId := c.Params("carId")
 	expenseId := c.Params("id")
 
 	// Check if the expense exists and belongs to the specified car
-	var expense carRegistration.CarExpense
-	if err := db.Where("id = ? AND car_id = ?", expenseId, carId).First(&expense).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car expense not found or does not belong to the specified car"})
+	expense, err := h.repo.FindCarExpenseByCarAndId(carId, expenseId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car expense not found or does not belong to the specified car",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch car expense",
+			"error":   err.Error(),
+		})
 	}
 
-	// Delete the expense
-	if err := db.Delete(&expense).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete car expense", "data": err.Error()})
+	// Delete the expense using the repository
+	if err := h.repo.DeleteCarExpense(expense); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete car expense",
+			"error":   err.Error(),
+		})
 	}
 
-	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Car expense deleted successfully"})
+	// Return success response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expense deleted successfully",
+	})
 }
 
+// =====================
 // Get Car Expenses by Car ID and Expense Date
 
-func GetCarExpensesByCarIdAndExpenseDate(c *fiber.Ctx) error {
-	db := database.DB.Db
-	carId := c.Params("id")
-	expenseDate := c.Params("expense_date")
-	var expense carRegistration.CarExpense
-	db.Where("car_id = ? AND expense_date = ?", carId, expenseDate).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car Expenses not found"})
+func (r *CarRepositoryImpl) FindCarExpensesByCarIdAndExpenseDate(carId, expenseDate string) ([]carRegistration.CarExpense, error) {
+	var expenses []carRegistration.CarExpense
+	if err := r.db.Where("car_id = ? AND expense_date = ?", carId, expenseDate).Find(&expenses).Error; err != nil {
+		return nil, err
 	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Car Expenses fetched successfully", "data": expense})
+	return expenses, nil
 }
 
+func (h *CarController) GetCarExpensesByCarIdAndExpenseDate(c *fiber.Ctx) error {
+	// Retrieve carId and expenseDate from the request parameters
+	carId := c.Params("id")
+	expenseDate := c.Params("expense_date")
+
+	// Fetch expenses using the repository
+	expenses, err := h.repo.FindCarExpensesByCarIdAndExpenseDate(carId, expenseDate)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car expenses not found for the specified date",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch car expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// =====================
 // Get Car Expenses by Car ID and Expense Description
 
-func GetCarExpensesByCarIdAndExpenseDescription(c *fiber.Ctx) error {
-	db := database.DB.Db
-	carId := c.Params("id")
-	expenseDescription := c.Params("expense_description")
-	var expense carRegistration.CarExpense
-	db.Where("car_id = ? AND description = ?", carId, expenseDescription).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Car Expenses fetched successfully", "data": expense})
-}
-
-// Get Car Expenses by Car ID and Currency
-
-func GetCarExpensesByCarIdAndCurrency(c *fiber.Ctx) error {
-	db := database.DB.Db
-	carId := c.Params("id")
-	currency := c.Params("currency")
+func (r *CarRepositoryImpl) FindCarExpensesByCarIdAndExpenseDescription(carId, expenseDescription string) ([]carRegistration.CarExpense, error) {
 	var expenses []carRegistration.CarExpense
-	db.Where("car_id = ? AND currency = ?", carId, currency).Find(&expenses)
-	if len(expenses) == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car Expenses not found"})
+	if err := r.db.Where("car_id = ? AND description = ?", carId, expenseDescription).Find(&expenses).Error; err != nil {
+		return nil, err
 	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Car Expenses fetched successfully", "data": expenses})
+	return expenses, nil
 }
 
+func (h *CarController) GetCarExpensesByCarIdAndExpenseDescription(c *fiber.Ctx) error {
+	// Retrieve carId and expenseDescription from the request parameters
+	carId := c.Params("id")
+	expenseDescription := c.Params("expense_description")
+
+	// Fetch expenses using the repository
+	expenses, err := h.repo.FindCarExpensesByCarIdAndExpenseDescription(carId, expenseDescription)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car expenses not found for the specified description",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch car expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// ====================
+// Get Car Expenses by Car ID and Currency
+func (r *CarRepositoryImpl) FindCarExpensesByCarIdAndCurrency(carId, currency string) ([]carRegistration.CarExpense, error) {
+	var expenses []carRegistration.CarExpense
+	if err := r.db.Where("car_id = ? AND currency = ?", carId, currency).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
+
+func (h *CarController) GetCarExpensesByCarIdAndCurrency(c *fiber.Ctx) error {
+	// Retrieve carId and currency from the request parameters
+	carId := c.Params("id")
+	currency := c.Params("currency")
+
+	// Fetch expenses using the repository
+	expenses, err := h.repo.FindCarExpensesByCarIdAndCurrency(carId, currency)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car expenses not found for the specified car and currency",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch car expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses fetched successfully",
+		"data":    expenses,
+	})
+}
+
+// ====================
 // Get Car Expenses by Car ID, Expense Date, and Currency
+func (r *CarRepositoryImpl) FindCarExpensesByThree(carId, expenseDate, currency string) ([]carRegistration.CarExpense, error) {
+	var expenses []carRegistration.CarExpense
+	if err := r.db.Where("car_id = ? AND expense_date = ? AND currency = ?", carId, expenseDate, currency).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
 
-func GetCarExpensesByThree(c *fiber.Ctx) error {
-	db := database.DB.Db
+func (h *CarController) GetCarExpensesByThree(c *fiber.Ctx) error {
+	// Retrieve carId, expenseDate, and currency from the request parameters
 	carId := c.Params("id")
 	expenseDate := c.Params("expense_date")
 	currency := c.Params("currency")
-	var expense carRegistration.CarExpense
-	db.Where("car_id = ? AND expense_date = ? AND currency = ?", carId, expenseDate, currency).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car Expenses not found"})
+
+	// Fetch car expenses using the repository
+	expenses, err := h.repo.FindCarExpensesByThree(carId, expenseDate, currency)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car expenses not found for the specified car, date, and currency",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch car expenses",
+			"error":   err.Error(),
+		})
 	}
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Car Expenses fetched successfully", "data": expense})
+	// Return the fetched expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses fetched successfully",
+		"data":    expenses,
+	})
 }
 
-// Get Car Expenses by Car ID, Expense Description, and Currency
-
-func GetCarExpensesByThreeDec(c *fiber.Ctx) error {
-	db := database.DB.Db
-	carId := c.Params("id")
-	expenseDescription := c.Params("expense_description")
-	currency := c.Params("currency")
-	var expense carRegistration.CarExpense
-	db.Where("car_id = ? AND description = ? AND currency = ?", carId, expenseDescription, currency).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car Expenses not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Car Expenses fetched successfully", "data": expense})
-}
-
+// ==================
 // Get Car Expenses by Car ID, Expense Date, Expense Description, and Currency
+func (r *CarRepositoryImpl) GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency string) ([]carRegistration.CarExpense, error) {
+	var expenses []carRegistration.CarExpense
+	if err := r.db.Where("car_id = ? AND expense_date = ? AND description = ? AND currency = ?", carId, expenseDate, expenseDescription, currency).Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
 
-func GetCarExpensesFilters(c *fiber.Ctx) error {
-	db := database.DB.Db
+// GetCarExpensesFilters handles the request to get car expenses by filters.
+func (h *CarController) GetCarExpensesFilters(c *fiber.Ctx) error {
 	carId := c.Params("id")
 	expenseDate := c.Params("expense_date")
 	expenseDescription := c.Params("expense_description")
 	currency := c.Params("currency")
-	var expense carRegistration.CarExpense
-	db.Where("car_id = ? AND expense_date = ? AND description = ? AND currency = ?", carId, expenseDate, expenseDescription, currency).First(&expense)
-	if expense.ID == 0 {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car Expenses not found"})
+
+	// Fetch car expenses using the service layer
+	expenses, err := h.repo.GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch car expenses",
+			"error":   err.Error(),
+		})
 	}
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Car Expenses fetched successfully", "data": expense})
+	// If no expenses found
+	if len(expenses) == 0 {
+		return c.Status(404).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Car expenses not found for the specified filters",
+		})
+	}
+
+	// Return the fetched car expenses
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses fetched successfully",
+		"data":    expenses,
+	})
 }
 
 // Car Port
@@ -773,33 +1073,56 @@ func GetCarExpensesFilters(c *fiber.Ctx) error {
 
 // Create a car port
 
-func CreateCarPort(c *fiber.Ctx) error {
-	db := database.DB.Db
-	port := new(carRegistration.CarPort)
-	err := c.BodyParser(port)
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Something's wrong with your input", "data": err})
-	}
-
-	err = db.Create(&port).Error
-	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to create car port", "data": err})
-	}
-
-	return c.Status(201).JSON(fiber.Map{"status": "success", "message": "Car port created successfully", "data": port})
+// CreateCarExpense creates a new car expense in the database
+func (r *CarRepositoryImpl) CreateCarPort(port *carRegistration.CarPort) error {
+	return r.db.Create(port).Error
 }
 
-func GetAllCarPorts(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-	carId := c.Params("carId")
+// CreateCarPort handles the creation of a car expense
+func (h *CarController) CreateCarPort(c *fiber.Ctx) error {
+	// Parse the request body into a CarPort struct
+	CarPort := new(carRegistration.CarPort)
+	if err := c.BodyParser(CarPort); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
+	}
 
-	// Fetch paginated ports for the specified car ID with associated car details
-	pagination, ports, err := utils.Paginate(c, db.Preload("Car").Where("car_id = ?", carId), &carRegistration.CarPort{})
+	// Create the car port in the database
+	if err := h.repo.CreateCarPort(CarPort); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create port",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Port created successfully",
+		"data":    CarPort,
+	})
+}
+
+// ==================
+func (r *CarRepositoryImpl) GetPaginatedPorts(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarPort, error) {
+	pagination, ports, err := utils.Paginate(c, r.db.Preload("Car"), carRegistration.CarPort{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, ports, nil
+}
+
+func (h *CarController) GetAllCarPorts(c *fiber.Ctx) error {
+	// Fetch paginated ports using the repository
+	pagination, ports, err := h.repo.GetPaginatedPorts(c)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to fetch car ports",
+			"message": "Failed to retrieve ports",
 			"data":    err.Error(),
 		})
 	}
@@ -807,7 +1130,7 @@ func GetAllCarPorts(c *fiber.Ctx) error {
 	// Return the paginated response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Car ports retrieved successfully",
+		"message": "Ports and associated data retrieved successfully",
 		"data":    ports,
 		"pagination": fiber.Map{
 			"total_items":  pagination.TotalItems,
@@ -818,143 +1141,165 @@ func GetAllCarPorts(c *fiber.Ctx) error {
 	})
 }
 
-// Get car port by ID
+// ===================
 
-func GetCarPortById(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-
-	// Retrieve the port ID and Car ID from the request parameters
-	id := c.Params("id")
-	carId := c.Params("carId")
-
-	// Query the database for the port by its ID and Car ID
+func (r *CarRepositoryImpl) FindPortById(Id string) (*carRegistration.CarPort, error) {
 	var port carRegistration.CarPort
-	result := db.Preload("Car").Where("id = ? AND car_id = ?", id, carId).First(&port)
-
-	// Handle potential database query errors
+	result := r.db.Preload("Car").Where("id = ?", Id).First(&port)
 	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{
+		return nil, result.Error
+	}
+	return &port, nil
+}
+
+func (h *CarController) GetCarPortById(c *fiber.Ctx) error {
+	// Retrieve the port ID from the request parameters
+	Id := c.Params("id")
+
+	// Fetch the car port from the repository
+	port, err := h.repo.FindPortById(Id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"status":  "error",
-				"message": "Port not found for the specified car",
+				"message": "port not found for the specified car",
 			})
 		}
-		return c.Status(500).JSON(fiber.Map{
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to fetch the port",
-			"error":   result.Error.Error(),
+			"error":   err.Error(),
 		})
 	}
 
 	// Return the fetched port
-	return c.JSON(fiber.Map{
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Port fetched successfully",
+		"message": "port fetched successfully",
 		"data":    port,
 	})
 }
 
-// Update car port
+// =====================
 
-func UpdateCarPort(c *fiber.Ctx) error {
+func (r *CarRepositoryImpl) UpdateCarPort(port *carRegistration.CarPort) error {
+	return r.db.Save(port).Error
+}
+
+func (h *CarController) UpdateCarPort(c *fiber.Ctx) error {
 	// Define a struct for input validation
 	type UpdateCarPortInput struct {
-		Name      string `json:"name"`
-		Category  string `json:"category"`
-		UpdatedBy string `json:"updated_by"`
+		Name      string `json:"name" validate:"required"`
+		Category  string `json:"category" validate:"required"`
+		UpdatedBy string `json:"updated_by" validate:"required"`
 	}
 
-	db := database.DB.Db
+	// Parse the Port ID from the request parameters
 	portID := c.Params("id")
 
-	// Find the port record by ID
-	var port carRegistration.CarPort
-	if err := db.First(&port, portID).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Port not found"})
-		}
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Database error", "error": err.Error()})
-	}
-
-	// Parse the request body into the input struct
+	// Parse and validate the request body
 	var input UpdateCarPortInput
 	if err := c.BodyParser(&input); err != nil {
-		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invalid input", "error": err.Error()})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"error":   err.Error(),
+		})
 	}
 
-	// Update the fields of the Port record
+	// Use a validation library to validate the input
+	if validationErr := utils.ValidateStruct(input); validationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Validation failed",
+			"errors":  validationErr,
+		})
+	}
+
+	// Fetch the port record using the repository
+	port, err := h.repo.FindPortById(portID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "port not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch port",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update the port fields
 	port.Name = input.Name
 	port.Category = input.Category
 	port.UpdatedBy = input.UpdatedBy
 
-	// Save the changes to the database
-	if err := db.Save(&port).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update port", "error": err.Error()})
+	// Save the updated port using the repository
+	if err := h.repo.UpdateCarPort(port); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update port",
+			"error":   err.Error(),
+		})
 	}
 
-	// Return the updated port
-	return c.JSON(fiber.Map{
+	// Return the updated Port
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Port updated successfully",
 		"data":    port,
 	})
 }
 
-// Delete car port by ID
+// ======================
 
-func DeleteCarPortById(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
-
-	// Parse parameters
-	id := c.Params("id")
-	carId := c.Params("carId")
-
-	// Check if the car exists
-	var car carRegistration.Car
-	if err := db.First(&car, carId).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car not found"})
+// DeleteByID deletes a car by ID
+func (r *CarRepositoryImpl) DeletePortByID(id string) error {
+	if err := r.db.Delete(&carRegistration.CarPort{}, "id = ?", id).Error; err != nil {
+		return err
 	}
-
-	// Check if the car port exists and belongs to the car
-	var port carRegistration.CarPort
-	if err := db.Where("id = ? AND car_id = ?", id, carId).First(&port).Error; err != nil {
-		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car port not found or does not belong to the specified car"})
-	}
-
-	// Delete the Car port
-	if err := db.Delete(&port).Error; err != nil {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete car port", "data": err.Error()})
-	}
-
-	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Car port deleted successfully"})
+	return nil
 }
 
-func GetAllPorts(c *fiber.Ctx) error {
-	// Initialize database instance
-	db := database.DB.Db
+// DeleteCarByID deletes a car by its ID
+func (h *CarController) DeleteCarPortByID(c *fiber.Ctx) error {
+	// Get the car ID from the route parameters
+	id := c.Params("id")
 
-	// Fetch paginated ports with associated car details
-	pagination, locations, err := utils.Paginate(c, db.Preload("Car"), &carRegistration.CarPort{})
+	// Find the car in the database
+	car, err := h.repo.FindPortById(id)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Port not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to fetch locations",
+			"message": "Failed to find port",
 			"data":    err.Error(),
 		})
 	}
 
-	// Return the paginated response
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+	// Delete the car
+	if err := h.repo.DeletePortByID(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete port",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Locations retrieved successfully",
-		"data":    locations,
-		"pagination": fiber.Map{
-			"total_items":  pagination.TotalItems,
-			"total_pages":  pagination.TotalPages,
-			"current_page": pagination.CurrentPage,
-			"limit":        pagination.ItemsPerPage,
-		},
+		"message": "Port deleted successfully",
+		"data":    car,
 	})
 }
+
+// ======================

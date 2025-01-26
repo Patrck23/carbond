@@ -20,13 +20,29 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type Dbinstance struct {
+// Database is an interface for database operations
+type Database interface {
+	Connect()
+	GetDB() *gorm.DB
+	Migrate()
+	Seed()
+	Close()
+}
+
+// DBInstance implements the Database interface
+type DBInstance struct {
 	Db *gorm.DB
 }
 
-var DB Dbinstance
+var dbInstance Database = &DBInstance{}
 
-func Connect() {
+// NewDatabase returns a new instance of the database interface
+func NewDatabase() Database {
+	return dbInstance
+}
+
+// Connect establishes the database connection
+func (d *DBInstance) Connect() {
 	p := config.Config("DB_PORT")
 	port, err := strconv.ParseUint(p, 10, 32)
 	if err != nil {
@@ -47,10 +63,14 @@ func Connect() {
 		log.Fatal("Failed to connect to database. \n", err)
 		os.Exit(2)
 	}
-	log.Println("Connected")
-	db.Logger = logger.Default.LogMode(logger.Info)
-	log.Println("running migrations")
-	db.AutoMigrate(
+	log.Println("Connected to database")
+	d.Db = db
+}
+
+// Migrate applies schema migrations
+func (d *DBInstance) Migrate() {
+	log.Println("Running migrations...")
+	d.Db.AutoMigrate(
 		// --- Customer --- //
 		&customerRegistration.Customer{},
 		&customerRegistration.CustomerContact{},
@@ -82,10 +102,25 @@ func Connect() {
 		&metaData.ExpenseCategory{},
 		&metaData.Currency{},
 	)
-	DB = Dbinstance{
-		Db: db,
-	}
-	// Seed database
+}
+
+// Seed populates the database with initial data
+func (d *DBInstance) Seed() {
 	log.Println("Seeding database...")
-	seeder.SeedDatabase(db)
+	seeder.SeedDatabase(d.Db)
+}
+
+// GetDB returns the database instance
+func (d *DBInstance) GetDB() *gorm.DB {
+	return d.Db
+}
+
+// Close closes the database connection
+func (d *DBInstance) Close() {
+	sqlDB, err := d.Db.DB()
+	if err != nil {
+		log.Println("Error closing database:", err)
+		return
+	}
+	sqlDB.Close()
 }

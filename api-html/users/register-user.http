@@ -1,0 +1,18 @@
+POST http://127.0.0.1:8080/api/user
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mzc4OTU2MjcsInJvbGVzIjpbInJlc291cmNlLmFkbWluIiwidXNlcnMuYWRtaW4iLCJkb2N1bWVudHMuYWRtaW4iXSwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJBZG1pbiJ9.aGwhdMVs2McyX8FevCH68hj0yKakRKNL8bY6DdVa7EI
+
+{
+	"surname":   "Kizza",
+	"firstname": "Joan",
+	"othername": "",
+	"gender":    "Female",
+	"title":     "Cashier",
+	"username":  "JoanKizza",
+	"email":     "joan.kizza@gmail.com",
+	"password":  "password",
+	"company_id": 1,
+	"group_id":   3,
+	"created_by": "admin",
+	"updated_by": ""
+}

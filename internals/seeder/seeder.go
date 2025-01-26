@@ -45,10 +45,36 @@ func SeedDatabase(db *gorm.DB) {
 		log.Println("Companies table already seeded, skipping...")
 	}
 
-	// Hashing password for users
-	passwordHash, err := hashPassword("Admin123")
-	if err != nil {
-		log.Fatalf("Error hashing password: %v", err)
+	companyLocations := []companyRegistration.CompanyLocation{
+		{
+			CompanyID: 1,
+			Address:   "",
+			Telephone: "",
+			Country:   "Uganda",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			CompanyID: 2,
+			Address:   "",
+			Telephone: "",
+			Country:   "Japan",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Check if the companies table already has data
+	var companyLocationCount int64
+	db.Model(&companyRegistration.CompanyLocation{}).Count(&companyCount)
+	if companyLocationCount == 0 {
+		if err := db.Create(&companyLocations).Error; err != nil {
+			log.Fatalf("Failed to seed companies: %v", err)
+		} else {
+			log.Println("Company location data seeded successfully")
+		}
+	} else {
+		log.Println("Company location table already seeded, skipping...")
 	}
 
 	groups := []userRegistration.Group{
@@ -450,6 +476,12 @@ func SeedDatabase(db *gorm.DB) {
 		} else {
 			log.Println("RoleWildCardPermission data seeded successfully")
 		}
+	}
+
+	// Hashing password for users
+	passwordHash, err := hashPassword("Admin123")
+	if err != nil {
+		log.Fatalf("Error hashing password: %v", err)
 	}
 
 	users := []userRegistration.User{

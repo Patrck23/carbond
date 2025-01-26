@@ -10,6 +10,8 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+
+	"github.com/go-playground/validator/v10"
 )
 
 func ParseBody(r *http.Request, x interface{}) {
@@ -80,4 +82,19 @@ func Paginate[T any](c *fiber.Ctx, db *gorm.DB, model T) (Pagination, []T, error
 	}
 
 	return pagination, items, nil
+}
+
+var validate = validator.New()
+
+func ValidateStruct(data interface{}) map[string]string {
+	err := validate.Struct(data)
+	if err == nil {
+		return nil
+	}
+
+	errors := make(map[string]string)
+	for _, err := range err.(validator.ValidationErrors) {
+		errors[err.Field()] = err.Tag()
+	}
+	return errors
 }

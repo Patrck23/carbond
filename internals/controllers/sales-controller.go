@@ -1,53 +1,137 @@
 package controllers
 
 import (
-	"car-bond/internals/database"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/utils"
+	"errors"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
-// Create a car sale
-func CreateCarSale(c *fiber.Ctx) error {
-	db := database.DB.Db
-	var sale saleRegistration.Sale
+type SaleRepository interface {
+	CreateSale(sale *saleRegistration.Sale) error
+	GetPaginatedSales(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.Sale, error)
+	GetSalePayments(saleID uint) ([]saleRegistration.SalePayment, error)
+	GetSalePaymentModes(paymentID uint) ([]saleRegistration.SalePaymentMode, error)
+	GetSaleByID(id string) (saleRegistration.Sale, error)
+	UpdateSale(sale *saleRegistration.Sale) error
+	DeleteByID(id string) error
+	SearchSales(condition string, args ...interface{}) ([]saleRegistration.Sale, error)
 
-	if err := c.BodyParser(&sale); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid request body"})
-	}
+	// Payment
+	CreateInvoice(payment *saleRegistration.SalePayment) error
+	GetPaginatedInvoices(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SalePayment, error)
+	FindSalePaymentById(id string) (*saleRegistration.SalePayment, error)
+	FindSalePaymentByIdAndSaleId(id, saleId string) (*saleRegistration.SalePayment, error)
+	UpdateSalePayment(payment *saleRegistration.SalePayment) error
+	DeleteSalePaymentByID(id string) error
 
-	if err := db.Create(&sale).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to create sale", "data": err.Error()})
-	}
-
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "success", "message": "Sale created successfully", "data": sale})
+	// Payment Mode
+	CreatePaymentMode(payment *saleRegistration.SalePaymentMode) error
+	GetPaginatedPaymentModes(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SalePaymentMode, error)
+	FindSalePaymentModeByIdAndSalePaymentId(id, salePaymentId string) (*saleRegistration.SalePaymentMode, error)
+	FindSalePaymentModeById(id string) (*saleRegistration.SalePaymentMode, error)
+	UpdateSalePaymentMode(payment *saleRegistration.SalePaymentMode) error
+	DeleteSalePaymentModeByID(id string) error
+	GetPaginatedModes(c *fiber.Ctx, mode string) (*utils.Pagination, []saleRegistration.SalePaymentMode, error)
 }
 
-// Get all car sales
-func GetAllCarSales(c *fiber.Ctx) error {
-	// Get the database instance
-	db := database.DB.Db
+type SaleRepositoryImpl struct {
+	db *gorm.DB
+}
 
-	// Fetch paginated sales using the helper function
-	pagination, sales, err := utils.Paginate(c, db, &saleRegistration.Sale{})
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+func NewSaleRepository(db *gorm.DB) SaleRepository {
+	return &SaleRepositoryImpl{db: db}
+}
+
+type SaleController struct {
+	repo SaleRepository
+}
+
+func NewSaleController(repo SaleRepository) *SaleController {
+	return &SaleController{repo: repo}
+}
+
+// ============================================
+
+func (r *SaleRepositoryImpl) CreateSale(sale *saleRegistration.Sale) error {
+	return r.db.Create(sale).Error
+}
+
+func (h *SaleController) CreateCarSale(c *fiber.Ctx) error {
+	// Initialize a new Sale instance
+	sale := new(saleRegistration.Sale)
+
+	// Parse the request body into the sale instance
+	if err := c.BodyParser(sale); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to retrieve car sales",
-			"error":   err.Error(),
+			"message": "Invalid input provided",
+			"data":    err.Error(),
 		})
 	}
 
-	// Initialize a response slice to hold sales with their payments and payment modes
+	// Attempt to create the sale record using the repository
+	if err := h.repo.CreateSale(sale); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create sale",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the newly created sale record
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Sale created successfully",
+		"data":    sale,
+	})
+}
+
+// =====================
+
+func (r *SaleRepositoryImpl) GetSalePayments(saleID uint) ([]saleRegistration.SalePayment, error) {
+	var payments []saleRegistration.SalePayment
+	err := r.db.Where("sale_id = ?", saleID).Find(&payments).Error
+	return payments, err
+}
+
+func (r *SaleRepositoryImpl) GetSalePaymentModes(paymentID uint) ([]saleRegistration.SalePaymentMode, error) {
+	var payment_modes []saleRegistration.SalePaymentMode
+	err := r.db.Where("sale_payment_id = ?", paymentID).Find(&payment_modes).Error
+	return payment_modes, err
+}
+
+// ====================
+
+func (r *SaleRepositoryImpl) GetPaginatedSales(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.Sale, error) {
+	pagination, sales, err := utils.Paginate(c, r.db.Preload("Car"), saleRegistration.Sale{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, sales, nil
+}
+
+func (h *SaleController) GetAllCarSales(c *fiber.Ctx) error {
+	pagination, sales, err := h.repo.GetPaginatedSales(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve sales",
+			"data":    err.Error(),
+		})
+	}
+
+	// Initialize a response slice to hold sales with their payments and modes
 	var response []fiber.Map
 
 	// Iterate over all sales to fetch associated payments and payment modes
 	for _, sale := range sales {
 		// Fetch sale payments associated with the sale
-		var payments []saleRegistration.SalePayment
-		if err := db.Where("sale_id = ?", sale.ID).Find(&payments).Error; err != nil {
+		payments, err := h.repo.GetSalePayments(sale.ID)
+		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to retrieve sale payments for sale ID " + strconv.Itoa(int(sale.ID)),
@@ -58,8 +142,8 @@ func GetAllCarSales(c *fiber.Ctx) error {
 		// Iterate over payments to fetch associated payment modes
 		var allPaymentModes []fiber.Map
 		for _, payment := range payments {
-			var paymentModes []saleRegistration.SalePaymentMode
-			if err := db.Where("sale_payment_id = ?", payment.ID).Find(&paymentModes).Error; err != nil {
+			paymentModes, err := h.repo.GetSalePaymentModes(payment.ID)
+			if err != nil {
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 					"status":  "error",
 					"message": "Failed to retrieve payment modes for payment ID " + strconv.Itoa(int(payment.ID)),
@@ -83,7 +167,7 @@ func GetAllCarSales(c *fiber.Ctx) error {
 	// Return the paginated response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Sales and associated data retrieved successfully",
+		"message": "sales retrieved successfully",
 		"data":    response,
 		"pagination": fiber.Map{
 			"total_items":  pagination.TotalItems,
@@ -94,290 +178,814 @@ func GetAllCarSales(c *fiber.Ctx) error {
 	})
 }
 
+// ==============
+
 // Get a single car sale by ID
-func GetCarSale(c *fiber.Ctx) error {
-	id := c.Params("id")
-	db := database.DB.Db
+
+func (r *SaleRepositoryImpl) GetSaleByID(id string) (saleRegistration.Sale, error) {
 	var sale saleRegistration.Sale
-
-	db.First(&sale, "id = ?", id)
-	if sale.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Sale not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Sale found", "data": sale})
+	err := r.db.First(&sale, "id = ?", id).Error
+	return sale, err
 }
 
-// Update a car sale
-func UpdateCarSale(c *fiber.Ctx) error {
+// GetCarSale fetches a sale with its associated contacts and addresses from the database
+func (h *SaleController) GetCarSale(c *fiber.Ctx) error {
+	// Get the sale ID from the route parameters
 	id := c.Params("id")
-	db := database.DB.Db
-	var sale saleRegistration.Sale
 
-	db.First(&sale, "id = ?", id)
-	if sale.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Sale not found"})
+	// Fetch the sale by ID
+	sale, err := h.repo.GetSaleByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Sale not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve Sale",
+			"data":    err.Error(),
+		})
 	}
 
-	userID := c.Locals("user_id")
-	isAdmin := c.Locals("is_admin").(bool)
-
-	if sale.CreatedBy != userID && !isAdmin {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "error", "message": "You don't have the required permissions"})
+	// Fetch Sale addresses associated with the Sale
+	payments, err := h.repo.GetSalePayments(sale.ID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve sale addresses",
+			"data":    err.Error(),
+		})
 	}
 
-	var updatedSale saleRegistration.Sale
-	if err := c.BodyParser(&updatedSale); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid request body"})
+	var allPaymentModes []fiber.Map
+	for _, payment := range payments {
+		paymentModes, err := h.repo.GetSalePaymentModes(payment.ID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to retrieve payment modes for payment ID " + strconv.Itoa(int(payment.ID)),
+				"error":   err.Error(),
+			})
+		}
+
+		allPaymentModes = append(allPaymentModes, fiber.Map{
+			"payment":       payment,
+			"payment_modes": paymentModes,
+		})
 	}
 
-	db.Model(&sale).Updates(updatedSale)
-	return c.JSON(fiber.Map{"status": "success", "message": "Sale updated successfully", "data": sale})
+	// Prepare the response
+	response := fiber.Map{
+		"sale":     sale,
+		"payments": allPaymentModes,
+	}
+
+	// Return the response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Sale and associated data retrieved successfully",
+		"data":    response,
+	})
 }
 
-// Delete a car sale
-func DeleteCarSale(c *fiber.Ctx) error {
-	id := c.Params("id")
-	db := database.DB.Db
-	var sale saleRegistration.Sale
+// =====================================
 
-	db.First(&sale, "id = ?", id)
-	if sale.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Sale not found"})
-	}
-
-	if err := db.Delete(&sale, "id = ?", id).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to delete sale", "data": err.Error()})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Sale deleted successfully"})
+func (r *SaleRepositoryImpl) UpdateSale(sale *saleRegistration.Sale) error {
+	return r.db.Save(sale).Error
 }
 
-// Common search functions for filtering sales
-func searchSales(c *fiber.Ctx, condition string, args ...interface{}) error {
-	db := database.DB.Db
+// Define the UpdateSale struct
+type UpdateSalePayload struct {
+	TotalPrice    float64 `json:"total_price"`
+	SaleDate      string  `json:"sale_date"`
+	CarID         int     `json:"car_id"`
+	CompanyID     int     `json:"company_id"`
+	IsFullPayment bool    `json:"is_full_payment"`
+	PaymentPeriod int     `json:"payment_period"`
+	UpdatedBy     string  `json:"updated_by"`
+}
+
+// UpdateSale handler function
+func (h *SaleController) UpdateSale(c *fiber.Ctx) error {
+	// Get the sale ID from the route parameters
+	id := c.Params("id")
+
+	// Find the sale in the database
+	sale, err := h.repo.GetSaleByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Sale not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve sale",
+			"data":    err.Error(),
+		})
+	}
+
+	// Parse the request body into the UpdateSalePayload struct
+	var payload UpdateSalePayload
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
+	}
+
+	// Update the sale fields using the payload
+	updateSaleFields(&sale, payload) // Pass the parsed payload
+
+	// Save the changes to the database
+	if err := h.repo.UpdateSale(&sale); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update sale",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the updated sale
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "sale updated successfully",
+		"data":    sale,
+	})
+}
+
+// UpdateSaleFields updates the fields of a Sale using the UpdateSale struct
+func updateSaleFields(sale *saleRegistration.Sale, updateSaleData UpdateSalePayload) {
+	sale.TotalPrice = updateSaleData.TotalPrice
+	sale.SaleDate = updateSaleData.SaleDate
+	sale.CarID = updateSaleData.CarID
+	sale.CompanyID = updateSaleData.CompanyID
+	sale.IsFullPayment = updateSaleData.IsFullPayment
+	sale.PaymentPeriod = updateSaleData.PaymentPeriod
+	sale.UpdatedBy = updateSaleData.UpdatedBy
+}
+
+// ============================
+
+// DeleteByID deletes a sale by ID
+func (r *SaleRepositoryImpl) DeleteByID(id string) error {
+	if err := r.db.Delete(&saleRegistration.Sale{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteSaleByID deletes a Sale by its ID
+func (h *SaleController) DeleteSaleByID(c *fiber.Ctx) error {
+	// Get the Sale ID from the route parameters
+	id := c.Params("id")
+
+	// Find the Sale in the database
+	sale, err := h.repo.GetSaleByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Sale not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to find sale",
+			"data":    err.Error(),
+		})
+	}
+
+	// Delete the Sale
+	if err := h.repo.DeleteByID(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete Sale",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Sale deleted successfully",
+		"data":    sale,
+	})
+}
+
+// =============================
+
+// SearchSales performs a query based on the given condition and arguments.
+func (r *SaleRepositoryImpl) SearchSales(condition string, args ...interface{}) ([]saleRegistration.Sale, error) {
 	var sales []saleRegistration.Sale
-
-	db.Where(condition, args...).Find(&sales)
-	if len(sales) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "No results found"})
+	if err := r.db.Where(condition, args...).Find(&sales).Error; err != nil {
+		return nil, err
 	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Results found", "data": sales})
+	return sales, nil
 }
 
-// Search specific criteria
-func SearchByCriteria(c *fiber.Ctx) error {
+type SaleService struct {
+	repo *SaleRepositoryImpl
+}
+
+func NewSaleService(repo *SaleRepositoryImpl) *SaleService {
+	return &SaleService{repo: repo}
+}
+
+func (service *SaleService) SearchByCriteria(criteria, query string) ([]saleRegistration.Sale, error) {
+	switch criteria {
+	case "unfinished_transactions":
+		return service.repo.SearchSales("transaction_status = ?", "Unfinished")
+	case "customer_details":
+		return service.repo.SearchSales("customer_name LIKE ? OR customer_id LIKE ?", "%"+query+"%", "%"+query+"%")
+	case "car_details":
+		return service.repo.SearchSales("car_model LIKE ? OR car_registration.registration_number LIKE ?", "%"+query+"%", "%"+query+"%")
+	case "car_brand":
+		return service.repo.SearchSales("car_brand LIKE ?", "%"+query+"%")
+	case "total_amount":
+		return service.repo.SearchSales("total_amount = ?", query)
+	case "sale_date":
+		return service.repo.SearchSales("sale_date = ?", query)
+	case "company":
+		return service.repo.SearchSales("company = ?", query)
+	case "full_payment":
+		return service.repo.SearchSales("is_full_payment = ?", true)
+	case "partial_payment":
+		return service.repo.SearchSales("is_full_payment = ?", false)
+	default:
+		return nil, nil // Invalid criteria
+	}
+}
+
+type SaleServController struct {
+	service *SaleService
+}
+
+func NewSaleServController(service *SaleService) *SaleServController {
+	return &SaleServController{service: service}
+}
+
+// SearchByCriteria handles the HTTP request to search sales by criteria.
+func (h *SaleServController) SearchByCriteria(c *fiber.Ctx) error {
 	criteria := c.Query("criteria")
 	query := c.Query("query")
 
-	switch criteria {
-	case "unfinished_transactions":
-		return searchSales(c, "transaction_status = ?", "Unfinished")
-	case "customer_details":
-		return searchSales(c, "customer_name LIKE ? OR customer_id LIKE ?", "%"+query+"%", "%"+query+"%")
-	case "car_details":
-		return searchSales(c, "car_model LIKE ? OR car_registration.registration_number LIKE ?", "%"+query+"%", "%"+query+"%")
-	case "car_brand":
-		return searchSales(c, "car_brand LIKE ?", "%"+query+"%")
-	case "total_amount":
-		return searchSales(c, "total_amount = ?", query)
-	case "sale_date":
-		return searchSales(c, "sale_date = ?", query)
-	case "company":
-		return searchSales(c, "company = ?", query)
-	case "full_payment":
-		return searchSales(c, "is_full_payment = ?", true)
-	case "partial_payment":
-		return searchSales(c, "is_full_payment = ?", false)
-	default:
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid search criteria"})
+	sales, err := h.service.SearchByCriteria(criteria, query)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch sales",
+			"error":   err.Error(),
+		})
 	}
+
+	if len(sales) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  "error",
+			"message": "No results found for the specified criteria",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "Results found",
+		"data":    sales,
+	})
 }
 
 // ===============================================================================================
 
 //Create an invoice for a customer
 
-func CreateInvoice(c *fiber.Ctx) error {
-	db := database.DB.Db
-	var sale saleRegistration.SalePayment
-
-	if err := c.BodyParser(&sale); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid request body"})
-	}
-
-	if err := db.Create(&sale).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to create invoice", "data": err.Error()})
-	}
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "success", "message": "Invoice created successfully", "data": sale})
+// CreateCustomerContact creates a new customer contact in the database
+func (r *SaleRepositoryImpl) CreateInvoice(payment *saleRegistration.SalePayment) error {
+	return r.db.Create(payment).Error
 }
 
-//Get all invoices
-
-func GetAllInvoices(c *fiber.Ctx) error {
-	db := database.DB.Db
-	var sales []saleRegistration.SalePayment
-
-	db.Find(&sales)
-	if len(sales) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "No invoices found"})
+// CreateSalePayment handles the creation of a customer contact
+func (h *SaleController) CreateInvoice(c *fiber.Ctx) error {
+	// Parse the request body into a salePayment struct
+	salePayment := new(saleRegistration.SalePayment)
+	if err := c.BodyParser(salePayment); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
 	}
 
-	return c.JSON(fiber.Map{"status": "success", "message": "Invoices found", "data": sales})
+	// Create the customer address in the database
+	if err := h.repo.CreateInvoice(salePayment); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create customer contact",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "customer address created successfully",
+		"data":    salePayment,
+	})
 }
 
-//Update an invoice
+// =====================
 
-func UpdateInvoice(c *fiber.Ctx) error {
+// Get all invoices
+
+func (r *SaleRepositoryImpl) GetPaginatedInvoices(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SalePayment, error) {
+	pagination, payments, err := utils.Paginate(c, r.db.Preload("Sale"), saleRegistration.SalePayment{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, payments, nil
+}
+
+func (h *SaleController) GetSalePayments(c *fiber.Ctx) error {
+
+	// Fetch paginated payments using the repository
+	pagination, invoices, err := h.repo.GetPaginatedInvoices(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve payments",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Payments and associated data retrieved successfully",
+		"data":    invoices,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
+}
+
+// ========================
+
+func (r *SaleRepositoryImpl) FindSalePaymentByIdAndSaleId(id, saleId string) (*saleRegistration.SalePayment, error) {
+	var payment saleRegistration.SalePayment
+	result := r.db.Preload("Sale").Where("id = ? AND sale_id = ?", id, saleId).First(&payment)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &payment, nil
+}
+
+func (h *SaleController) FindSalePaymentByIdAndSaleId(c *fiber.Ctx) error {
+	// Retrieve the payment ID and Company ID from the request parameters
 	id := c.Params("id")
-	db := database.DB.Db
-	var sale saleRegistration.SalePayment
+	saleId := c.Params("saleId")
 
-	db.First(&sale, "id = ?", id)
-	if sale.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Invoice not found"})
+	// Fetch the company payment from the repository
+	payment, err := h.repo.FindSalePaymentByIdAndSaleId(id, saleId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Payment not found for the specified sale",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch the payment",
+			"error":   err.Error(),
+		})
 	}
 
-	userID := c.Locals("user_id")
-	isAdmin := c.Locals("is_admin").(bool)
-
-	if sale.CreatedBy != userID && !isAdmin {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "error", "message": "You don't have the required permissions"})
-	}
-
-	var updatedSale saleRegistration.SalePayment
-	if err := c.BodyParser(&updatedSale); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid request body"})
-	}
-	db.Model(&sale).Updates(updatedSale)
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Ivoice updated successfully", "data": sale})
+	// Return the fetched payment
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "payment fetched successfully",
+		"data":    payment,
+	})
 }
 
-//Delete invoice by ID
+// ========================
 
-func DeleteInvoiceByID(c *fiber.Ctx) error {
+// Update an invoice
+
+func (r *SaleRepositoryImpl) FindSalePaymentById(id string) (*saleRegistration.SalePayment, error) {
+	var payment saleRegistration.SalePayment
+	if err := r.db.First(&payment, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &payment, nil
+}
+
+func (r *SaleRepositoryImpl) UpdateSalePayment(payment *saleRegistration.SalePayment) error {
+	return r.db.Save(payment).Error
+}
+
+func (h *SaleController) UpdateSalePayment(c *fiber.Ctx) error {
+	// Define a struct for input validation
+	type UpdateSalePaymentInput struct {
+		AmountPayed float64 `json:"amount_payed" validate:"required"`
+		PaymentDate string  `json:"payment_date" validate:"required"`
+		SaleID      uint    `json:"sale_id" validate:"required"`
+		UpdatedBy   string  `json:"updated_by" validate:"required"`
+	}
+
+	// Parse the payment ID from the request parameters
+	paymentID := c.Params("id")
+
+	// Parse and validate the request body
+	var input UpdateSalePaymentInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"error":   err.Error(),
+		})
+	}
+
+	// Use a validation library to validate the input
+	if validationErr := utils.ValidateStruct(input); validationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Validation failed",
+			"errors":  validationErr,
+		})
+	}
+
+	// Fetch the payment record using the repository
+	payment, err := h.repo.FindSalePaymentById(paymentID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "payment not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch payment",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update the payment fields
+	payment.AmountPayed = input.AmountPayed
+	payment.PaymentDate = input.PaymentDate
+	payment.SaleID = input.SaleID
+	payment.UpdatedBy = input.UpdatedBy
+
+	// Save the updated payment using the repository
+	if err := h.repo.UpdateSalePayment(payment); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update payment",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the updated payment
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "payment updated successfully",
+		"data":    payment,
+	})
+}
+
+// =============================
+
+// Delete salePayment by ID
+func (r *SaleRepositoryImpl) DeleteSalePaymentByID(id string) error {
+	if err := r.db.Delete(&saleRegistration.SalePayment{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteCompanyByID deletes a company by its ID
+func (h *SaleController) DeleteSalePaymentByID(c *fiber.Ctx) error {
+	// Get the company ID from the route parameters
 	id := c.Params("id")
-	db := database.DB.Db
-	var sale saleRegistration.SalePayment
 
-	db.First(&sale, "id = ?", id)
-	if sale.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Invoice not found"})
+	// Find the SalePayment in the database
+	salePayment, err := h.repo.FindSalePaymentById(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "salePayment not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to find salePayment",
+			"data":    err.Error(),
+		})
 	}
 
-	if err := db.Delete(&sale, "id = ?", id).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to delete invoice", "data": err.Error()})
+	// Delete the salePayment
+	if err := h.repo.DeleteSalePaymentByID(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete port",
+			"data":    err.Error(),
+		})
 	}
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Invoice deleted successfully"})
+	// Return success response
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "salePayment deleted successfully",
+		"data":    salePayment,
+	})
 }
 
 // ===============================================================================================
 
-// Get all Payments
-
-func GetAllPayments(c *fiber.Ctx) error {
-	db := database.DB.Db
-	var payments []saleRegistration.SalePayment
-
-	db.Find(&payments)
-	if len(payments) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "No payments found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Payments found", "data": payments})
-}
-
-//Get payment by ID
-
-func GetPaymentByID(c *fiber.Ctx) error {
-	id := c.Params("id")
-	db := database.DB.Db
-	var payment saleRegistration.SalePayment
-
-	db.First(&payment, "id = ?", id)
-	if payment.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Payment not found"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Payment found", "data": payment})
-}
-
-// Update payment
-
-func UpdatePayment(c *fiber.Ctx) error {
-	id := c.Params("id")
-	db := database.DB.Db
-	var payment saleRegistration.SalePayment
-
-	db.First(&payment, "id = ?", id)
-	if payment.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Payment not found"})
-	}
-
-	userID := c.Locals("user_id")
-	isAdmin := c.Locals("is_admin").(bool)
-
-	if payment.CreatedBy != userID && !isAdmin {
-		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"status": "error", "message": "You don't have the required permissions"})
-	}
-
-	var updatedPayment saleRegistration.SalePayment
-	if err := c.BodyParser(&updatedPayment); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid request body"})
-	}
-	db.Model(&payment).Updates(updatedPayment)
-	return c.JSON(fiber.Map{"status": "success", "message": "Payment updated successfully", "data": payment})
-}
-
-//Delete payment By ID
-
-func DeletePaymentByID(c *fiber.Ctx) error {
-	id := c.Params("id")
-	db := database.DB.Db
-	var payment saleRegistration.SalePayment
-
-	db.First(&payment, "id = ?", id)
-	if payment.ID == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "Payment not found"})
-	}
-
-	if err := db.Delete(&payment, "id = ?", id).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to delete payment", "data": err.Error()})
-	}
-
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success", "message": "Payment deleted successfully"})
-}
-
 // Get payment by ModeOfPayment
 
-func GetPaymentByModeOfPayment(c *fiber.Ctx) error {
-	mode := c.Params("mode")
-	db := database.DB.Db
-	var payments []saleRegistration.SalePayment
-
-	db.Where("mode_of_payment = ?", mode).Find(&payments)
-	if len(payments) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"status": "error", "message": "No payments found for the given mode of payment"})
-	}
-
-	return c.JSON(fiber.Map{"status": "success", "message": "Payments found", "data": payments})
+// CreateCustomerContact creates a new customer contact in the database
+func (r *SaleRepositoryImpl) CreatePaymentMode(payment *saleRegistration.SalePaymentMode) error {
+	return r.db.Create(payment).Error
 }
 
-//create payment
-
-func CreatePayment(c *fiber.Ctx) error {
-	db := database.DB.Db
-	var payment saleRegistration.SalePayment
-
-	if err := c.BodyParser(&payment); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"status": "error", "message": "Invalid request body"})
+// CreateSalePayment handles the creation of a customer contact
+func (h *SaleController) CreatePaymentMode(c *fiber.Ctx) error {
+	// Parse the request body into a salePayment struct
+	salePayment := new(saleRegistration.SalePaymentMode)
+	if err := c.BodyParser(salePayment); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
 	}
 
-	if err := db.Create(&payment).Error; err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"status": "error", "message": "Failed to create payment", "data": err.Error()})
+	// Create the customer address in the database
+	if err := h.repo.CreatePaymentMode(salePayment); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create Payment mode",
+			"data":    err.Error(),
+		})
 	}
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "success", "message": "Payment created successfully", "data": payment})
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Payment mode address created successfully",
+		"data":    salePayment,
+	})
+}
+
+// ==============================
+
+func (r *SaleRepositoryImpl) GetPaginatedPaymentModes(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SalePaymentMode, error) {
+	pagination, payments, err := utils.Paginate(c, r.db, saleRegistration.SalePaymentMode{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, payments, nil
+}
+
+func (h *SaleController) GetSalePaymentModes(c *fiber.Ctx) error {
+
+	// Fetch paginated payments using the repository
+	pagination, paymentModes, err := h.repo.GetPaginatedPaymentModes(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve payments modes",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Payment modes and associated data retrieved successfully",
+		"data":    paymentModes,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
+}
+
+// =====================
+
+func (r *SaleRepositoryImpl) FindSalePaymentModeByIdAndSalePaymentId(id, salePaymentId string) (*saleRegistration.SalePaymentMode, error) {
+	var paymentMode saleRegistration.SalePaymentMode
+	result := r.db.Preload("SalePayment").Where("id = ? AND sale_payment_id = ?", id, salePaymentId).First(&paymentMode)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &paymentMode, nil
+}
+
+func (h *SaleController) FindSalePaymentModeByIdAndSalePaymentId(c *fiber.Ctx) error {
+	// Retrieve the payment ID and Company ID from the request parameters
+	id := c.Params("id")
+	salePaymentId := c.Params("salePaymentId")
+
+	// Fetch the company payment from the repository
+	payment, err := h.repo.FindSalePaymentModeByIdAndSalePaymentId(id, salePaymentId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Mode not found for the specified payment",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch the mode",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched payment
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "payment mode fetched successfully",
+		"data":    payment,
+	})
+}
+
+// =============
+
+func (r *SaleRepositoryImpl) GetPaginatedModes(c *fiber.Ctx, mode string) (*utils.Pagination, []saleRegistration.SalePaymentMode, error) {
+	pagination, modes, err := utils.Paginate(c, r.db.Preload("SalePayment").Where("mode = ?", mode), saleRegistration.SalePaymentMode{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, modes, nil
+}
+
+func (h *SaleController) GetPaymentModesByMode(c *fiber.Ctx) error {
+	mode := c.Params("mode")
+
+	// Fetch paginated contacts using the repository
+	pagination, modes, err := h.repo.GetPaginatedModes(c, mode)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve payment modes",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Payment modes and associated data retrieved successfully",
+		"data":    modes,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
+}
+
+// =====================
+
+func (r *SaleRepositoryImpl) FindSalePaymentModeById(id string) (*saleRegistration.SalePaymentMode, error) {
+	var mode saleRegistration.SalePaymentMode
+	if err := r.db.First(&mode, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &mode, nil
+}
+
+func (r *SaleRepositoryImpl) UpdateSalePaymentMode(payment *saleRegistration.SalePaymentMode) error {
+	return r.db.Save(payment).Error
+}
+
+func (h *SaleController) UpdateSalePaymentMode(c *fiber.Ctx) error {
+	// Define a struct for input validation
+	type UpdateSalePaymentModeInput struct {
+		ModeOfPayment string `json:"mode_of_payment" validate:"required"`
+		TransactionID string `json:"transaction_id" validate:"required"`
+		SalePaymentID uint   `json:"sale_payment_id" validate:"required"`
+		UpdatedBy     string `json:"updated_by" validate:"required"`
+	}
+
+	// Parse the payment ID from the request parameters
+	paymentID := c.Params("id")
+
+	// Parse and validate the request body
+	var input UpdateSalePaymentModeInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"error":   err.Error(),
+		})
+	}
+
+	// Use a validation library to validate the input
+	if validationErr := utils.ValidateStruct(input); validationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Validation failed",
+			"errors":  validationErr,
+		})
+	}
+
+	// Fetch the payment record using the repository
+	payment, err := h.repo.FindSalePaymentModeById(paymentID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "payment not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch payment",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update the payment fields
+	payment.ModeOfPayment = input.ModeOfPayment
+	payment.TransactionID = input.TransactionID
+	payment.SalePaymentID = input.SalePaymentID
+	payment.UpdatedBy = input.UpdatedBy
+
+	// Save the updated payment using the repository
+	if err := h.repo.UpdateSalePaymentMode(payment); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update payment",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the updated payment
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "payment updated successfully",
+		"data":    payment,
+	})
+}
+
+// =============================
+
+// Delete salePayment by ID
+func (r *SaleRepositoryImpl) DeleteSalePaymentModeByID(id string) error {
+	if err := r.db.Delete(&saleRegistration.SalePaymentMode{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteCompanyByID deletes a company by its ID
+func (h *SaleController) DeleteSalePaymentModeByID(c *fiber.Ctx) error {
+	// Get the company ID from the route parameters
+	id := c.Params("id")
+
+	// Find the SalePayment in the database
+	salePayment, err := h.repo.FindSalePaymentModeById(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "salePayment mode not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to find salePayment mode",
+			"data":    err.Error(),
+		})
+	}
+
+	// Delete the salePayment
+	if err := h.repo.DeleteSalePaymentModeByID(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete payment mode",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "salePayment mode deleted successfully",
+		"data":    salePayment,
+	})
 }
