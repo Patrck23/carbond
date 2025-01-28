@@ -1,0 +1,74 @@
+# User Login
+# @name tokenAPI
+POST http://127.0.0.1:8080/api/auth/login
+content-type: application/json
+
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
+
+###
+# User Registration
+@hostname = http://127.0.0.1:8080/api
+@bearer = {{tokenAPI.response.body.token}}
+
+POST {{hostname}}/user
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+	"surname":   "Kizza",
+	"firstname": "Joan",
+	"othername": "",
+	"gender":    "Female",
+	"title":     "Cashier",
+	"username":  "JoanKizza",
+	"email":     "joan.kizza@gmail.com",
+	"password":  "password",
+	"company_id": 1,
+	"group_id":   3,
+	"created_by": "admin",
+	"updated_by": ""
+}
+
+###
+# Fetch users
+GET {{hostname}}/users
+authorization: bearer {{bearer}}
+
+###
+# Fetch user by ID
+GET {{hostname}}/user/1
+authorization: bearer {{bearer}}
+
+###
+# Update user by ID
+PATCH {{hostname}}/user/2
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+	"surname":   "Kizza",
+	"firstname": "Joan",
+	"othername": "Kembabazi",
+	"gender":    "Female",
+	"title":     "Cashier",
+	"username":  "JoanKizza",
+	"email":     "joan.kizza@gmail.com",
+	"password":  "password",
+	"company_id": 1,
+	"group_id":   3,
+	"updated_by": "Seeder"
+}
+
+###
+# Delete user by ID
+DELETE  {{hostname}}/user/2
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "password": "Admin123"
+}
+

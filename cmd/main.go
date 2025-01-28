@@ -42,12 +42,10 @@ func main() {
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).SendString("Session error")
 		}
-		// Save session for reuse in handlers
 		c.Locals("session", sess)
 		return c.Next()
 	})
 	app.Use(logger.New())
-	// Use CORS middleware with specific configuration
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "*", // Allow all origins
 		AllowHeaders: "Origin, Content-Type, Accept",

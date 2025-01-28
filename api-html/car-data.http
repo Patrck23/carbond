@@ -1,0 +1,74 @@
+# User Login
+# @name tokenAPI
+POST http://127.0.0.1:8080/api/auth/login
+content-type: application/json
+
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
+
+###
+# car Registration
+@hostname = http://127.0.0.1:8080/api
+@bearer = {{tokenAPI.response.body.token}}
+
+POST {{hostname}}/car
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+	"surname":   "Kizza",
+	"firstname": "Joan",
+	"othername": "",
+	"gender":    "Female",
+	"title":     "Cashier",
+	"carname":  "JoanKizza",
+	"email":     "joan.kizza@gmail.com",
+	"password":  "password",
+	"company_id": 1,
+	"group_id":   3,
+	"created_by": "admin",
+	"updated_by": ""
+}
+
+###
+# Fetch cars
+GET {{hostname}}/cars
+authorization: bearer {{bearer}}
+
+###
+# Fetch car by ID
+GET {{hostname}}/car/1
+authorization: bearer {{bearer}}
+
+###
+# Update car by ID
+PATCH {{hostname}}/car/2
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+	"surname":   "Kizza",
+	"firstname": "Joan",
+	"othername": "Kembabazi",
+	"gender":    "Female",
+	"title":     "Cashier",
+	"carname":  "JoanKizza",
+	"email":     "joan.kizza@gmail.com",
+	"password":  "password",
+	"company_id": 1,
+	"group_id":   3,
+	"updated_by": "Seeder"
+}
+
+###
+# Delete car by ID
+DELETE  {{hostname}}/car/2
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "password": "Admin123"
+}
+

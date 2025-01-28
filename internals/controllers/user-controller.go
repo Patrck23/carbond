@@ -4,10 +4,8 @@ import (
 	"car-bond/internals/models/userRegistration"
 	"car-bond/internals/utils"
 	"errors"
-	"strconv"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -41,30 +39,6 @@ func NewUserController(repo UserRepository) *UserController {
 func hashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	return string(bytes), err
-}
-
-func validToken(t *jwt.Token, id string) bool {
-	n, err := strconv.Atoi(id)
-	if err != nil {
-		return false
-	}
-
-	claims := t.Claims.(jwt.MapClaims)
-	uid := int(claims["user_id"].(float64))
-
-	return uid == n
-}
-
-func validUser(id string, p string, db *gorm.DB) bool {
-	var user userRegistration.User
-	db.First(&user, id)
-	if user.Username == "" {
-		return false
-	}
-	if !CheckPasswordHash(p, user.Password) {
-		return false
-	}
-	return true
 }
 
 // ======================
@@ -212,6 +186,7 @@ func (h *UserController) UpdateUser(c *fiber.Ctx) error {
 		Email     string `json:"email"`
 		Password  string `json:"password"`
 		CompanyID uint   `json:"company_id"`
+		GroupID   uint   `json:"group_id"`
 		UpdatedBy string `json:"updated_by"`
 	}
 
@@ -231,15 +206,6 @@ func (h *UserController) UpdateUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "User ID is required",
-		})
-	}
-
-	// Validate token against user ID
-	token := c.Locals("user").(*jwt.Token)
-	if !validToken(token, id) {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Invalid token for user ID",
 		})
 	}
 
@@ -267,6 +233,7 @@ func (h *UserController) UpdateUser(c *fiber.Ctx) error {
 	user.Title = input.Title
 	user.Email = input.Email
 	user.CompanyID = input.CompanyID
+	user.GroupID = input.GroupID
 	user.UpdatedBy = input.UpdatedBy
 
 	// Save the updated user
@@ -306,37 +273,28 @@ func (h *UserController) DeleteUserByID(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Review your input", "data": err})
 	}
 	id := c.Params("id")
-	token := c.Locals("user").(*jwt.Token)
 
-	if !validToken(token, id) {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Invalid token id", "data": nil})
-	}
-
-	if !validUser(id, pi.Password, &gorm.DB{}) {
-		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Not valid user", "data": nil})
-	}
-
-	// Find the SalePayment in the database
-	salePayment, err := h.repo.GetUserByID(id)
+	// Find the user in the database
+	user, err := h.repo.GetUserByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return c.Status(404).JSON(fiber.Map{
 				"status":  "error",
-				"message": "salePayment mode not found",
+				"message": "user not found",
 			})
 		}
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to find salePayment mode",
+			"message": "Failed to find user",
 			"data":    err.Error(),
 		})
 	}
 
-	// Delete the salePayment
+	// Delete the user
 	if err := h.repo.DeleteUserByID(id); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to delete payment mode",
+			"message": "Failed to delete user",
 			"data":    err.Error(),
 		})
 	}
@@ -344,7 +302,7 @@ func (h *UserController) DeleteUserByID(c *fiber.Ctx) error {
 	// Return success response
 	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
-		"message": "salePayment mode deleted successfully",
-		"data":    salePayment,
+		"message": "User deleted successfully",
+		"data":    user,
 	})
 }

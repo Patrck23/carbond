@@ -1,0 +1,14 @@
+
+@hostname = http://127.0.0.1:8080/api/meta
+@bearer = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzgwNDc5NTksInJvbGVzIjpbInJlc291cmNlLmFkbWluIiwidXNlcnMuYWRtaW4iLCJkb2N1bWVudHMuYWRtaW4iXSwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJBZG1pbiJ9.XPTq1KUNZRGuf4puziK6vs6PBoWqi0Luo2mmZ9DWvvY
+
+GET {{hostname}}/weights
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/currency
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/lengths
+authorization: bearer {{bearer}}
