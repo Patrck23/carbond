@@ -193,5 +193,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	meta.Get("/currency", metaGController.GetAllCurrencies)
 	meta.Get("/expenses", metaGController.GetAllExpenseCategories)
 	meta.Get("/ports", metaGController.FindPortsByName)
+	meta.Get("/payment-modes", metaGController.FindPaymentModeBymode)
+
 	NotFoundRoute(app)
 }

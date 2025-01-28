@@ -101,6 +101,7 @@ func (d *DBInstance) Migrate() {
 		&metaData.ExpenseCategory{},
 		&metaData.Currency{},
 		&metaData.Port{},
+		&metaData.PaymentMode{},
 	)
 }
 

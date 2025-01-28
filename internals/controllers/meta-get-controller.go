@@ -15,6 +15,7 @@ type MetaGetRepository interface {
 	GetAllCurrencies(c *fiber.Ctx) ([]metaData.Currency, error)
 	GetAllExpenseCategories(c *fiber.Ctx) ([]metaData.ExpenseCategory, error)
 	FindPortsByName(name string) ([]metaData.Port, error)
+	FindPaymentModeBymode(mode string) ([]metaData.PaymentMode, error)
 }
 
 type MetaGetRepositoryImpl struct {
@@ -241,6 +242,50 @@ func (h *MetaGetController) FindPortsByName(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Ports not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch records",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched evaluations
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Records fetched successfully",
+		"data":    ports,
+	})
+}
+
+// ======================================
+
+func (m *MetaGetRepositoryImpl) FindPaymentModeBymode(mode string) ([]metaData.PaymentMode, error) {
+	var modes []metaData.PaymentMode
+	if err := m.db.Where("mode LIKE ?", "%"+mode+"%").Find(&modes).Error; err != nil {
+		return nil, err
+	}
+	return modes, nil
+}
+
+func (h *MetaGetController) FindPaymentModeBymode(c *fiber.Ctx) error {
+	// Retrieve companyId and expenseDate from the request parameters
+	mode := c.Query("mode")
+	if mode == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Mode query parameter is required",
+		})
+	}
+
+	// Fetch ports using the repository
+	ports, err := h.repo.FindPaymentModeBymode(mode)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Payment modes not found",
 			})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{

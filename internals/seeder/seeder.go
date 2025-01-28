@@ -1018,4 +1018,55 @@ func SeedDatabase(db *gorm.DB) {
 		log.Println("Port table already seeded, skipping...")
 	}
 
+	modes := []metaData.PaymentMode{
+		{
+			Mode:        "Credit/Debit Card",
+			Description: "Widely accepted for online transactions.",
+			Category:    "Bank",
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Mode:        "Airtel Money",
+			Description: "A popular digital payment method allowing users to make purchases via mobile phones.",
+			Category:    "Mobile Money",
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Mode:        "MTN Mobile Money",
+			Description: "A popular digital payment method allowing users to make purchases via mobile phones.",
+			Category:    "Mobile Money",
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Mode:        "Direct Cash Payments",
+			Description: "Payments made directly in cash to intermediaries for international purchases.",
+			Category:    "Cash",
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+		{
+			Mode:        "Bank Transfer",
+			Description: "Payments made directly from bank accounts.",
+			Category:    "Bank",
+			CreatedBy:   "Seeder",
+			UpdatedBy:   "",
+		},
+	}
+
+	// Check if the currencies table already has data
+	var modeCount int64
+	db.Model(&metaData.PaymentMode{}).Count(&modeCount)
+	if modeCount == 0 {
+		if err := db.Create(&modes).Error; err != nil {
+			log.Fatalf("Failed to seed payment modes: %v", err)
+		} else {
+			log.Println("Payment modes data seeded successfully")
+		}
+	} else {
+		log.Println("Payment modes already seeded, skipping...")
+	}
+
 }
