@@ -1,6 +1,16 @@
+# User Login
+# @name tokenAPI
+POST http://127.0.0.1:8080/api/auth/login
+content-type: application/json
 
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
+
+###
 @hostname = http://127.0.0.1:8080/api/meta
-@bearer = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MzgwNDc5NTksInJvbGVzIjpbInJlc291cmNlLmFkbWluIiwidXNlcnMuYWRtaW4iLCJkb2N1bWVudHMuYWRtaW4iXSwidXNlcl9pZCI6MSwidXNlcm5hbWUiOiJBZG1pbiJ9.XPTq1KUNZRGuf4puziK6vs6PBoWqi0Luo2mmZ9DWvvY
+@bearer = {{tokenAPI.response.body.token}}
 
 GET {{hostname}}/weights
 authorization: bearer {{bearer}}
@@ -11,4 +21,13 @@ authorization: bearer {{bearer}}
 
 ###
 GET {{hostname}}/lengths
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/expenses
+authorization: bearer {{bearer}}
+
+
+###
+GET {{hostname}}/ports?name=Port of Yo
 authorization: bearer {{bearer}}

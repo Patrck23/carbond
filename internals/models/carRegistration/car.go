@@ -42,6 +42,7 @@ type Car struct {
 	ToCompanyID           *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"to_company_id"`
 	ToCompany             *companyRegistration.Company `gorm:"foreignKey:ToCompanyID;references:ID" json:"to_company"`
 	Destination           string                       `json:"destination"`
+	Port                  string                       `json:"port"`
 	// Uganda Edits
 	BrokerName   string                         `json:"broker_name"`
 	BrokerNumber string                         `json:"broker_number"`

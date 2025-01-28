@@ -18,19 +18,45 @@ authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-	"surname":   "Kizza",
-	"firstname": "Joan",
-	"othername": "",
-	"gender":    "Female",
-	"title":     "Cashier",
-	"carname":  "JoanKizza",
-	"email":     "joan.kizza@gmail.com",
-	"password":  "password",
-	"company_id": 1,
-	"group_id":   3,
-	"created_by": "admin",
-	"updated_by": ""
+  "vin_number": "1HGCM82633A123456",
+  "engine_number": "ENG123456789",
+  "engine_capacity": "2000cc",
+  "make": "Toyota",
+  "model": "Corolla",
+  "maxim_carry": 500,
+  "weight": 1200,
+  "gross_weight": 1500,
+  "ff_weight": 700,
+  "rr_weight": 800,
+  "fr_weight": 750,
+  "rf_weight": 750,
+  "weight_units": "kg",
+  "length": 4500,
+  "width": 1800,
+  "height": 1400,
+  "length_units": "mm",
+  "maunufacture_year": 2020,
+  "first_registration_year": 2021,
+  "transmission": "Automatic",
+  "body_type": "Sedan",
+  "colour": "Blue",
+  "auction": "Tokyo Auto Auctions",
+  "currency": "USD",
+  "bid_price": 15000.00,
+  "purchase_date": "2024-01-01",
+  "from_company_id": 2,
+  "to_company_id": 1,
+  "destination": "Kampala, Uganda",
+  "port": "Port of Yokohama",
+  "broker_name": "",
+  "broker_number": "",
+  "vat_tax": null,
+  "number_plate": "",
+  "customer_id": null,
+  "created_by": "admin",
+  "updated_by": "admin"
 }
+
 
 ###
 # Fetch cars
@@ -39,36 +65,133 @@ authorization: bearer {{bearer}}
 
 ###
 # Fetch car by ID
-GET {{hostname}}/car/1
+GET {{hostname}}/car/id/1
 authorization: bearer {{bearer}}
 
 ###
-# Update car by ID
-PATCH {{hostname}}/car/2
+# Fetch car by VINN
+GET {{hostname}}/car/vin/1HGCM82633A123456
+authorization: bearer {{bearer}}
+
+###
+# Update car by ID in Japan
+PUT {{hostname}}/car/1/details
 authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-	"surname":   "Kizza",
-	"firstname": "Joan",
-	"othername": "Kembabazi",
-	"gender":    "Female",
-	"title":     "Cashier",
-	"carname":  "JoanKizza",
-	"email":     "joan.kizza@gmail.com",
-	"password":  "password",
-	"company_id": 1,
-	"group_id":   3,
-	"updated_by": "Seeder"
+  "car_uuid": "123e4567-e89b-12d3-a456-426614174000",
+  "vin_number": "1HGCM82633A123456",
+  "engine_number": "ENG123456789",
+  "engine_capacity": "2000cc",
+  "make": "Toyota",
+  "model": "Corolla",
+  "maxim_carry": 500,
+  "weight": 1200,
+  "gross_weight": 1500,
+  "ff_weight": 700,
+  "rr_weight": 800,
+  "fr_weight": 750,
+  "rf_weight": 750,
+  "weight_units": "KG",
+  "length": 4500,
+  "width": 1800,
+  "height": 1400,
+  "length_units": "CM",
+  "maunufacture_year": 2020,
+  "first_registration_year": 2021,
+  "transmission": "Automatic",
+  "body_type": "Sedan",
+  "colour": "Blue",
+  "auction": "Tokyo Auto Auctions",
+  "currency": "USD",
+  "bid_price": 15000.00,
+  "purchase_date": "2024-01-01",
+  "from_company_id": 2,
+  "to_company_id": 1,
+  "destination": "Kampala, Uganda",
+  "port": "Port of Yokohama",
+  "updated_by": "admin"
+}
+
+###
+# Update car by ID in Uganda
+PUT {{hostname}}/car/1/sale
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "broker_name": "John Doe",
+  "broker_number": "+256-712-345-678",
+  "vat_tax": 18.00,
+  "number_plate": "UBH 123A",
+  "customer_id": 1,
+  "updated_by": "admin"
 }
 
 ###
 # Delete car by ID
 DELETE  {{hostname}}/car/2
 authorization: bearer {{bearer}}
+
+# =================================================
+# Car Expenses
+###
+# Get Car Expenses
+GET {{hostname}}/carExpenses
+authorization: bearer {{bearer}}
+
+###
+# Get Car expenses by Car ID
+GET {{hostname}}/car/1/expenses
+
+###
+# Get Car expenses by Car ID and expense ID
+GET {{hostname}}/car/1/expense/1
+
+###
+# Create car expense
+POST {{hostname}}/car/expense
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+# {
+# 	"car_id": 1,
+# 	"description": "VAT (Value Added Tax)",
+# 	"currency": "UGX",
+# 	"amount": 100000,
+# 	"expense_date": "2024-01-01",
+# 	"created_by": "Gadafi",
+# 	"updated_by": "Admin"
+# }
+
+{
+	"car_id": 1,
+	"description": "COMMISSION",
+	"currency": "UGX",
+	"amount": 50000,
+	"expense_date": "2023-05-01",
+	"updated_by": "DN"
+}
+
+###
+# Update carexpense by ID
+PUT {{hostname}}/car/expense/1
+authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-    "password": "Admin123"
+	"car_id": 1,
+	"description": "VAT (Value Added Tax)",
+	"currency": "UGX",
+	"amount": 150000,
+	"expense_date": "2024-05-01",
+	"updated_by": "Admin"
 }
 
+###
+# Delete carexpense by ID
+DELETE {{hostname}}/car/1/expense/2
+authorization: bearer {{bearer}}
+
+# =================================================

@@ -1,0 +1,85 @@
+# User Login
+# @name tokenAPI
+POST http://127.0.0.1:8080/api/auth/login
+content-type: application/json
+
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
+
+###
+# customer Registration
+@hostname = http://127.0.0.1:8080/api
+@bearer = {{tokenAPI.response.body.token}}
+
+POST {{hostname}}/customer
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "surname": "Tumwesigye",
+  "firstname": "John",
+  "othername": "Michael",
+  "gender": "Male",
+  "nationality": "Ugandan",
+  "age": 35,
+  "dob": "1989-05-15",
+  "telephone": "+256-701-234-567",
+  "email": "john.doe@example.com",
+  "nin": "CM8901234567ABCD",
+  "created_by": "admin",
+  "updated_by": "admin"
+}
+
+# {
+#   "surname": "Hannah",
+#   "firstname": "John",
+#   "othername": "Bibianah",
+#   "gender": "Female",
+#   "nationality": "Ugandan",
+#   "age": 35,
+#   "dob": "1994-05-15",
+#   "telephone": "+256-701-234-567",
+#   "email": "bibana.hana@example.com",
+#   "nin": "CM8901234567ABCD",
+#   "created_by": "admin",
+#   "updated_by": "admin"
+# }
+
+###
+# Fetch customers
+GET {{hostname}}/customers
+authorization: bearer {{bearer}}
+
+###
+# Fetch customer by ID
+GET {{hostname}}/customer/1
+authorization: bearer {{bearer}}
+
+###
+# Update customer by ID
+PUT {{hostname}}/customer/1
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "surname": "Tumwesigye",
+  "firstname": "Godfrey",
+  "othername": "Michael",
+  "gender": "Male",
+  "nationality": "Ugandan",
+  "age": 45,
+  "dob": "1989-05-15",
+  "telephone": "+256-701-234-567",
+  "email": "john.doe@example.com",
+  "nin": "CM8901234567ABJKD",
+  "updated_by": "Patrick"
+}
+
+###
+# Delete customer by ID
+DELETE  {{hostname}}/customer/2
+authorization: bearer {{bearer}}
+
+

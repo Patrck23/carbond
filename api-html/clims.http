@@ -1,0 +1,11 @@
+POST https://clims.health.go.ug/api/auth/login
+content-type: application/json
+
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
+
+###
+
+GET https://clims.health.go.ug/api/cars

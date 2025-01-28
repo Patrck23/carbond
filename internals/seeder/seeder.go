@@ -794,4 +794,228 @@ func SeedDatabase(db *gorm.DB) {
 		log.Println("Currency table already seeded, skipping...")
 	}
 
+	ports := []metaData.Port{
+		{
+			Name:      "Port of Tokyo",
+			Location:  "Tokyo",
+			Category:  "Designated Major Port",
+			Function:  "International trade, Passenger ferry",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Yokohama",
+			Location:  "Yokohama",
+			Category:  "Designated Major Port",
+			Function:  "Container shipping, Passenger ferry",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Osaka",
+			Location:  "Osaka",
+			Category:  "Designated Major Port",
+			Function:  "Industrial activities, Commercial activities",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Kobe",
+			Location:  "Kobe",
+			Category:  "Designated Major Port",
+			Function:  "International trade, Commercial activities",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Nagoya",
+			Location:  "Nagoya",
+			Category:  "Designated Major Port",
+			Function:  "Cargo, Automobile shipping, Machinery",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Chiba",
+			Location:  "Chiba",
+			Category:  "Designated Important Port",
+			Function:  "Industrial activities, Commercial activities",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Kitakyushu",
+			Location:  "Kitakyushu",
+			Category:  "Designated Important Port",
+			Function:  "Industrial hub",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Fukuoka",
+			Location:  "Fukuoka",
+			Category:  "Designated Important Port",
+			Function:  "Cargo, Ferries",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Hakata",
+			Location:  "Fukuoka",
+			Category:  "Designated Important Port",
+			Function:  "Cargo, Passenger ferries",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Sapporo",
+			Location:  "Sapporo",
+			Category:  "Fishing Port",
+			Function:  "Fishing activities",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Shimizu",
+			Location:  "Shizuoka",
+			Category:  "Designated Major Port",
+			Function:  "Cargo, Ferry",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Sendai",
+			Location:  "Sendai",
+			Category:  "Designated Important Port",
+			Function:  "Cargo, Passenger ferries",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Niigata",
+			Location:  "Niigata",
+			Category:  "Designated Important Port",
+			Function:  "Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Oita",
+			Location:  "Oita",
+			Category:  "Designated Important Port",
+			Function:  "Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Hiroshima",
+			Location:  "Hiroshima",
+			Category:  "Designated Important Port",
+			Function:  "Cargo, Passenger ferries",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Tokuyama",
+			Location:  "Yamaguchi",
+			Category:  "Designated Important Port",
+			Function:  "Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Akita",
+			Location:  "Akita",
+			Category:  "Designated Important Port",
+			Function:  "Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Maizuru",
+			Location:  "Kyoto",
+			Category:  "Designated Important Port",
+			Function:  "Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Nagasaki",
+			Location:  "Nagasaki",
+			Category:  "Designated Important Port",
+			Function:  "Cargo, Passenger ferries",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Miyako",
+			Location:  "Miyagi",
+			Category:  "Designated Important Port",
+			Function:  "Fishing, Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Chugoku",
+			Location:  "Chugoku",
+			Category:  "Designated Important Port",
+			Function:  "Fishing, Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Akashi",
+			Location:  "Hyogo",
+			Category:  "Designated Important Port",
+			Function:  "Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Kushiro",
+			Location:  "Hokkaido",
+			Category:  "Designated Important Port",
+			Function:  "Fishing",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Wakayama",
+			Location:  "Wakayama",
+			Category:  "Designated Important Port",
+			Function:  "Cargo",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Takamatsu",
+			Location:  "Kagawa",
+			Category:  "Designated Important Port",
+			Function:  "Cargo, Passenger ferries",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Port of Otaru",
+			Location:  "Hokkaido",
+			Category:  "Designated Important Port",
+			Function:  "Fishing",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+	}
+
+	// Check if the currencies table already has data
+	var portCount int64
+	db.Model(&metaData.Port{}).Count(&portCount)
+	if portCount == 0 {
+		if err := db.Create(&ports).Error; err != nil {
+			log.Fatalf("Failed to seed ports: %v", err)
+		} else {
+			log.Println("Port data seeded successfully")
+		}
+	} else {
+		log.Println("Port table already seeded, skipping...")
+	}
+
 }

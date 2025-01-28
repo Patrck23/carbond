@@ -83,7 +83,6 @@ func (d *DBInstance) Migrate() {
 		// --- Car --- //
 		&carRegistration.Car{},
 		&carRegistration.CarExpense{},
-		&carRegistration.CarPort{},
 		// --- Sale --- //
 		&saleRegistration.Sale{},
 		&saleRegistration.SalePayment{},
@@ -101,6 +100,7 @@ func (d *DBInstance) Migrate() {
 		&metaData.LeightUnit{},
 		&metaData.ExpenseCategory{},
 		&metaData.Currency{},
+		&metaData.Port{},
 	)
 }
 

@@ -13,6 +13,8 @@ type MetaGetRepository interface {
 	GetAllWeightUnits(c *fiber.Ctx) ([]metaData.WeightUnit, error)
 	GetAllLeightUnits(c *fiber.Ctx) ([]metaData.LeightUnit, error)
 	GetAllCurrencies(c *fiber.Ctx) ([]metaData.Currency, error)
+	GetAllExpenseCategories(c *fiber.Ctx) ([]metaData.ExpenseCategory, error)
+	FindPortsByName(name string) ([]metaData.Port, error)
 }
 
 type MetaGetRepositoryImpl struct {
@@ -173,5 +175,85 @@ func (h *MetaGetController) GetAllCurrencies(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "Records fetched successfully",
 		"data":    currencies,
+	})
+}
+
+// =================
+
+// ExpenseCategory
+
+func (m *MetaGetRepositoryImpl) GetAllExpenseCategories(c *fiber.Ctx) ([]metaData.ExpenseCategory, error) {
+	var expenses []metaData.ExpenseCategory
+	if err := m.db.Find(&expenses).Error; err != nil {
+		return nil, err
+	}
+	return expenses, nil
+}
+
+func (h *MetaGetController) GetAllExpenseCategories(c *fiber.Ctx) error {
+	currencies, err := h.repo.GetAllExpenseCategories(c)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Expense categories not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch records",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched evaluations
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Records fetched successfully",
+		"data":    currencies,
+	})
+}
+
+// ======================================
+
+func (m *MetaGetRepositoryImpl) FindPortsByName(name string) ([]metaData.Port, error) {
+	var ports []metaData.Port
+	if err := m.db.Where("name LIKE ?", "%"+name+"%").Find(&ports).Error; err != nil {
+		return nil, err
+	}
+	return ports, nil
+}
+
+func (h *MetaGetController) FindPortsByName(c *fiber.Ctx) error {
+	// Retrieve companyId and expenseDate from the request parameters
+	name := c.Query("name")
+	if name == "" {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Name query parameter is required",
+		})
+	}
+
+	// Fetch ports using the repository
+	ports, err := h.repo.FindPortsByName(name)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Ports not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch records",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched evaluations
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Records fetched successfully",
+		"data":    ports,
 	})
 }
