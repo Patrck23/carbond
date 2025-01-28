@@ -2,7 +2,7 @@ package routes
 
 import (
 	"car-bond/internals/controllers"
-	// "car-bond/internals/middleware"
+	"car-bond/internals/middleware"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -59,139 +59,139 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	})
 
 	// Car
-	api.Get("/cars", carController.GetAllCars)
+	api.Get("/cars", middleware.Protected(), carController.GetAllCars)
 	car := api.Group("/car")
-	car.Post("/", carController.CreateCar)
-	car.Get("/id/:id", carController.GetSingleCar)
-	car.Get("/vin/:vinNumber", carController.GetSingleCarByVinNumber)
-	car.Put("/:id/details", carController.UpdateCar)
-	car.Put("/:id/sale", carController.UpdateCar2)
-	car.Delete("/:id", carController.DeleteCarByID)
+	car.Post("/", middleware.Protected(), carController.CreateCar)
+	car.Get("/id/:id", middleware.Protected(), carController.GetSingleCar)
+	car.Get("/vin/:vinNumber", middleware.Protected(), carController.GetSingleCarByVinNumber)
+	car.Put("/:id/details", middleware.Protected(), carController.UpdateCar)
+	car.Put("/:id/sale", middleware.Protected(), carController.UpdateCar2)
+	car.Delete("/:id", middleware.Protected(), carController.DeleteCarByID)
 	// Car expense
-	api.Get("/carExpenses", carController.GetAllCarExpenses)
+	api.Get("/carExpenses", middleware.Protected(), carController.GetAllCarExpenses)
 	car.Get("/:carId/expenses", carController.GetCarExpensesByCarId)
 	car.Get("/:carId/expense/:id", carController.GetCarExpenseById)
-	car.Post("/expense", carController.CreateCarExpense)
-	car.Put("/expense/:id", carController.UpdateCarExpense)
-	car.Delete("/:carId/expense/:id", carController.DeleteCarExpenseById)
+	car.Post("/expense", middleware.Protected(), carController.CreateCarExpense)
+	car.Put("/expense/:id", middleware.Protected(), carController.UpdateCarExpense)
+	car.Delete("/:carId/expense/:id", middleware.Protected(), carController.DeleteCarExpenseById)
 
 	companyDbService := controllers.NewCompanyRepository(db)
 	companyController := controllers.NewCompanyController(companyDbService)
 
 	// Company
-	api.Get("/companies", companyController.GetAllCompanies)
+	api.Get("/companies", middleware.Protected(), companyController.GetAllCompanies)
 	company := api.Group("/company")
-	company.Get("/:id", companyController.GetSingleCompany)
-	company.Post("/", companyController.CreateCompany)
-	company.Patch("/:id", companyController.UpdateCompany)
-	company.Delete("/:id", companyController.DeleteCompanyByID)
+	company.Get("/:id", middleware.Protected(), companyController.GetSingleCompany)
+	company.Post("/", middleware.Protected(), companyController.CreateCompany)
+	company.Patch("/:id", middleware.Protected(), companyController.UpdateCompany)
+	company.Delete("/:id", middleware.Protected(), companyController.DeleteCompanyByID)
 	// Company Expenses
-	api.Get("/expenses", companyController.GetAllExpenses)
-	company.Get("/expenses/:companyId", companyController.GetCompanyExpensesByCompanyId)
-	company.Get("/:companyId/expense/:id", companyController.GetCompanyExpenseById)
-	company.Post("/expense", companyController.CreateCompanyExpense)
-	company.Put("/expense/:id", companyController.UpdateCompanyExpense)
-	company.Delete("/expense/:id", companyController.DeleteCompanyExpenseById)
+	api.Get("/expenses", middleware.Protected(), companyController.GetAllExpenses)
+	company.Get("/expenses/:companyId", middleware.Protected(), companyController.GetCompanyExpensesByCompanyId)
+	company.Get("/:companyId/expense/:id", middleware.Protected(), companyController.GetCompanyExpenseById)
+	company.Post("/expense", middleware.Protected(), companyController.CreateCompanyExpense)
+	company.Put("/expense/:id", middleware.Protected(), companyController.UpdateCompanyExpense)
+	company.Delete("/expense/:id", middleware.Protected(), companyController.DeleteCompanyExpenseById)
 	// Company Locations
-	company.Get("/locations/:companyId", companyController.GetAllCompanyLocations)
-	company.Get("/:companyId/location/:id", companyController.GetLocationByCompanyId)
-	company.Post("/location", companyController.CreateCompanyLocation)
-	company.Put("/location/:id", companyController.UpdateCompanyLocation)
-	company.Delete("/location/:id", companyController.DeleteLocationByID)
+	company.Get("/locations/:companyId", middleware.Protected(), companyController.GetAllCompanyLocations)
+	company.Get("/:companyId/location/:id", middleware.Protected(), companyController.GetLocationByCompanyId)
+	company.Post("/location", middleware.Protected(), companyController.CreateCompanyLocation)
+	company.Put("/location/:id", middleware.Protected(), companyController.UpdateCompanyLocation)
+	company.Delete("/location/:id", middleware.Protected(), companyController.DeleteLocationByID)
 
 	customerDbService := controllers.NewCustomerRepository(db)
 	customerController := controllers.NewCustomerController(customerDbService)
 
 	// Customer
-	api.Get("/customers", customerController.GetAllCustomers)
+	api.Get("/customers", middleware.Protected(), customerController.GetAllCustomers)
 	customer := api.Group("/customer")
-	customer.Get("/:id", customerController.GetSingleCustomer)
-	customer.Post("/", customerController.CreateCustomer)
-	customer.Put("/:id", customerController.UpdateCustomer)
-	customer.Delete("/:id", customerController.DeleteCustomerByID)
+	customer.Get("/:id", middleware.Protected(), customerController.GetSingleCustomer)
+	customer.Post("/", middleware.Protected(), customerController.CreateCustomer)
+	customer.Put("/:id", middleware.Protected(), customerController.UpdateCustomer)
+	customer.Delete("/:id", middleware.Protected(), customerController.DeleteCustomerByID)
 	// Upload
-	customer.Post("/upload", func(c *fiber.Ctx) error {
+	customer.Post("/upload", middleware.Protected(), func(c *fiber.Ctx) error {
 		return controllers.UploadCustomerFile(c, db)
 	})
-	customer.Get("/:id/files", func(c *fiber.Ctx) error {
+	customer.Get("/:id/files", middleware.Protected(), func(c *fiber.Ctx) error {
 		return controllers.GetCustomerFiles(c, db)
 	})
-	customer.Get("/files/:file_id", func(c *fiber.Ctx) error {
+	customer.Get("/files/:file_id", middleware.Protected(), func(c *fiber.Ctx) error {
 		return controllers.GetFile(c, db)
 	})
 	// Customer contact
-	api.Get("/:companyId/contacts", customerController.GetCustomerContactsByCompanyId)
-	customer.Get("/contacts/:customerId", customerController.GetCustomerContactsByCustomerId)
-	customer.Get("/:customerId/contact/:id", customerController.GetCustomerContactById)
-	customer.Post("/contact", customerController.CreateCustomerContact)
-	customer.Put("/contact/:id", customerController.UpdateCustomerContact)
-	customer.Delete("/:customerId/contact/:id", customerController.DeleteCustomerContactById)
+	api.Get("/:companyId/contacts", middleware.Protected(), customerController.GetCustomerContactsByCompanyId)
+	customer.Get("/contacts/:customerId", middleware.Protected(), customerController.GetCustomerContactsByCustomerId)
+	customer.Get("/:customerId/contact/:id", middleware.Protected(), customerController.GetCustomerContactById)
+	customer.Post("/contact", middleware.Protected(), customerController.CreateCustomerContact)
+	customer.Put("/contact/:id", middleware.Protected(), customerController.UpdateCustomerContact)
+	customer.Delete("/:customerId/contact/:id", middleware.Protected(), customerController.DeleteCustomerContactById)
 	// Customer address
-	api.Get("/:companyId/addresses", customerController.GetCustomerAddressesByCompanyId)
-	customer.Get("/addresses/:customerId", customerController.GetCustomerAddressesByCustomerId)
-	customer.Get("/:customerId/address/:id", customerController.GetCustomerAddressById)
-	customer.Post("/address", customerController.CreateCustomerAddress)
-	customer.Put("/address/:id", customerController.UpdateCustomerAddress)
-	customer.Delete("/:customerId/address/:id", customerController.DeleteCustomerAddressById)
+	api.Get("/:companyId/addresses", middleware.Protected(), customerController.GetCustomerAddressesByCompanyId)
+	customer.Get("/addresses/:customerId", middleware.Protected(), customerController.GetCustomerAddressesByCustomerId)
+	customer.Get("/:customerId/address/:id", middleware.Protected(), customerController.GetCustomerAddressById)
+	customer.Post("/address", middleware.Protected(), customerController.CreateCustomerAddress)
+	customer.Put("/address/:id", middleware.Protected(), customerController.UpdateCustomerAddress)
+	customer.Delete("/:customerId/address/:id", middleware.Protected(), customerController.DeleteCustomerAddressById)
 
 	userDbService := controllers.NewUserRepository(db)
 	userController := controllers.NewUserController(userDbService)
 
 	// User
 	// , middleware.CheckPermissionsMiddleware("resource.*", []string{"R", "W"})
-	api.Get("/users", userController.GetAllUsers)
+	api.Get("/users", middleware.Protected(), userController.GetAllUsers)
 	user := api.Group("/user")
-	user.Get("/:id", userController.GetUserByID)
-	user.Post("/", userController.CreateUser)
-	user.Patch("/:id", userController.UpdateUser)
-	user.Delete("/:id", userController.DeleteUserByID)
+	user.Get("/:id", middleware.Protected(), userController.GetUserByID)
+	user.Post("/", middleware.Protected(), userController.CreateUser)
+	user.Patch("/:id", middleware.Protected(), userController.UpdateUser)
+	user.Delete("/:id", middleware.Protected(), userController.DeleteUserByID)
 
 	saleDbService := controllers.NewSaleRepository(db)
 	saleController := controllers.NewSaleController(saleDbService)
 
 	// Sale
-	api.Get("/sales", saleController.GetAllCarSales)
+	api.Get("/sales", middleware.Protected(), saleController.GetAllCarSales)
 	sale := api.Group("/sale")
-	sale.Get("/:id", saleController.GetCarSale)
-	sale.Post("/", saleController.CreateCarSale)
-	sale.Put("/:id", saleController.UpdateSale)
-	sale.Delete("/:id", saleController.DeleteSaleByID)
+	sale.Get("/:id", middleware.Protected(), saleController.GetCarSale)
+	sale.Post("/", middleware.Protected(), saleController.CreateCarSale)
+	sale.Put("/:id", middleware.Protected(), saleController.UpdateSale)
+	sale.Delete("/:id", middleware.Protected(), saleController.DeleteSaleByID)
 
 	// // Initialize layers
 	// repo := &SaleRepositoryImpl{db: db}
 	// service := NewSaleService(repo)
 	// controller := NewSaleController(service)
-	// sale.Get("/searchSales/:criteria", saleController.SearchByCriteria)
+	// sale.Get("/searchSales/:criteria", middleware.Protected(), saleController.SearchByCriteria)
 
 	// Invoice
-	api.Get("/invoices", saleController.GetSalePayments)
+	api.Get("/invoices", middleware.Protected(), saleController.GetSalePayments)
 	invoice := api.Group("/invoice")
-	invoice.Get("/:saleId/:id", saleController.FindSalePaymentByIdAndSaleId)
-	invoice.Post("/", saleController.CreateInvoice)
-	invoice.Put("/:id", saleController.UpdateSalePayment)
-	invoice.Delete("/:id", saleController.DeleteSalePaymentByID)
+	invoice.Get("/:saleId/:id", middleware.Protected(), saleController.FindSalePaymentByIdAndSaleId)
+	invoice.Post("/", middleware.Protected(), saleController.CreateInvoice)
+	invoice.Put("/:id", middleware.Protected(), saleController.UpdateSalePayment)
+	invoice.Delete("/:id", middleware.Protected(), saleController.DeleteSalePaymentByID)
 	// Payment
-	api.Get("/payments", saleController.GetSalePaymentModes)
+	api.Get("/payments", middleware.Protected(), saleController.GetSalePaymentModes)
 	payment := api.Group("/payment")
-	payment.Get("/:salePaymentId/:id", saleController.FindSalePaymentModeByIdAndSalePaymentId)
-	payment.Post("/", saleController.CreatePaymentMode)
-	payment.Get("/:mode", saleController.GetPaymentModesByMode)
-	payment.Delete("/:id", saleController.DeleteSalePaymentModeByID)
-	payment.Put("/:id", saleController.UpdateSalePaymentMode)
+	payment.Get("/:salePaymentId/:id", middleware.Protected(), saleController.FindSalePaymentModeByIdAndSalePaymentId)
+	payment.Post("/", middleware.Protected(), saleController.CreatePaymentMode)
+	payment.Get("/:mode", middleware.Protected(), saleController.GetPaymentModesByMode)
+	payment.Delete("/:id", middleware.Protected(), saleController.DeleteSalePaymentModeByID)
+	payment.Put("/:id", middleware.Protected(), saleController.UpdateSalePaymentMode)
 
 	metaDbService := controllers.NewExcecute(db)
 	metaController := controllers.NewMetaController(metaDbService)
 
 	// Meta data
 	meta := api.Group("/meta")
-	meta.Post("/vehicle-evaluation", metaController.ProcessExcelAndUploadHandler)
+	meta.Post("/vehicle-evaluation", middleware.Protected(), metaController.ProcessExcelAndUploadHandler)
 	metaGDbService := controllers.NewMetaGetRepository(db)
 	metaGController := controllers.NewMetaGetController(metaGDbService)
-	meta.Get("/vehicle-evaluation", metaGController.FetchVehicleEvaluationsByDescription)
-	meta.Get("/weights", metaGController.GetAllWeightUnits)
-	meta.Get("/lengths", metaGController.GetAllLeightUnits)
-	meta.Get("/currency", metaGController.GetAllCurrencies)
-	meta.Get("/expenses", metaGController.GetAllExpenseCategories)
-	meta.Get("/ports", metaGController.FindPortsByName)
+	meta.Get("/vehicle-evaluation", middleware.Protected(), metaGController.FetchVehicleEvaluationsByDescription)
+	meta.Get("/weights", middleware.Protected(), metaGController.GetAllWeightUnits)
+	meta.Get("/lengths", middleware.Protected(), metaGController.GetAllLeightUnits)
+	meta.Get("/currency", middleware.Protected(), metaGController.GetAllCurrencies)
+	meta.Get("/expenses", middleware.Protected(), metaGController.GetAllExpenseCategories)
+	meta.Get("/ports", middleware.Protected(), metaGController.FindPortsByName)
 	NotFoundRoute(app)
 }

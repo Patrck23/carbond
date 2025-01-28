@@ -482,7 +482,7 @@ func (h *SaleController) CreateInvoice(c *fiber.Ctx) error {
 	if err := h.repo.CreateInvoice(salePayment); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to create customer contact",
+			"message": "Failed to create payment",
 			"data":    err.Error(),
 		})
 	}
@@ -490,7 +490,7 @@ func (h *SaleController) CreateInvoice(c *fiber.Ctx) error {
 	// Return success response
 	return c.Status(201).JSON(fiber.Map{
 		"status":  "success",
-		"message": "customer address created successfully",
+		"message": "Payment created successfully",
 		"data":    salePayment,
 	})
 }

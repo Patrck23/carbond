@@ -1,0 +1,77 @@
+# User Login
+# @name tokenAPI
+POST http://127.0.0.1:8080/api/auth/login
+content-type: application/json
+
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
+
+###
+# Sale Registration
+@hostname = http://127.0.0.1:8080/api
+@bearer = {{tokenAPI.response.body.token}}
+
+POST {{hostname}}/sale
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "total_price": 10525000.00,
+    "sale_date": "2025-01-28",
+    "car_id": 1,
+    "company_id": 1,
+    "is_full_payment": false,
+    "payment_period": 12,
+    "created_by": "admin",
+    "updated_by": "admin"
+}
+
+###
+# Fetch sales
+GET {{hostname}}/sales
+authorization: bearer {{bearer}}
+
+###
+# Fetch sale by ID
+GET {{hostname}}/sale/1
+authorization: bearer {{bearer}}
+
+###
+# Update sale by ID
+PUT {{hostname}}/sale/1
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "total_price": 225000.00,
+    "sale_date": "2025-02-28",
+    "car_id": 1,
+    "company_id": 1,
+    "is_full_payment": true,
+    "payment_period": 0,
+    "created_by": "admin",
+    "updated_by": "admin"
+}
+
+###
+# Delete sale by ID
+DELETE  {{hostname}}/sale/1
+authorization: bearer {{bearer}}
+
+# ====================
+
+###
+# INVOICE
+POST {{hostname}}/invoice
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "amount_payed": 1500000.00,
+    "payment_date": "2025-01-28",
+    "sale_id": 2,
+    "created_by": "admin",
+    "updated_by": "admin"
+}

@@ -11,8 +11,8 @@ import (
 type Car struct {
 	gorm.Model
 	CarUUID               uuid.UUID                    `json:"car_uuid"`
-	VinNumber             string                       `gorm:"size:100;not null" json:"vin_number"`
-	EngineNumber          string                       `gorm:"size:100;not null" json:"engine_number"`
+	VinNumber             string                       `gorm:"size:100;not null;unique" json:"vin_number"`
+	EngineNumber          string                       `gorm:"size:100;not null;unique" json:"engine_number"`
 	EngineCapacity        string                       `gorm:"size:100;not null" json:"engine_capacity"`
 	Make                  string                       `gorm:"size:100;not null" json:"make"`
 	CarModel              string                       `gorm:"size:100;not null" json:"model"`
