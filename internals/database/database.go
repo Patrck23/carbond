@@ -87,6 +87,7 @@ func (d *DBInstance) Migrate() {
 		&saleRegistration.Sale{},
 		&saleRegistration.SalePayment{},
 		&saleRegistration.SalePaymentMode{},
+		&saleRegistration.SalePaymentDeposit{},
 		// --- User --- //
 		&userRegistration.User{},
 		&userRegistration.Role{},

@@ -27,7 +27,6 @@ authorization: bearer {{bearer}}
 GET {{hostname}}/expenses
 authorization: bearer {{bearer}}
 
-
 ###
 GET {{hostname}}/ports?name=Port of Yo
 authorization: bearer {{bearer}}

@@ -276,15 +276,11 @@ type UpdateCarPayload struct {
 	MaximCarry            int     `json:"maxim_carry"`
 	Weight                int     `json:"weight"`
 	GrossWeight           int     `json:"gross_weight"`
-	FFWeight              int     `json:"ff_weight"`
-	RRWeight              int     `json:"rr_weight"`
-	FRWeight              int     `json:"fr_weight"`
-	RFWeight              int     `json:"rf_weight"`
-	WeightUnits           string  `json:"weight_units"`
 	Length                int     `json:"length"`
 	Width                 int     `json:"width"`
 	Height                int     `json:"height"`
-	LengthUnits           string  `json:"length_units"`
+	CarMillage            int     `json:"millage"`
+	FuelConsumption       string  `json:"fuel_consumtion"`
 	ManufactureYear       int     `json:"maunufacture_year"`
 	FirstRegistrationYear int     `json:"first_registration_year"`
 	Transmission          string  `json:"transmission"`
@@ -306,6 +302,7 @@ type UpdateCarPayload2 struct {
 	BrokerNumber string  `json:"broker_number"`
 	VATTax       float64 `json:"vat_tax"`
 	NumberPlate  string  `json:"number_plate"`
+	CarTracker   bool    `json:"car_tracker"`
 	CustomerID   int     `json:"customer_id"`
 	UpdatedBy    string  `json:"updated_by"`
 }
@@ -371,15 +368,9 @@ func updateCarFields(car *carRegistration.Car, updateCarData UpdateCarPayload) {
 	car.MaximCarry = updateCarData.MaximCarry
 	car.Weight = updateCarData.Weight
 	car.GrossWeight = updateCarData.GrossWeight
-	car.FFWeight = updateCarData.FFWeight
-	car.RRWeight = updateCarData.RRWeight
-	car.FRWeight = updateCarData.FRWeight
-	car.RFWeight = updateCarData.RFWeight
-	car.WeightUnits = updateCarData.WeightUnits
 	car.Length = updateCarData.Length
 	car.Width = updateCarData.Width
 	car.Height = updateCarData.Height
-	car.LengthUnits = updateCarData.LengthUnits
 	car.ManufactureYear = updateCarData.ManufactureYear
 	car.FirstRegistrationYear = updateCarData.FirstRegistrationYear
 	car.Transmission = updateCarData.Transmission
