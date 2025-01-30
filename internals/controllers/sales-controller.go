@@ -36,6 +36,15 @@ type SaleRepository interface {
 	UpdateSalePaymentMode(payment *saleRegistration.SalePaymentMode) error
 	DeleteSalePaymentModeByID(id string) error
 	GetPaginatedModes(c *fiber.Ctx, mode string) (*utils.Pagination, []saleRegistration.SalePaymentMode, error)
+
+	// Payment Deposit
+	CreatePaymentDeposit(payment *saleRegistration.SalePaymentDeposit) error
+	GetPaginatedPaymentDeposits(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SalePaymentDeposit, error)
+	FindSalePaymentDepositByIdAndSalePaymentId(id, salePaymentId string) (*saleRegistration.SalePaymentDeposit, error)
+	FindSalePaymentDepositById(id string) (*saleRegistration.SalePaymentDeposit, error)
+	UpdateSalePaymentDeposit(payment *saleRegistration.SalePaymentDeposit) error
+	DeleteSalePaymentDepositByID(id string) error
+	GetPaymentDeposits(c *fiber.Ctx, name string) (*utils.Pagination, []saleRegistration.SalePaymentDeposit, error)
 }
 
 type SaleRepositoryImpl struct {
@@ -259,10 +268,12 @@ func (r *SaleRepositoryImpl) UpdateSale(sale *saleRegistration.Sale) error {
 // Define the UpdateSale struct
 type UpdateSalePayload struct {
 	TotalPrice    float64 `json:"total_price"`
+	DollarRate    float64 `json:"dollar_rate"`
 	SaleDate      string  `json:"sale_date"`
 	CarID         int     `json:"car_id"`
 	CompanyID     int     `json:"company_id"`
 	IsFullPayment bool    `json:"is_full_payment"`
+	InitalPayment float64 `json:"initial_payment"`
 	PaymentPeriod int     `json:"payment_period"`
 	UpdatedBy     string  `json:"updated_by"`
 }
@@ -321,10 +332,12 @@ func (h *SaleController) UpdateSale(c *fiber.Ctx) error {
 // UpdateSaleFields updates the fields of a Sale using the UpdateSale struct
 func updateSaleFields(sale *saleRegistration.Sale, updateSaleData UpdateSalePayload) {
 	sale.TotalPrice = updateSaleData.TotalPrice
+	sale.DollarRate = updateSaleData.DollarRate
 	sale.SaleDate = updateSaleData.SaleDate
 	sale.CarID = updateSaleData.CarID
 	sale.CompanyID = updateSaleData.CompanyID
 	sale.IsFullPayment = updateSaleData.IsFullPayment
+	sale.InitalPayment = updateSaleData.InitalPayment
 	sale.PaymentPeriod = updateSaleData.PaymentPeriod
 	sale.UpdatedBy = updateSaleData.UpdatedBy
 }
@@ -461,12 +474,12 @@ func (h *SaleServController) SearchByCriteria(c *fiber.Ctx) error {
 
 //Create an invoice for a customer
 
-// CreateCustomerContact creates a new customer contact in the database
+// CreateCustomerContact creates a new payment deposit in the database
 func (r *SaleRepositoryImpl) CreateInvoice(payment *saleRegistration.SalePayment) error {
 	return r.db.Create(payment).Error
 }
 
-// CreateSalePayment handles the creation of a customer contact
+// CreateSalePayment handles the creation of a payment deposit
 func (h *SaleController) CreateInvoice(c *fiber.Ctx) error {
 	// Parse the request body into a salePayment struct
 	salePayment := new(saleRegistration.SalePayment)
@@ -711,12 +724,12 @@ func (h *SaleController) DeleteSalePaymentByID(c *fiber.Ctx) error {
 
 // Get payment by ModeOfPayment
 
-// CreateCustomerContact creates a new customer contact in the database
+// CreateCustomerContact creates a new payment mode in the database
 func (r *SaleRepositoryImpl) CreatePaymentMode(payment *saleRegistration.SalePaymentMode) error {
 	return r.db.Create(payment).Error
 }
 
-// CreateSalePayment handles the creation of a customer contact
+// CreateSalePayment handles the creation of a payment mode
 func (h *SaleController) CreatePaymentMode(c *fiber.Ctx) error {
 	// Parse the request body into a salePayment struct
 	salePayment := new(saleRegistration.SalePaymentMode)
@@ -987,5 +1000,296 @@ func (h *SaleController) DeleteSalePaymentModeByID(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "salePayment mode deleted successfully",
 		"data":    salePayment,
+	})
+}
+
+// =========================================================================================================
+
+// Get deposit by SalePaymentDeposit
+
+// CreateCustomerContact creates a new payment deposit in the database
+func (r *SaleRepositoryImpl) CreatePaymentDeposit(deposit *saleRegistration.SalePaymentDeposit) error {
+	return r.db.Create(deposit).Error
+}
+
+// CreateSalePayment handles the creation of a payment deposit
+func (h *SaleController) CreatePaymentDeposit(c *fiber.Ctx) error {
+	// Parse the request body into a salePayment struct
+	saleDeposit := new(saleRegistration.SalePaymentDeposit)
+	if err := c.BodyParser(saleDeposit); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
+	}
+
+	// Create the customer address in the database
+	if err := h.repo.CreatePaymentDeposit(saleDeposit); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create Payment mode",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Payment mode address created successfully",
+		"data":    saleDeposit,
+	})
+}
+
+// ==============================
+
+func (r *SaleRepositoryImpl) GetPaginatedPaymentDeposits(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SalePaymentDeposit, error) {
+	pagination, deposits, err := utils.Paginate(c, r.db, saleRegistration.SalePaymentDeposit{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, deposits, nil
+}
+
+func (h *SaleController) GetSalePaymentDeposits(c *fiber.Ctx) error {
+
+	// Fetch paginated payments using the repository
+	pagination, paymentDeposits, err := h.repo.GetPaginatedPaymentDeposits(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve payments modes",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Payment modes and associated data retrieved successfully",
+		"data":    paymentDeposits,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
+}
+
+// =====================
+
+func (r *SaleRepositoryImpl) FindSalePaymentDepositByIdAndSalePaymentId(id, salePaymentId string) (*saleRegistration.SalePaymentDeposit, error) {
+	var paymentDeposit saleRegistration.SalePaymentDeposit
+	result := r.db.Preload("SalePayment").Where("id = ? AND sale_payment_id = ?", id, salePaymentId).First(&paymentDeposit)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	return &paymentDeposit, nil
+}
+
+func (h *SaleController) FindSalePaymentDepositByIdAndSalePaymentId(c *fiber.Ctx) error {
+	// Retrieve the payment ID and Company ID from the request parameters
+	id := c.Params("id")
+	salePaymentId := c.Params("salePaymentId")
+
+	// Fetch the company deposit from the repository
+	deposit, err := h.repo.FindSalePaymentDepositByIdAndSalePaymentId(id, salePaymentId)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Deposit not found for the specified payment",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch the mode",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched payment
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "deposit fetched successfully",
+		"data":    deposit,
+	})
+}
+
+// =============
+
+func (r *SaleRepositoryImpl) GetPaymentDeposits(c *fiber.Ctx, name string) (*utils.Pagination, []saleRegistration.SalePaymentDeposit, error) {
+	pagination, deposits, err := utils.Paginate(c, r.db.Preload("SalePayment").Where("bank_name = ?", name), saleRegistration.SalePaymentDeposit{})
+	if err != nil {
+		return nil, nil, err
+	}
+	return &pagination, deposits, nil
+}
+
+func (h *SaleController) GetPaymentDepositsByName(c *fiber.Ctx) error {
+	name := c.Params("name")
+
+	// Fetch paginated contacts using the repository
+	pagination, deposits, err := h.repo.GetPaymentDeposits(c, name)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve payment modes",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Payment deposits and associated data retrieved successfully",
+		"data":    deposits,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
+	})
+}
+
+// =====================
+
+func (r *SaleRepositoryImpl) FindSalePaymentDepositById(id string) (*saleRegistration.SalePaymentDeposit, error) {
+	var deposit saleRegistration.SalePaymentDeposit
+	if err := r.db.First(&deposit, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &deposit, nil
+}
+
+func (r *SaleRepositoryImpl) UpdateSalePaymentDeposit(deposit *saleRegistration.SalePaymentDeposit) error {
+	return r.db.Save(deposit).Error
+}
+
+func (h *SaleController) UpdateSalePaymentDeposit(c *fiber.Ctx) error {
+	// Define a struct for input validation
+	type UpdateSalePaymentDepositInput struct {
+		BankName        string  `json:"bank_name" validate:"required"`
+		BankAccount     string  `json:"bank_account" validate:"required"`
+		BankBranch      string  `json:"bank_branch" validate:"required"`
+		AmountDeposited float64 `json:"amount_deposited" validate:"required"`
+		DateDeposited   string  `json:"date_deposited" validate:"required"`
+		DepositScan     string  `json:"deposit_scan" validate:"required"`
+		SalePaymentID   uint    `json:"sale_payment_id" validate:"required"`
+		UpdatedBy       string  `json:"updated_by" validate:"required"`
+	}
+
+	// Parse the payment ID from the request parameters
+	paymentID := c.Params("id")
+
+	// Parse and validate the request body
+	var input UpdateSalePaymentDepositInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"error":   err.Error(),
+		})
+	}
+
+	// Use a validation library to validate the input
+	if validationErr := utils.ValidateStruct(input); validationErr != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Validation failed",
+			"errors":  validationErr,
+		})
+	}
+
+	// Fetch the payment record using the repository
+	deposit, err := h.repo.FindSalePaymentDepositById(paymentID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "payment not found",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch payment",
+			"error":   err.Error(),
+		})
+	}
+
+	// Update the deposit fields
+	deposit.BankName = input.BankName
+	deposit.BankAccount = input.BankAccount
+	deposit.BankBranch = input.BankBranch
+	deposit.AmountDeposited = input.AmountDeposited
+	deposit.DateDeposited = input.DateDeposited
+	deposit.DepositScan = input.DepositScan
+	deposit.SalePaymentID = input.SalePaymentID
+	deposit.UpdatedBy = input.UpdatedBy
+
+	// Save the updated payment using the repository
+	if err := h.repo.UpdateSalePaymentDeposit(deposit); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update deposit",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the updated payment
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Deposit updated successfully",
+		"data":    deposit,
+	})
+}
+
+// =============================
+
+// Delete salePayment by ID
+func (r *SaleRepositoryImpl) DeleteSalePaymentDepositByID(id string) error {
+	if err := r.db.Delete(&saleRegistration.SalePaymentDeposit{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteCompanyByID deletes a company by its ID
+func (h *SaleController) DeleteSalePaymentDepositByID(c *fiber.Ctx) error {
+	// Get the company ID from the route parameters
+	id := c.Params("id")
+
+	// Find the SalePaymentDeposit in the database
+	deposit, err := h.repo.FindSalePaymentDepositById(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "salePayment deposit not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to find salePayment deposit",
+			"data":    err.Error(),
+		})
+	}
+
+	// Delete the salePayment deposit
+	if err := h.repo.DeleteSalePaymentDepositByID(id); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to delete payment mode",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "payment deposit deleted successfully",
+		"data":    deposit,
 	})
 }

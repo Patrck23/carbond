@@ -178,6 +178,14 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	payment.Get("/:mode", middleware.Protected(), saleController.GetPaymentModesByMode)
 	payment.Delete("/:id", middleware.Protected(), saleController.DeleteSalePaymentModeByID)
 	payment.Put("/:id", middleware.Protected(), saleController.UpdateSalePaymentMode)
+	// Deposits
+	api.Get("/deposits", middleware.Protected(), saleController.GetSalePaymentDeposits)
+	deposit := api.Group("/deposit")
+	deposit.Get("/:salePaymentId/:id", middleware.Protected(), saleController.FindSalePaymentDepositByIdAndSalePaymentId)
+	deposit.Post("/", middleware.Protected(), saleController.CreatePaymentDeposit)
+	deposit.Get("/:name", middleware.Protected(), saleController.GetPaymentDepositsByName)
+	deposit.Delete("/:id", middleware.Protected(), saleController.DeleteSalePaymentDepositByID)
+	deposit.Put("/:id", middleware.Protected(), saleController.UpdateSalePaymentDeposit)
 
 	metaDbService := controllers.NewExcecute(db)
 	metaController := controllers.NewMetaController(metaDbService)
@@ -194,6 +202,5 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	meta.Get("/expenses", middleware.Protected(), metaGController.GetAllExpenseCategories)
 	meta.Get("/ports", middleware.Protected(), metaGController.FindPortsByName)
 	meta.Get("/payment-modes", middleware.Protected(), metaGController.FindPaymentModeBymode)
-
 	NotFoundRoute(app)
 }
