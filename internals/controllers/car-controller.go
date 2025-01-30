@@ -288,6 +288,14 @@ type UpdateCarPayload struct {
 	Colour                string  `json:"colour"`
 	Auction               string  `json:"auction"`
 	Currency              string  `json:"currency"`
+	PowerSteering         bool    `json:"ps"`
+	PowerWindow           bool    `json:"pw"`
+	ABS                   bool    `json:"abs"`
+	ADS                   bool    `json:"ads"`
+	AlloyWheel            bool    `json:"aw"`
+	SimpleWheel           bool    `json:"sw"`
+	Navigation            bool    `json:"navigation"`
+	AC                    bool    `json:"ac"`
 	BidPrice              float64 `json:"bid_price"`
 	PurchaseDate          string  `json:"purchase_date"`
 	FromCompanyID         uint    `json:"from_company_id"`
@@ -298,13 +306,15 @@ type UpdateCarPayload struct {
 }
 
 type UpdateCarPayload2 struct {
-	BrokerName   string  `json:"broker_name"`
-	BrokerNumber string  `json:"broker_number"`
-	VATTax       float64 `json:"vat_tax"`
-	NumberPlate  string  `json:"number_plate"`
-	CarTracker   bool    `json:"car_tracker"`
-	CustomerID   int     `json:"customer_id"`
-	UpdatedBy    string  `json:"updated_by"`
+	BrokerName       string  `json:"broker_name"`
+	BrokerNumber     string  `json:"broker_number"`
+	VATTax           float64 `json:"vat_tax"`
+	NumberPlate      string  `json:"number_plate"`
+	CarTracker       bool    `json:"car_tracker"`
+	CarStatus        string  `json:"car_status"`
+	CarPaymentStatus string  `json:"car_payment_status"`
+	CustomerID       int     `json:"customer_id"`
+	UpdatedBy        string  `json:"updated_by"`
 }
 
 // UpdateCar handler function
@@ -377,6 +387,14 @@ func updateCarFields(car *carRegistration.Car, updateCarData UpdateCarPayload) {
 	car.BodyType = updateCarData.BodyType
 	car.Colour = updateCarData.Colour
 	car.Auction = updateCarData.Auction
+	car.PowerSteering = updateCarData.PowerSteering
+	car.PowerWindow = updateCarData.PowerWindow
+	car.ABS = updateCarData.ABS
+	car.ADS = updateCarData.ADS
+	car.AlloyWheel = updateCarData.AlloyWheel
+	car.SimpleWheel = updateCarData.SimpleWheel
+	car.Navigation = updateCarData.Navigation
+	car.AC = updateCarData.AC
 	car.Currency = updateCarData.Currency
 	car.BidPrice = updateCarData.BidPrice
 	car.PurchaseDate = updateCarData.PurchaseDate
@@ -455,6 +473,9 @@ func updateCar2Fields(car *carRegistration.Car, updateCarData UpdateCarPayload2)
 	car.BrokerNumber = updateCarData.BrokerNumber
 	car.NumberPlate = updateCarData.NumberPlate
 	car.VATTax = updateCarData.VATTax
+	car.CarTracker = updateCarData.CarTracker
+	car.CarStatus = updateCarData.CarStatus
+	car.CarPaymentStatus = updateCarData.CarPaymentStatus
 	// Assign foreign keys if provided
 	if updateCarData.CustomerID != 0 {
 		car.CustomerID = &updateCarData.CustomerID
