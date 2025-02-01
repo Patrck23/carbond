@@ -36,6 +36,16 @@ Content-Type: application/json
   "colour": "Blue",
   "auction": "Tokyo Auto Auctions",
   "currency": "USD",
+  "millage":40000,
+	"fuel_consumption":"",
+	"ps": false,
+  "pw": false,
+  "abs": false,
+  "ads": false,
+  "aw": false,
+  "sw": false,
+  "navigation": false,
+	"ac": false,  
   "bid_price": 15000.00,
   "purchase_date": "2024-01-01",
   "from_company_id": 2,
@@ -47,6 +57,8 @@ Content-Type: application/json
   "vat_tax": null,
   "number_plate": "",
   "customer_id": null,
+  "car_status": "",
+  "car_payment_status": "",
   "created_by": "admin",
   "updated_by": "admin"
 }
@@ -93,6 +105,16 @@ Content-Type: application/json
   "colour": "Blue",
   "auction": "Tokyo Auto Auctions",
   "currency": "USD",
+  "millage":40000,
+	"fuel_consumption":"",
+	"ps": false,
+  "pw": false,
+  "abs": false,
+  "ads": false,
+  "aw": false,
+  "sw": false,
+  "navigation": false,
+	"ac": false,  
   "bid_price": 15000.00,
   "purchase_date": "2024-01-01",
   "from_company_id": 2,
@@ -114,6 +136,8 @@ Content-Type: application/json
   "vat_tax": 18.00,
   "number_plate": "UBH 123A",
   "customer_id": 1,
+  "car_status": "In stock",
+  "car_payment_status": "Booked",
   "updated_by": "admin"
 }
 
@@ -124,6 +148,7 @@ authorization: bearer {{bearer}}
 
 # =================================================
 # Car Expenses
+
 ###
 # Get Car Expenses
 GET {{hostname}}/carExpenses

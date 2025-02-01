@@ -280,7 +280,7 @@ type UpdateCarPayload struct {
 	Width                 int     `json:"width"`
 	Height                int     `json:"height"`
 	CarMillage            int     `json:"millage"`
-	FuelConsumption       string  `json:"fuel_consumtion"`
+	FuelConsumption       string  `json:"fuel_consumption"`
 	ManufactureYear       int     `json:"maunufacture_year"`
 	FirstRegistrationYear int     `json:"first_registration_year"`
 	Transmission          string  `json:"transmission"`

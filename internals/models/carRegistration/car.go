@@ -30,7 +30,7 @@ type Car struct {
 	Auction               string                       `json:"auction"`
 	Currency              string                       `json:"currency"`
 	CarMillage            int                          `json:"millage"`
-	FuelConsumption       string                       `json:"fuel_consumtion"`
+	FuelConsumption       string                       `json:"fuel_consumption"`
 	PowerSteering         bool                         `json:"ps"`
 	PowerWindow           bool                         `json:"pw"`
 	ABS                   bool                         `json:"abs"`
