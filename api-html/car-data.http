@@ -37,7 +37,7 @@ Content-Type: application/json
   "auction": "Tokyo Auto Auctions",
   "currency": "USD",
   "millage":40000,
-	"fuel_consumption":"",
+	"fuel_consumption":"Disel",
 	"ps": false,
   "pw": false,
   "abs": false,

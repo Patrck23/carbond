@@ -1,3 +1,4 @@
+# @name tokenAPI
 POST https://clims.health.go.ug/api/auth/login
 content-type: application/json
 
@@ -7,12 +8,13 @@ content-type: application/json
 }
 
 ###
-
+@bearer = {{tokenAPI.response.body.token}}
 GET https://clims.health.go.ug/api/users
+authorization: bearer {{bearer}}
 
 ###
-
 PATCH https://clims.health.go.ug/api/user/5
+authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
