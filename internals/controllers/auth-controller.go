@@ -57,11 +57,12 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 	}
 
 	type UserData struct {
-		ID       uint   `json:"id"`
-		Username string `json:"username"`
-		Email    string `json:"email"`
-		Group    string `json:"group"`
-		Location string `json:"location"`
+		ID        uint   `json:"id"`
+		Username  string `json:"username"`
+		Email     string `json:"email"`
+		Group     string `json:"group"`
+		Location  string `json:"location"`
+		CompanyID uint   `json:"company_id"`
 	}
 
 	// Parse the request body
@@ -251,11 +252,12 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 
 	// Populate UserData
 	userData := UserData{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-		Group:    group_code,
-		Location: country,
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		Group:     group_code,
+		Location:  country,
+		CompanyID: user.CompanyID,
 	}
 
 	// Return the token and user data

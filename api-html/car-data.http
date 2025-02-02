@@ -208,3 +208,13 @@ DELETE {{hostname}}/car/1/expense/2
 authorization: bearer {{bearer}}
 
 # =================================================
+
+###
+# Get total carexpense by ID
+GET {{hostname}}/total-car-expense/1
+authorization: bearer {{bearer}}
+
+###
+# Get total carexpense by ID
+GET {{hostname}}/all-cars-expenses
+authorization: bearer {{bearer}}

@@ -34,6 +34,7 @@ type CarRepository interface {
 	FindCarExpensesByCarIdAndCurrency(carId, currency string) ([]carRegistration.CarExpense, error)
 	FindCarExpensesByThree(carId, expenseDate, currency string) ([]carRegistration.CarExpense, error)
 	GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency string) ([]carRegistration.CarExpense, error)
+	GetTotalCarExpenses(carID uint) ([]TotalCarExpense, error)
 }
 
 type CarRepositoryImpl struct {
@@ -1037,3 +1038,59 @@ func (h *CarController) GetCarExpensesFilters(c *fiber.Ctx) error {
 
 // Car Port
 // ===================================================================================================
+
+// TotalCarExpense represents the total expenses for a car grouped by currency
+type TotalCarExpense struct {
+	Currency string  `json:"currency"`
+	Total    float64 `json:"total"`
+}
+
+// GetTotalCarExpenses calculates the total expenses for a given car by its ID, grouped by currency
+func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) ([]TotalCarExpense, error) {
+	var expenses []TotalCarExpense
+
+	// Sum up all expenses for the given car ID, grouped by currency
+	err := r.db.Model(&carRegistration.CarExpense{}).
+		Where("car_id = ?", carID).
+		Select("currency, COALESCE(SUM(amount), 0) AS total").
+		Group("currency").
+		Scan(&expenses).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return expenses, nil
+}
+
+// GetTotalCarExpenses handles the request to get car expenses
+func (h *CarController) GetTotalCarExpenses(c *fiber.Ctx) error {
+	// Convert carId to uint
+	carIDStr := c.Params("id")
+	carID, err := strconv.ParseUint(carIDStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid car ID",
+		})
+	}
+
+	// Fetch total car expenses using the repository
+	totalExpenses, err := h.repo.GetTotalCarExpenses(uint(carID))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch total car expenses",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the total car expenses
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses fetched successfully",
+		"data":    totalExpenses,
+	})
+}
+
+// ==============

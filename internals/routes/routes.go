@@ -74,6 +74,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	car.Post("/expense", middleware.Protected(), carController.CreateCarExpense)
 	car.Put("/expense/:id", middleware.Protected(), carController.UpdateCarExpense)
 	car.Delete("/:carId/expense/:id", middleware.Protected(), carController.DeleteCarExpenseById)
+	api.Get("/total-car-expense/:id", middleware.Protected(), carController.GetTotalCarExpenses)
 
 	companyDbService := controllers.NewCompanyRepository(db)
 	companyController := controllers.NewCompanyController(companyDbService)
