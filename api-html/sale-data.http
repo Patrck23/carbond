@@ -70,8 +70,8 @@ Content-Type: application/json
 
 {
     "amount_payed": 1500000.00,
-    "payment_date": "2025-01-28",
-    "sale_id": 2,
+    "payment_date": "2025-02-28",
+    "sale_id": 1,
     "created_by": "admin",
     "updated_by": "admin"
 }
@@ -81,7 +81,13 @@ GET {{hostname}}/invoices
 authorization: bearer {{bearer}}
 
 ###
-# Paymrnt mode
+GET {{hostname}}/invoice/1/1
+authorization: bearer {{bearer}}
+
+# ====================
+
+###
+# Payment mode
 POST {{hostname}}/payment
 authorization: bearer {{bearer}}
 Content-Type: application/json
@@ -89,7 +95,51 @@ Content-Type: application/json
 {
     "mode_of_payment": "Mobile money",
     "transaction_id": "HDHDU363773LKS",
-    "sale_payment_id": 5,
+    "sale_payment_id": 1,
     "created_by": "admin",
     "updated_by": "admin"
 }
+
+###
+GET {{hostname}}/payments
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/payment/1/1
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/payment/Mobile money
+authorization: bearer {{bearer}}
+
+# ====================
+
+###
+# Payment Deposit
+POST {{hostname}}/deposit
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "bank_name": "Absa Bank",
+    "bank_account": "123338484492",
+    "bank_branch": "Wandegeya",
+    "amount_deposited": 2000000,
+    "date_deposited": "2025-03-01",
+    "deposit_scan": "",
+    "sale_payment_id": 1,
+    "created_by": "admin",
+    "updated_by": "admin"
+}
+
+###
+GET {{hostname}}/deposits
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/deposit/1/1
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/deposit/Absa Bank
+authorization: bearer {{bearer}}

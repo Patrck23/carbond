@@ -193,7 +193,7 @@ func (h *SaleController) GetAllCarSales(c *fiber.Ctx) error {
 
 func (r *SaleRepositoryImpl) GetSaleByID(id string) (saleRegistration.Sale, error) {
 	var sale saleRegistration.Sale
-	err := r.db.First(&sale, "id = ?", id).Error
+	err := r.db.Preload("Car").First(&sale, "id = ?", id).Error
 	return sale, err
 }
 
@@ -837,7 +837,7 @@ func (h *SaleController) FindSalePaymentModeByIdAndSalePaymentId(c *fiber.Ctx) e
 // =============
 
 func (r *SaleRepositoryImpl) GetPaginatedModes(c *fiber.Ctx, mode string) (*utils.Pagination, []saleRegistration.SalePaymentMode, error) {
-	pagination, modes, err := utils.Paginate(c, r.db.Preload("SalePayment").Where("mode = ?", mode), saleRegistration.SalePaymentMode{})
+	pagination, modes, err := utils.Paginate(c, r.db.Preload("SalePayment").Where("mode_of_payment = ?", mode), saleRegistration.SalePaymentMode{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1028,7 +1028,7 @@ func (h *SaleController) CreatePaymentDeposit(c *fiber.Ctx) error {
 	if err := h.repo.CreatePaymentDeposit(saleDeposit); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to create Payment mode",
+			"message": "Failed to create Payment deposit",
 			"data":    err.Error(),
 		})
 	}
@@ -1036,7 +1036,7 @@ func (h *SaleController) CreatePaymentDeposit(c *fiber.Ctx) error {
 	// Return success response
 	return c.Status(201).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Payment mode address created successfully",
+		"message": "Payment deposit created successfully",
 		"data":    saleDeposit,
 	})
 }
@@ -1044,7 +1044,7 @@ func (h *SaleController) CreatePaymentDeposit(c *fiber.Ctx) error {
 // ==============================
 
 func (r *SaleRepositoryImpl) GetPaginatedPaymentDeposits(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SalePaymentDeposit, error) {
-	pagination, deposits, err := utils.Paginate(c, r.db, saleRegistration.SalePaymentDeposit{})
+	pagination, deposits, err := utils.Paginate(c, r.db.Preload("SalePayment"), saleRegistration.SalePaymentDeposit{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1058,7 +1058,7 @@ func (h *SaleController) GetSalePaymentDeposits(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to retrieve payments modes",
+			"message": "Failed to retrieve payments deposits",
 			"data":    err.Error(),
 		})
 	}
@@ -1066,7 +1066,7 @@ func (h *SaleController) GetSalePaymentDeposits(c *fiber.Ctx) error {
 	// Return the paginated response
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Payment modes and associated data retrieved successfully",
+		"message": "Payment deposits and associated data retrieved successfully",
 		"data":    paymentDeposits,
 		"pagination": fiber.Map{
 			"total_items":  pagination.TotalItems,
