@@ -49,7 +49,7 @@ Content-Type: application/json
 
 ###
 # Fetch customers
-GET {{hostname}}/customers
+GET {{hostname}}/customers?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###

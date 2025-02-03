@@ -66,7 +66,7 @@ Content-Type: application/json
 
 ###
 # Fetch cars
-GET {{hostname}}/cars
+GET {{hostname}}/cars?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###
@@ -151,12 +151,12 @@ authorization: bearer {{bearer}}
 
 ###
 # Get Car Expenses
-GET {{hostname}}/carExpenses
+GET {{hostname}}/carExpenses?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###
 # Get Car expenses by Car ID
-GET {{hostname}}/car/1/expenses
+GET {{hostname}}/car/1/expenses?page=1&limit=10
 
 ###
 # Get Car expenses by Car ID and expense ID

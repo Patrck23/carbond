@@ -34,7 +34,7 @@ Content-Type: application/json
 
 ###
 # Fetch users
-GET {{hostname}}/users
+GET {{hostname}}/users?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###

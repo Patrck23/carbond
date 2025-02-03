@@ -30,7 +30,7 @@ Content-Type: application/json
 
 ###
 # Fetch sales
-GET {{hostname}}/sales
+GET {{hostname}}/sales?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###
@@ -77,7 +77,7 @@ Content-Type: application/json
 }
 
 ###
-GET {{hostname}}/invoices
+GET {{hostname}}/invoices?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###
@@ -101,7 +101,7 @@ Content-Type: application/json
 }
 
 ###
-GET {{hostname}}/payments
+GET {{hostname}}/payments?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###
