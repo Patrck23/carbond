@@ -38,6 +38,11 @@ GET {{hostname}}/users
 authorization: bearer {{bearer}}
 
 ###
+# Fetch users by companyId
+GET {{hostname}}/users/1
+authorization: bearer {{bearer}}
+
+###
 # Fetch user by ID
 GET {{hostname}}/user/1
 authorization: bearer {{bearer}}

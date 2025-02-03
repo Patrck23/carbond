@@ -4,6 +4,8 @@ import (
 	"car-bond/internals/models/userRegistration"
 	"car-bond/internals/utils"
 	"errors"
+	"fmt"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/crypto/bcrypt"
@@ -16,6 +18,7 @@ type UserRepository interface {
 	GetUserByID(id string) (*userRegistration.User, error)
 	UpdateUser(user *userRegistration.User) error
 	DeleteUserByID(id string) error
+	GetPaginatedUsersByCompanyId(c *fiber.Ctx, companyId uint) (*utils.Pagination, []userRegistration.User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -304,5 +307,58 @@ func (h *UserController) DeleteUserByID(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "User deleted successfully",
 		"data":    user,
+	})
+}
+
+// =========================
+
+// GetPaginatedUsersByCompanyId retrieves paginated users by company ID
+func (r *UserRepositoryImpl) GetPaginatedUsersByCompanyId(c *fiber.Ctx, companyId uint) (*utils.Pagination, []userRegistration.User, error) {
+	// Build the query with Preload
+	query := r.db.Preload("Company").Where("company_id = ?", companyId)
+
+	// Paginate results
+	pagination, users, err := utils.Paginate(c, query, userRegistration.User{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to paginate users: %w", err)
+	}
+
+	return &pagination, users, nil
+}
+
+// GetUsersByCompany retrieves paginated users by company ID
+func (h *UserController) GetUsersByCompany(c *fiber.Ctx) error {
+	// Get companyId from URL params and convert to uint
+	companyIdStr := c.Params("companyId")
+	companyId, err := strconv.ParseUint(companyIdStr, 10, 32)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid company ID",
+			"data":    err.Error(),
+		})
+	}
+
+	// Fetch paginated users by company ID
+	pagination, users, err := h.repo.GetPaginatedUsersByCompanyId(c, uint(companyId))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve users",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Users retrieved successfully",
+		"data":    users,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
 	})
 }

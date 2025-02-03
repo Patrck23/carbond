@@ -141,6 +141,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	// User
 	// , middleware.CheckPermissionsMiddleware("resource.*", []string{"R", "W"})
 	api.Get("/users", middleware.Protected(), userController.GetAllUsers)
+	api.Get("/users/:companyId", middleware.Protected(), userController.GetUsersByCompany)
 	user := api.Group("/user")
 	user.Get("/:id", middleware.Protected(), userController.GetUserByID)
 	user.Post("/", middleware.Protected(), userController.CreateUser)
