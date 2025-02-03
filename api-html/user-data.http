@@ -44,7 +44,7 @@ authorization: bearer {{bearer}}
 
 ###
 # Fetch user by ID
-GET {{hostname}}/user/1
+GET {{hostname}}/user/1?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###
