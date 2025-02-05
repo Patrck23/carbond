@@ -39,6 +39,11 @@ type CarRepository interface {
 	FindCarExpensesByThree(carId, expenseDate, currency string) ([]carRegistration.CarExpense, error)
 	GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency string) ([]carRegistration.CarExpense, error)
 	GetTotalCarExpenses(carID uint) ([]TotalCarExpense, error)
+
+	// Photos
+	CreateCarPhoto(photo *carRegistration.CarPhoto) error
+	DeleteCarPhotoByURL(photoURL string) error
+	DeleteCarPhotoByID(photoID uint) error
 }
 
 type CarRepositoryImpl struct {
@@ -58,6 +63,18 @@ func NewCarController(repo CarRepository) *CarController {
 }
 
 // ==================
+
+func (r *CarRepositoryImpl) CreateCarPhoto(photo *carRegistration.CarPhoto) error {
+	return r.db.Create(photo).Error
+}
+
+func (r *CarRepositoryImpl) DeleteCarPhotoByURL(photoURL string) error {
+	return r.db.Where("url = ?", photoURL).Delete(&carRegistration.CarPhoto{}).Error
+}
+
+func (r *CarRepositoryImpl) DeleteCarPhotoByID(photoID uint) error {
+	return r.db.Where("id = ?", photoID).Delete(&carRegistration.CarPhoto{}).Error
+}
 
 func (r *CarRepositoryImpl) CreateCar(car *carRegistration.Car) error {
 	return r.db.Create(car).Error
@@ -548,72 +565,6 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		updates["updated_by"] = payload.UpdatedBy
 	}
 
-	// // Handle file upload
-	// form, err := c.MultipartForm()
-	// if err == nil {
-	// 	// Extract images
-	// 	files := form.File["images"]
-	// 	uploadDir := "./uploads/car_files/"
-
-	// 	// Ensure the directory exists
-	// 	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-	// 		return c.Status(500).JSON(fiber.Map{
-	// 			"status":  "error",
-	// 			"message": "Failed to create upload directory",
-	// 			"data":    err.Error(),
-	// 		})
-	// 	}
-
-	// 	// Create a map to track old photo paths
-	// 	oldPhotoMap := make(map[string]carRegistration.CarPhoto)
-	// 	for _, oldPhoto := range car.CarPhotos {
-	// 		oldPhotoMap[oldPhoto.URL] = oldPhoto
-	// 	}
-
-	// 	// List to store updated photos
-	// 	var updatedCarPhotos []carRegistration.CarPhoto
-
-	// 	for _, file := range files {
-	// 		// Generate the new file path
-	// 		filePath := fmt.Sprintf("%s/%s", uploadDir, file.Filename)
-
-	// 		// Check if this image was previously stored (exists in oldPhotoMap)
-	// 		if _, exists := oldPhotoMap[filePath]; exists {
-	// 			// Image already exists, retain it in the updated list
-	// 			updatedCarPhotos = append(updatedCarPhotos, oldPhotoMap[filePath])
-	// 			delete(oldPhotoMap, filePath) // Remove from map to track missing ones
-	// 		} else {
-	// 			// New image, save it to disk
-	// 			if err := c.SaveFile(file, filePath); err != nil {
-	// 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-	// 					"status":  "error",
-	// 					"message": "Failed to save image",
-	// 					"data":    err.Error(),
-	// 				})
-	// 			}
-
-	// 			// Add new photo entry
-	// 			updatedCarPhotos = append(updatedCarPhotos, carRegistration.CarPhoto{URL: filePath})
-	// 		}
-	// 	}
-
-	// 	// Remove old images that were not retained (those still in oldPhotoMap)
-	// 	for oldPath := range oldPhotoMap {
-	// 		// Check if file exists before attempting deletion
-	// 		if _, err := os.Stat(oldPath); err == nil {
-	// 			if err := os.Remove(oldPath); err != nil {
-	// 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-	// 					"status":  "error",
-	// 					"message": "Failed to delete old image",
-	// 					"data":    err.Error(),
-	// 				})
-	// 			}
-	// 		}
-	// 	}
-
-	// 	// Update car photos in database
-	// 	updates["car_photos"] = updatedCarPhotos
-
 	form, err := c.MultipartForm()
 	if err == nil {
 		// Extract images
@@ -631,12 +582,24 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 			})
 		}
 
-		// Create a map to track old photo paths
+		// // Create a map to track old photo paths
+		// oldPhotoMap := make(map[string]carRegistration.CarPhoto)
+		// fmt.Println("Mapping existing car photos...")
+		// for _, oldPhoto := range car.CarPhotos {
+		// 	oldPhotoMap[oldPhoto.URL] = oldPhoto
+		// 	fmt.Println("Existing photo:", oldPhoto.URL)
+		// }
+
 		oldPhotoMap := make(map[string]carRegistration.CarPhoto)
 		fmt.Println("Mapping existing car photos...")
+
 		for _, oldPhoto := range car.CarPhotos {
-			oldPhotoMap[oldPhoto.URL] = oldPhoto
-			fmt.Println("Existing photo:", oldPhoto.URL)
+			// Store the photo using its URL as the key but keeping both ID and URL
+			oldPhotoMap[oldPhoto.URL] = carRegistration.CarPhoto{
+				URL: oldPhoto.URL,
+			}
+
+			fmt.Println("Existing photo - ID:", oldPhoto.ID, "URL:", oldPhoto.URL)
 		}
 
 		// List to store updated photos
@@ -674,8 +637,7 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 
 		// Remove old images that were not retained (those still in oldPhotoMap)
 		fmt.Println("Removing old images that are no longer needed...")
-		for oldPath := range oldPhotoMap {
-			fmt.Println("Checking file existence before deleting:", oldPath)
+		for oldPath, oldPhoto := range oldPhotoMap {
 			// Check if file exists before attempting deletion
 			if _, err := os.Stat(oldPath); err == nil {
 				fmt.Println("Deleting old image:", oldPath)
@@ -687,15 +649,40 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 						"data":    err.Error(),
 					})
 				}
+
+				// Now delete the car photo from the database using the ID
+				if err := h.repo.DeleteCarPhotoByID(oldPhoto.ID); err != nil {
+					fmt.Println("Error deleting car photo record:", err)
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"status":  "error",
+						"message": fmt.Sprintf("Failed to delete car photo record with ID: %d", oldPhoto.ID),
+						"data":    err.Error(),
+					})
+				}
 			} else {
 				fmt.Println("Old image not found, skipping:", oldPath)
+			}
+		}
+
+		// Insert new car photos into the database
+		if len(updatedCarPhotos) > 0 {
+			fmt.Println("Inserting new car photos into database...")
+			for _, photo := range updatedCarPhotos {
+				if err := h.repo.CreateCarPhoto(&photo); err != nil {
+					fmt.Println("Error inserting new car photo:", photo.URL, err)
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"status":  "error",
+						"message": fmt.Sprintf("Failed to insert car photo: %s", photo.URL),
+						"data":    err.Error(),
+					})
+				}
 			}
 		}
 
 		// Update car photos in database
 		fmt.Println("Updating car photos in the database...")
 		fmt.Println(updatedCarPhotos)
-		updates["car_photos"] = updatedCarPhotos
+		// updates["car_photos"] = updatedCarPhotos
 
 		fmt.Println("Car photos successfully updated.")
 	}
