@@ -69,7 +69,7 @@ type Car struct {
 
 // CarPhoto struct
 type CarPhoto struct {
-	ID    uint   `gorm:"primaryKey" json:"id"`
+	gorm.Model
 	CarID uint   `gorm:"not null" json:"car_id"`
 	URL   string `gorm:"not null" json:"url"`
 }
