@@ -11,7 +11,7 @@ import (
 type Car struct {
 	gorm.Model
 	CarUUID               uuid.UUID                    `json:"car_uuid"`
-	VinNumber             string                       `gorm:"size:100;not null;unique" json:"vin_number"`
+	ChasisNumber          string                       `gorm:"size:100;not null;unique" json:"chasis_number"`
 	EngineNumber          string                       `gorm:"size:100;not null;unique" json:"engine_number"`
 	EngineCapacity        string                       `gorm:"size:100;not null" json:"engine_capacity"`
 	Make                  string                       `gorm:"size:100;not null" json:"make"`
@@ -31,15 +31,17 @@ type Car struct {
 	Currency              string                       `json:"currency"`
 	CarMillage            int                          `json:"millage"`
 	FuelConsumption       string                       `json:"fuel_consumption"`
-	PowerSteering         bool                         `json:"ps"`
-	PowerWindow           bool                         `json:"pw"`
-	ABS                   bool                         `json:"abs"`
-	ADS                   bool                         `json:"ads"`
-	AlloyWheel            bool                         `json:"aw"`
-	SimpleWheel           bool                         `json:"sw"`
-	Navigation            bool                         `json:"navigation"`
-	AC                    bool                         `json:"ac"`
+	PowerSteering         bool                         `gorm:"default:false" json:"ps"`
+	PowerWindow           bool                         `gorm:"default:false" json:"pw"`
+	ABS                   bool                         `gorm:"default:false" json:"abs"`
+	ADS                   bool                         `gorm:"default:false" json:"ads"`
+	AlloyWheel            bool                         `gorm:"default:false" json:"aw"`
+	SimpleWheel           bool                         `gorm:"default:false" json:"sw"`
+	Navigation            bool                         `gorm:"default:false" json:"navigation"`
+	AC                    bool                         `gorm:"default:false" json:"ac"`
 	BidPrice              float64                      `gorm:"type:numeric;not null" json:"bid_price"`
+	VATTax                float64                      `gorm:"type:numeric;not null" json:"vat_tax"`
+	DollarRate            float64                      `json:"dollar_rate"`
 	PurchaseDate          string                       `gorm:"type:date;not null" json:"purchase_date"`
 	FromCompanyID         *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"from_company_id"`
 	FromCompany           *companyRegistration.Company `gorm:"foreignKey:FromCompanyID;references:ID" json:"from_company"`
@@ -47,10 +49,11 @@ type Car struct {
 	ToCompany             *companyRegistration.Company `gorm:"foreignKey:ToCompanyID;references:ID" json:"to_company"`
 	Destination           string                       `json:"destination"`
 	Port                  string                       `json:"port"`
+	CarShippingInvoiceID  *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"car_shipping_invoice_id"`
+	CarShippingInvoice    *CarShippingInvoice          `gorm:"foreignKey:CarShippingInvoiceID" json:"car_shipping_invoice"`
 	// Uganda Edits
 	BrokerName       string                         `json:"broker_name"`
 	BrokerNumber     string                         `json:"broker_number"`
-	VATTax           float64                        `gorm:"type:numeric;not null" json:"vat_tax"`
 	NumberPlate      string                         `json:"number_plate"`
 	CarTracker       bool                           `json:"car_tracker"`
 	CustomerID       *int                           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"customer_id"`
@@ -59,6 +62,16 @@ type Car struct {
 	CarPaymentStatus string                         `json:"car_payment_status"`
 	CreatedBy        string                         `gorm:"size:100" json:"created_by"`
 	UpdatedBy        string                         `gorm:"size:100" json:"updated_by"`
+
+	// Car Photos
+	CarPhotos []CarPhoto `gorm:"foreignKey:CarID;constraint:OnDelete:CASCADE;" json:"car_photos"`
+}
+
+// CarPhoto struct
+type CarPhoto struct {
+	ID    uint   `gorm:"primaryKey" json:"id"`
+	CarID uint   `gorm:"not null" json:"car_id"`
+	URL   string `gorm:"not null" json:"url"`
 }
 
 func (car *Car) BeforeCreate(tx *gorm.DB) (err error) {

@@ -18,7 +18,6 @@ type SaleRepository interface {
 	GetSaleByID(id string) (saleRegistration.Sale, error)
 	UpdateSale(sale *saleRegistration.Sale) error
 	DeleteByID(id string) error
-	SearchSales(condition string, args ...interface{}) ([]saleRegistration.Sale, error)
 
 	// Payment
 	CreateInvoice(payment *saleRegistration.SalePayment) error
@@ -387,86 +386,6 @@ func (h *SaleController) DeleteSaleByID(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "Sale deleted successfully",
 		"data":    sale,
-	})
-}
-
-// =============================
-
-// SearchSales performs a query based on the given condition and arguments.
-func (r *SaleRepositoryImpl) SearchSales(condition string, args ...interface{}) ([]saleRegistration.Sale, error) {
-	var sales []saleRegistration.Sale
-	if err := r.db.Where(condition, args...).Find(&sales).Error; err != nil {
-		return nil, err
-	}
-	return sales, nil
-}
-
-type SaleService struct {
-	repo *SaleRepositoryImpl
-}
-
-func NewSaleService(repo *SaleRepositoryImpl) *SaleService {
-	return &SaleService{repo: repo}
-}
-
-func (service *SaleService) SearchByCriteria(criteria, query string) ([]saleRegistration.Sale, error) {
-	switch criteria {
-	case "unfinished_transactions":
-		return service.repo.SearchSales("transaction_status = ?", "Unfinished")
-	case "customer_details":
-		return service.repo.SearchSales("customer_name LIKE ? OR customer_id LIKE ?", "%"+query+"%", "%"+query+"%")
-	case "car_details":
-		return service.repo.SearchSales("car_model LIKE ? OR car_registration.registration_number LIKE ?", "%"+query+"%", "%"+query+"%")
-	case "car_brand":
-		return service.repo.SearchSales("car_brand LIKE ?", "%"+query+"%")
-	case "total_amount":
-		return service.repo.SearchSales("total_amount = ?", query)
-	case "sale_date":
-		return service.repo.SearchSales("sale_date = ?", query)
-	case "company":
-		return service.repo.SearchSales("company = ?", query)
-	case "full_payment":
-		return service.repo.SearchSales("is_full_payment = ?", true)
-	case "partial_payment":
-		return service.repo.SearchSales("is_full_payment = ?", false)
-	default:
-		return nil, nil // Invalid criteria
-	}
-}
-
-type SaleServController struct {
-	service *SaleService
-}
-
-func NewSaleServController(service *SaleService) *SaleServController {
-	return &SaleServController{service: service}
-}
-
-// SearchByCriteria handles the HTTP request to search sales by criteria.
-func (h *SaleServController) SearchByCriteria(c *fiber.Ctx) error {
-	criteria := c.Query("criteria")
-	query := c.Query("query")
-
-	sales, err := h.service.SearchByCriteria(criteria, query)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to fetch sales",
-			"error":   err.Error(),
-		})
-	}
-
-	if len(sales) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"status":  "error",
-			"message": "No results found for the specified criteria",
-		})
-	}
-
-	return c.JSON(fiber.Map{
-		"status":  "success",
-		"message": "Results found",
-		"data":    sales,
 	})
 }
 

@@ -75,7 +75,6 @@ func (d *DBInstance) Migrate() {
 		&customerRegistration.Customer{},
 		&customerRegistration.CustomerContact{},
 		&customerRegistration.CustomerAddress{},
-		&customerRegistration.CustomerScan{},
 		// --- Company --- //
 		&companyRegistration.Company{},
 		&companyRegistration.CompanyLocation{},
@@ -83,6 +82,8 @@ func (d *DBInstance) Migrate() {
 		// --- Car --- //
 		&carRegistration.Car{},
 		&carRegistration.CarExpense{},
+		&carRegistration.CarScan{},
+		&carRegistration.CarPhoto{},
 		// --- Sale --- //
 		&saleRegistration.Sale{},
 		&saleRegistration.SalePayment{},

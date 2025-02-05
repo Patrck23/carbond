@@ -63,7 +63,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	car := api.Group("/car")
 	car.Post("/", middleware.Protected(), carController.CreateCar)
 	car.Get("/id/:id", middleware.Protected(), carController.GetSingleCar)
-	car.Get("/vin/:vinNumber", middleware.Protected(), carController.GetSingleCarByVinNumber)
+	car.Get("/vin/:ChasisNumber", middleware.Protected(), carController.GetSingleCarByChasisNumber)
 	car.Put("/:id/details", middleware.Protected(), carController.UpdateCar)
 	car.Put("/:id/sale", middleware.Protected(), carController.UpdateCar2)
 	car.Delete("/:id", middleware.Protected(), carController.DeleteCarByID)
@@ -75,6 +75,27 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	car.Put("/expense/:id", middleware.Protected(), carController.UpdateCarExpense)
 	car.Delete("/:carId/expense/:id", middleware.Protected(), carController.DeleteCarExpenseById)
 	api.Get("/total-car-expense/:id", middleware.Protected(), carController.GetTotalCarExpenses)
+	api.Get("/cars/search", middleware.Protected(), carController.SearchCars)
+	car.Post("/upload", middleware.Protected(), func(c *fiber.Ctx) error {
+		return controllers.UploadCarFile(c, db)
+	})
+	car.Get("/:id/files", middleware.Protected(), func(c *fiber.Ctx) error {
+		return controllers.GetCarFiles(c, db)
+	})
+	car.Get("/files/:file_id", middleware.Protected(), func(c *fiber.Ctx) error {
+		return controllers.GetFile(c, db)
+	})
+
+	shippingDbService := controllers.NewShippingRepository(db)
+	shippingController := controllers.NewShippingController(shippingDbService)
+
+	shipping := api.Group("/shipping")
+	shipping.Get("/invoices", shippingController.GetAllShippingInvoices)
+	shipping.Post("/invoices", middleware.Protected(), shippingController.CreateShippingInvoice)
+	shipping.Get("/invoice/:id", middleware.Protected(), shippingController.GetSingleInvoice)
+	shipping.Get("/invoice/no/:no", middleware.Protected(), shippingController.GetShippingInvoiceByInvoiceNum)
+	shipping.Put("/invoice/:id", middleware.Protected(), shippingController.UpdateShippingInvoice)
+	shipping.Delete("/invoice//:id", middleware.Protected(), shippingController.DeleteShippingInvoiceByID)
 
 	companyDbService := controllers.NewCompanyRepository(db)
 	companyController := controllers.NewCompanyController(companyDbService)
@@ -111,15 +132,9 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	customer.Put("/:id", middleware.Protected(), customerController.UpdateCustomer)
 	customer.Delete("/:id", middleware.Protected(), customerController.DeleteCustomerByID)
 	// Upload
-	customer.Post("/upload", middleware.Protected(), func(c *fiber.Ctx) error {
-		return controllers.UploadCustomerFile(c, db)
-	})
-	customer.Get("/:id/files", middleware.Protected(), func(c *fiber.Ctx) error {
-		return controllers.GetCustomerFiles(c, db)
-	})
-	customer.Get("/files/:file_id", middleware.Protected(), func(c *fiber.Ctx) error {
-		return controllers.GetFile(c, db)
-	})
+	customer.Get("/:id/upload", middleware.Protected(), customerController.FetchCustomerUpload)
+	api.Get("/customers/search", middleware.Protected(), customerController.SearchCustomers)
+
 	// Customer contact
 	api.Get("/:companyId/contacts", middleware.Protected(), customerController.GetCustomerContactsByCompanyId)
 	customer.Get("/contacts/:customerId", middleware.Protected(), customerController.GetCustomerContactsByCustomerId)
@@ -158,12 +173,6 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	sale.Post("/", middleware.Protected(), saleController.CreateCarSale)
 	sale.Put("/:id", middleware.Protected(), saleController.UpdateSale)
 	sale.Delete("/:id", middleware.Protected(), saleController.DeleteSaleByID)
-
-	// // Initialize layers
-	// repo := &SaleRepositoryImpl{db: db}
-	// service := NewSaleService(repo)
-	// controller := NewSaleController(service)
-	// sale.Get("/searchSales/:criteria", middleware.Protected(), saleController.SearchByCriteria)
 
 	// Invoice
 	api.Get("/invoices", middleware.Protected(), saleController.GetSalePayments)
@@ -204,5 +213,6 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	meta.Get("/expenses", middleware.Protected(), metaGController.GetAllExpenseCategories)
 	meta.Get("/ports", middleware.Protected(), metaGController.FindPortsByName)
 	meta.Get("/payment-modes", middleware.Protected(), metaGController.FindPaymentModeBymode)
+	app.Static("/uploads", "./uploads")
 	NotFoundRoute(app)
 }

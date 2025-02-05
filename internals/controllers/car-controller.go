@@ -3,6 +3,8 @@ package controllers
 import (
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/utils"
+	"fmt"
+	"os"
 
 	"errors"
 	"strconv"
@@ -16,9 +18,11 @@ type CarRepository interface {
 	GetPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error)
 	GetCarExpenses(carID uint) ([]carRegistration.CarExpense, error)
 	GetCarByID(id string) (carRegistration.Car, error)
-	GetCarByVin(vinNumber string) (carRegistration.Car, error)
+	GetCarByVin(ChasisNumber string) (carRegistration.Car, error)
 	UpdateCar(car *carRegistration.Car) error
 	DeleteByID(id string) error
+	SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error)
+	UpdateCarJapan(id string, updates map[string]interface{}) error
 
 	// Expense
 	CreateCarExpense(expense *carRegistration.CarExpense) error
@@ -60,19 +64,103 @@ func (r *CarRepositoryImpl) CreateCar(car *carRegistration.Car) error {
 }
 
 func (h *CarController) CreateCar(c *fiber.Ctx) error {
-	// Initialize a new Car instance
-	car := new(carRegistration.Car)
-
-	// Parse the request body into the Car instance
-	if err := c.BodyParser(car); err != nil {
+	// Parse form data
+	form, err := c.MultipartForm()
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Invalid input provided",
+			"message": "Invalid input",
 			"data":    err.Error(),
 		})
 	}
 
-	// Attempt to create the car record using the repository
+	// Extract images
+	files := form.File["images"]
+
+	// Create directory if not exists
+	uploadDir := "./uploads/car_files"
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create upload directory",
+			"data":    err.Error(),
+		})
+	}
+
+	// Store image paths
+	var carPhotos []carRegistration.CarPhoto
+
+	for _, file := range files {
+		// Generate a unique file name
+		filePath := fmt.Sprintf("%s/%s", uploadDir, file.Filename)
+
+		// Save file to disk
+		if err := c.SaveFile(file, filePath); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to save image",
+				"data":    err.Error(),
+			})
+		}
+
+		// Append to carPhotos
+		carPhotos = append(carPhotos, carRegistration.CarPhoto{URL: filePath})
+	}
+
+	// Parse other form fields into a Car instance
+	car := &carRegistration.Car{
+		ChasisNumber:          c.FormValue("chasis_number"),
+		EngineNumber:          c.FormValue("engine_number"),
+		EngineCapacity:        c.FormValue("engine_capacity"),
+		Make:                  c.FormValue("make"),
+		CarModel:              c.FormValue("model"),
+		MaximCarry:            utils.StrToInt(c.FormValue("maxim_carry")),
+		Weight:                utils.StrToInt(c.FormValue("weight")),
+		GrossWeight:           utils.StrToInt(c.FormValue("gross_weight")),
+		Length:                utils.StrToInt(c.FormValue("length")),
+		Width:                 utils.StrToInt(c.FormValue("width")),
+		Height:                utils.StrToInt(c.FormValue("height")),
+		ManufactureYear:       utils.StrToInt(c.FormValue("manufacture_year")),
+		FirstRegistrationYear: utils.StrToInt(c.FormValue("first_registration_year")),
+		Transmission:          c.FormValue("transmission"),
+		BodyType:              c.FormValue("body_type"),
+		Colour:                c.FormValue("colour"),
+		Auction:               c.FormValue("auction"),
+		Currency:              c.FormValue("currency"),
+		CarMillage:            utils.StrToInt(c.FormValue("millage")),
+		FuelConsumption:       c.FormValue("fuel_consumption"),
+		BidPrice:              utils.StrToFloat(c.FormValue("bid_price")),
+		VATTax:                utils.StrToFloat(c.FormValue("vat_tax")),
+		DollarRate:            utils.StrToFloat(c.FormValue("dollar_rate")),
+		PurchaseDate:          c.FormValue("purchase_date"),
+
+		PowerSteering: utils.StrToBool(c.FormValue("ps")),
+		PowerWindow:   utils.StrToBool(c.FormValue("pw")),
+		ABS:           utils.StrToBool(c.FormValue("abs")),
+		ADS:           utils.StrToBool(c.FormValue("ads")),
+		AlloyWheel:    utils.StrToBool(c.FormValue("aw")),
+		SimpleWheel:   utils.StrToBool(c.FormValue("sw")),
+		Navigation:    utils.StrToBool(c.FormValue("navigation")),
+		AC:            utils.StrToBool(c.FormValue("ac")),
+
+		// Convert IDs from string to uint
+		FromCompanyID:        utils.StrToUintPointer(c.FormValue("from_company_id")),
+		ToCompanyID:          utils.StrToUintPointer(c.FormValue("to_company_id")),
+		CarShippingInvoiceID: utils.StrToUintPointer(c.FormValue("car_shipping_invoice_id")),
+		BrokerName:           c.FormValue("broker_name"),
+		BrokerNumber:         c.FormValue("broker_number"),
+		NumberPlate:          c.FormValue("number_plate"),
+		CarTracker:           utils.StrToBool(c.FormValue("car_tracker")),
+		CustomerID:           utils.StrToIntPointer(c.FormValue("customer_id")),
+		CarStatus:            c.FormValue("car_status"),
+		CarPaymentStatus:     c.FormValue("car_payment_status"),
+		CreatedBy:            c.FormValue("created_by"),
+	}
+
+	// Assign images to car
+	car.CarPhotos = carPhotos
+
+	// Create car in database
 	if err := h.repo.CreateCar(car); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -81,7 +169,7 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the newly created car record
+	// Return success response
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Car created successfully",
@@ -92,7 +180,7 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 // ===================
 
 func (r *CarRepositoryImpl) GetPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error) {
-	pagination, cars, err := utils.Paginate(c, r.db, carRegistration.Car{})
+	pagination, cars, err := utils.Paginate(c, r.db.Preload("CarPhotos"), carRegistration.Car{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -146,8 +234,6 @@ func (h *CarController) GetAllCars(c *fiber.Ctx) error {
 	})
 }
 
-// =====================
-
 // ====================
 
 func (r *CarRepositoryImpl) GetCarExpenses(carID uint) ([]carRegistration.CarExpense, error) {
@@ -160,7 +246,7 @@ func (r *CarRepositoryImpl) GetCarExpenses(carID uint) ([]carRegistration.CarExp
 
 func (r *CarRepositoryImpl) GetCarByID(id string) (carRegistration.Car, error) {
 	var car carRegistration.Car
-	err := r.db.First(&car, "id = ?", id).Error
+	err := r.db.Preload("CarPhotos").First(&car, "id = ?", id).Error
 	return car, err
 }
 
@@ -211,18 +297,18 @@ func (h *CarController) GetSingleCar(c *fiber.Ctx) error {
 
 // ====================
 
-func (r *CarRepositoryImpl) GetCarByVin(vinNumber string) (carRegistration.Car, error) {
+func (r *CarRepositoryImpl) GetCarByVin(ChasisNumber string) (carRegistration.Car, error) {
 	var car carRegistration.Car
-	err := r.db.First(&car, "vin_number = ?", vinNumber).Error
+	err := r.db.First(&car, "chasis_number = ?", ChasisNumber).Error
 	return car, err
 }
 
-func (h *CarController) GetSingleCarByVinNumber(c *fiber.Ctx) error {
+func (h *CarController) GetSingleCarByChasisNumber(c *fiber.Ctx) error {
 	// Get the car ID from the route parameters
-	vinNumber := c.Params("vinNumber")
+	ChasisNumber := c.Params("ChasisNumber")
 
 	// Fetch the car by ID
-	car, err := h.repo.GetCarByVin(vinNumber)
+	car, err := h.repo.GetCarByVin(ChasisNumber)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
@@ -267,9 +353,13 @@ func (r *CarRepositoryImpl) UpdateCar(car *carRegistration.Car) error {
 	return r.db.Save(car).Error
 }
 
-// Define the updateCar struct
+func (r *CarRepositoryImpl) UpdateCarJapan(id string, updates map[string]interface{}) error {
+	return r.db.Model(&carRegistration.Car{}).Where("id = ?", id).Updates(updates).Error
+}
+
+// Define the UpdateCarPayload struct
 type UpdateCarPayload struct {
-	VinNumber             string  `json:"vin_number"`
+	ChasisNumber          string  `json:"chasis_number"`
 	EngineNumber          string  `json:"engine_number"`
 	EngineCapacity        string  `json:"engine_capacity"`
 	Make                  string  `json:"make"`
@@ -298,24 +388,15 @@ type UpdateCarPayload struct {
 	Navigation            bool    `json:"navigation"`
 	AC                    bool    `json:"ac"`
 	BidPrice              float64 `json:"bid_price"`
+	VATTax                float64 `json:"vat_tax"`
+	DollarRate            float64 `json:"dollar_rate"`
 	PurchaseDate          string  `json:"purchase_date"`
 	FromCompanyID         uint    `json:"from_company_id"`
 	ToCompanyID           uint    `json:"to_company_id"`
 	Destination           string  `json:"destination"`
+	CarShippingInvoiceID  uint    `json:"car_shipping_invoice_id"`
 	Port                  string  `json:"port"`
 	UpdatedBy             string  `json:"updated_by"`
-}
-
-type UpdateCarPayload2 struct {
-	BrokerName       string  `json:"broker_name"`
-	BrokerNumber     string  `json:"broker_number"`
-	VATTax           float64 `json:"vat_tax"`
-	NumberPlate      string  `json:"number_plate"`
-	CarTracker       bool    `json:"car_tracker"`
-	CarStatus        string  `json:"car_status"`
-	CarPaymentStatus string  `json:"car_payment_status"`
-	CustomerID       int     `json:"customer_id"`
-	UpdatedBy        string  `json:"updated_by"`
 }
 
 // UpdateCar handler function
@@ -349,11 +430,194 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update the car fields using the payload
-	updateCarFields(&car, payload) // Pass the parsed payload
+	// Check if the request body is empty
+	if (UpdateCarPayload{} == payload) {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Empty request body",
+		})
+	}
 
-	// Save the changes to the database
-	if err := h.repo.UpdateCar(&car); err != nil {
+	// Convert payload to a map for partial update
+	updates := make(map[string]interface{})
+
+	// Fill the updates map with non-zero or non-empty values from the payload
+	if payload.ChasisNumber != "" {
+		updates["chasis_number"] = payload.ChasisNumber
+	}
+	if payload.EngineNumber != "" {
+		updates["engine_number"] = payload.EngineNumber
+	}
+	if payload.EngineCapacity != "" {
+		updates["engine_capacity"] = payload.EngineCapacity
+	}
+	if payload.Make != "" {
+		updates["make"] = payload.Make
+	}
+	if payload.CarModel != "" {
+		updates["car_model"] = payload.CarModel
+	}
+	if payload.MaximCarry != 0 {
+		updates["maxim_carry"] = payload.MaximCarry
+	}
+	if payload.Weight != 0 {
+		updates["weight"] = payload.Weight
+	}
+	if payload.GrossWeight != 0 {
+		updates["gross_weight"] = payload.GrossWeight
+	}
+	if payload.Length != 0 {
+		updates["length"] = payload.Length
+	}
+	if payload.Width != 0 {
+		updates["width"] = payload.Width
+	}
+	if payload.Height != 0 {
+		updates["height"] = payload.Height
+	}
+	if payload.ManufactureYear != 0 {
+		updates["manufacture_year"] = payload.ManufactureYear
+	}
+	if payload.FirstRegistrationYear != 0 {
+		updates["first_registration_year"] = payload.FirstRegistrationYear
+	}
+	if payload.Transmission != "" {
+		updates["transmission"] = payload.Transmission
+	}
+	if payload.BodyType != "" {
+		updates["body_type"] = payload.BodyType
+	}
+	if payload.Colour != "" {
+		updates["colour"] = payload.Colour
+	}
+	if payload.Auction != "" {
+		updates["auction"] = payload.Auction
+	}
+	if payload.PowerSteering {
+		updates["power_steering"] = payload.PowerSteering
+	}
+	if payload.PowerWindow {
+		updates["power_window"] = payload.PowerWindow
+	}
+	if payload.ABS {
+		updates["abs"] = payload.ABS
+	}
+	if payload.ADS {
+		updates["ads"] = payload.ADS
+	}
+	if payload.AlloyWheel {
+		updates["alloy_wheel"] = payload.AlloyWheel
+	}
+	if payload.SimpleWheel {
+		updates["simple_wheel"] = payload.SimpleWheel
+	}
+	if payload.Navigation {
+		updates["navigation"] = payload.Navigation
+	}
+	if payload.AC {
+		updates["ac"] = payload.AC
+	}
+	if payload.Currency != "" {
+		updates["currency"] = payload.Currency
+	}
+	if payload.BidPrice != 0 {
+		updates["bid_price"] = payload.BidPrice
+	}
+	if payload.VATTax != 0 {
+		updates["vat_tax"] = payload.VATTax
+	}
+	if payload.DollarRate != 0 {
+		updates["dollar_rate"] = payload.DollarRate
+	}
+	if payload.PurchaseDate != "" {
+		updates["purchase_date"] = payload.PurchaseDate
+	}
+	if payload.FromCompanyID != 0 {
+		updates["from_company_id"] = payload.FromCompanyID
+	}
+	if payload.ToCompanyID != 0 {
+		updates["to_company_id"] = payload.ToCompanyID
+	}
+	if payload.Destination != "" {
+		updates["destination"] = payload.Destination
+	}
+	if payload.CarShippingInvoiceID != 0 {
+		updates["car_shipping_invoice_id"] = payload.CarShippingInvoiceID
+	}
+	if payload.UpdatedBy != "" {
+		updates["updated_by"] = payload.UpdatedBy
+	}
+
+	// Handle file upload
+	form, err := c.MultipartForm()
+	if err == nil {
+		// Extract images
+		files := form.File["images"]
+		uploadDir := "./uploads/car_files/"
+
+		// Ensure the directory exists
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to create upload directory",
+				"data":    err.Error(),
+			})
+		}
+
+		// Create a map to track old photo paths
+		oldPhotoMap := make(map[string]carRegistration.CarPhoto)
+		for _, oldPhoto := range car.CarPhotos {
+			oldPhotoMap[oldPhoto.URL] = oldPhoto
+		}
+
+		// List to store updated photos
+		var updatedCarPhotos []carRegistration.CarPhoto
+
+		for _, file := range files {
+			// Generate the new file path
+			filePath := fmt.Sprintf("%s/%s", uploadDir, file.Filename)
+
+			// Check if this image was previously stored (exists in oldPhotoMap)
+			if _, exists := oldPhotoMap[filePath]; exists {
+				// Image already exists, retain it in the updated list
+				updatedCarPhotos = append(updatedCarPhotos, oldPhotoMap[filePath])
+				delete(oldPhotoMap, filePath) // Remove from map to track missing ones
+			} else {
+				// New image, save it to disk
+				if err := c.SaveFile(file, filePath); err != nil {
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"status":  "error",
+						"message": "Failed to save image",
+						"data":    err.Error(),
+					})
+				}
+
+				// Add new photo entry
+				updatedCarPhotos = append(updatedCarPhotos, carRegistration.CarPhoto{URL: filePath})
+			}
+		}
+
+		// Remove old images that were not retained (those still in oldPhotoMap)
+		for oldPath := range oldPhotoMap {
+			// Check if file exists before attempting deletion
+			if _, err := os.Stat(oldPath); err == nil {
+				if err := os.Remove(oldPath); err != nil {
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"status":  "error",
+						"message": "Failed to delete old image",
+						"data":    err.Error(),
+					})
+				}
+			}
+		}
+
+		// Update car photos in database
+		updates["car_photos"] = updatedCarPhotos
+
+	}
+
+	// Proceed with updating other car data
+	if err := h.repo.UpdateCarJapan(id, updates); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to update car",
@@ -361,59 +625,25 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the updated car
+	// Return success response
 	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Car updated successfully",
-		"data":    car,
+		"data":    updates,
 	})
 }
 
-// UpdateCarFields updates the fields of a car using the updateCar struct
-func updateCarFields(car *carRegistration.Car, updateCarData UpdateCarPayload) {
-	car.VinNumber = updateCarData.VinNumber
-	car.EngineNumber = updateCarData.EngineNumber
-	car.EngineCapacity = updateCarData.EngineCapacity
-	car.Make = updateCarData.Make
-	car.CarModel = updateCarData.CarModel
-	car.MaximCarry = updateCarData.MaximCarry
-	car.Weight = updateCarData.Weight
-	car.GrossWeight = updateCarData.GrossWeight
-	car.Length = updateCarData.Length
-	car.Width = updateCarData.Width
-	car.Height = updateCarData.Height
-	car.ManufactureYear = updateCarData.ManufactureYear
-	car.FirstRegistrationYear = updateCarData.FirstRegistrationYear
-	car.Transmission = updateCarData.Transmission
-	car.BodyType = updateCarData.BodyType
-	car.Colour = updateCarData.Colour
-	car.Auction = updateCarData.Auction
-	car.PowerSteering = updateCarData.PowerSteering
-	car.PowerWindow = updateCarData.PowerWindow
-	car.ABS = updateCarData.ABS
-	car.ADS = updateCarData.ADS
-	car.AlloyWheel = updateCarData.AlloyWheel
-	car.SimpleWheel = updateCarData.SimpleWheel
-	car.Navigation = updateCarData.Navigation
-	car.AC = updateCarData.AC
-	car.Currency = updateCarData.Currency
-	car.BidPrice = updateCarData.BidPrice
-	car.PurchaseDate = updateCarData.PurchaseDate
+// ===================
 
-	if updateCarData.FromCompanyID != 0 {
-		car.FromCompanyID = &updateCarData.FromCompanyID
-	} else {
-		car.FromCompanyID = nil
-	}
-
-	if updateCarData.ToCompanyID != 0 {
-		car.ToCompanyID = &updateCarData.ToCompanyID
-	} else {
-		car.ToCompanyID = nil
-	}
-
-	car.Destination = updateCarData.Destination
-	car.UpdatedBy = updateCarData.UpdatedBy
+type UpdateCarPayload2 struct {
+	BrokerName       string `json:"broker_name"`
+	BrokerNumber     string `json:"broker_number"`
+	NumberPlate      string `json:"number_plate"`
+	CarTracker       bool   `json:"car_tracker"`
+	CarStatus        string `json:"car_status"`
+	CarPaymentStatus string `json:"car_payment_status"`
+	CustomerID       int    `json:"customer_id"`
+	UpdatedBy        string `json:"updated_by"`
 }
 
 // UpdateCar handler function
@@ -473,7 +703,6 @@ func updateCar2Fields(car *carRegistration.Car, updateCarData UpdateCarPayload2)
 	car.BrokerName = updateCarData.BrokerName
 	car.BrokerNumber = updateCarData.BrokerNumber
 	car.NumberPlate = updateCarData.NumberPlate
-	car.VATTax = updateCarData.VATTax
 	car.CarTracker = updateCarData.CarTracker
 	car.CarStatus = updateCarData.CarStatus
 	car.CarPaymentStatus = updateCarData.CarPaymentStatus
@@ -715,6 +944,7 @@ func (h *CarController) UpdateCarExpense(c *fiber.Ctx) error {
 		Description string  `json:"description" validate:"required"`
 		Currency    string  `json:"currency" validate:"required"`
 		Amount      float64 `json:"amount" validate:"required,gt=0"`
+		DollarRate  float64 `json:"dollar_rate"`
 		ExpenseDate string  `json:"expense_date" validate:"required"`
 		UpdatedBy   string  `json:"updated_by" validate:"required"`
 	}
@@ -761,6 +991,7 @@ func (h *CarController) UpdateCarExpense(c *fiber.Ctx) error {
 	expense.Description = input.Description
 	expense.Currency = input.Currency
 	expense.Amount = input.Amount
+	expense.DollarRate = input.DollarRate
 	expense.ExpenseDate = input.ExpenseDate
 	expense.UpdatedBy = input.UpdatedBy
 
@@ -1094,3 +1325,127 @@ func (h *CarController) GetTotalCarExpenses(c *fiber.Ctx) error {
 }
 
 // ==============
+
+// ========================================================================================
+
+func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error) {
+	// Get query parameters from request
+	chasis_number := c.Query("chasisNumber")
+	make := c.Query("make")
+	model := c.Query("model")
+	colour := c.Query("colour")
+	bodyType := c.Query("bodyType")
+	auction := c.Query("auction")
+	destination := c.Query("destination")
+	port := c.Query("port")
+	minMillage := c.Query("min_millage")
+	maxMillage := c.Query("max_millage")
+	fuel_consumption := c.Query("fuelConsumption")
+	broker_name := c.Query("brokerName")
+	car_tracker := c.Query("carTracker")
+	car_status := c.Query("carStatus")
+	car_payment_status := c.Query("carPaymentStatus")
+	maunufacture_year := c.Query("maunufactureYear")
+	bid_price := c.Query("bidPrice")
+
+	// Start building the query
+	query := r.db.Model(&carRegistration.Car{})
+
+	// Apply filters based on provided parameters
+	if chasis_number != "" {
+		query = query.Where("chasis_number LIKE ?", "%"+chasis_number+"%")
+	}
+	if make != "" {
+		query = query.Where("make LIKE ?", "%"+make+"%")
+	}
+	if model != "" {
+		query = query.Where("model = ?", model)
+	}
+	if colour != "" {
+		query = query.Where("colour = ?", colour)
+	}
+	if bodyType != "" {
+		query = query.Where("body_type LIKE ?", "%"+bodyType+"%")
+	}
+	if auction != "" {
+		query = query.Where("auction LIKE ?", "%"+auction+"%")
+	}
+	if destination != "" {
+		query = query.Where("destination = ?", destination)
+	}
+	if port != "" {
+		query = query.Where("port = ?", port)
+	}
+	if broker_name != "" {
+		query = query.Where("broker_name LIKE ?", "%"+broker_name+"%")
+	}
+	if car_status != "" {
+		query = query.Where("car_status = ?", car_status)
+	}
+	if car_payment_status != "" {
+		query = query.Where("car_payment_status = ?", car_payment_status)
+	}
+	if fuel_consumption != "" {
+		query = query.Where("car_payment_status = ?", fuel_consumption)
+	}
+	if car_tracker != "" {
+		boolValue, err := strconv.ParseBool(car_tracker)
+		if err == nil {
+			query = query.Where("car_tracker = ?", boolValue)
+		}
+	}
+
+	if minMillage != "" {
+		minMillageValue, err := strconv.ParseFloat(minMillage, 64)
+		if err == nil {
+			query = query.Where("millage >= ?", minMillageValue)
+		}
+	}
+
+	if maxMillage != "" {
+		maxMillageValue, err := strconv.ParseFloat(maxMillage, 64)
+		if err == nil {
+			query = query.Where("millage <= ?", maxMillageValue)
+		}
+	}
+
+	if maunufacture_year != "" {
+		if _, err := strconv.Atoi(maunufacture_year); err == nil {
+			query = query.Where("maunufacture_year = ?", maunufacture_year)
+		}
+	}
+
+	if bid_price != "" {
+		if _, err := strconv.Atoi(bid_price); err == nil {
+			query = query.Where("bid_price = ?", bid_price)
+		}
+	}
+
+	// Call the pagination helper
+	pagination, cars, err := utils.Paginate(c, query, carRegistration.Car{})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &pagination, cars, nil
+}
+
+func (h *CarController) SearchCars(c *fiber.Ctx) error {
+	// Call the repository function to get paginated search results
+	pagination, cars, err := h.repo.SearchPaginatedCars(c)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve cars",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the response with pagination details
+	return c.Status(200).JSON(fiber.Map{
+		"status":     "success",
+		"message":    "Cars retrieved successfully",
+		"pagination": pagination,
+		"data":       cars,
+	})
+}

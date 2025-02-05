@@ -4,7 +4,12 @@ import (
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/utils"
 	"errors"
+	"fmt"
+	"os"
 	"strconv"
+	"strings"
+
+	"path/filepath"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -15,9 +20,11 @@ type CustomerRepository interface {
 	GetPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error)
 	GetCustomerAddresses(customerID uint) ([]customerRegistration.CustomerAddress, error)
 	GetCustomerContacts(customerID uint) ([]customerRegistration.CustomerContact, error)
-	UpdateCustomer(customer *customerRegistration.Customer) error
+	// UpdateCustomer(customer *customerRegistration.Customer) error
+	UpdateCustomer(id string, updates map[string]interface{}) error
 	GetCustomerByID(id string) (customerRegistration.Customer, error)
 	DeleteByID(id string) error
+	SearchPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error)
 
 	// Contact
 	CreateCustomerContact(address *customerRegistration.CustomerContact) error
@@ -61,16 +68,78 @@ func (r *CustomerRepositoryImpl) CreateCustomer(customer *customerRegistration.C
 }
 
 func (h *CustomerController) CreateCustomer(c *fiber.Ctx) error {
-	// Initialize a new Customer instance
-	customer := new(customerRegistration.Customer)
-
-	// Parse the request body into the customer instance
-	if err := c.BodyParser(customer); err != nil {
+	// Parse form data
+	form, err := c.MultipartForm()
+	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Invalid input provided",
 			"data":    err.Error(),
 		})
+	}
+
+	// Convert age from string to uint
+	ageStr := c.FormValue("age")
+	age, err := strconv.Atoi(ageStr) // Convert string to int
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid age provided",
+			"data":    err.Error(),
+		})
+	}
+
+	// Create a directory for storing files
+	uploadDir := "./uploads/customer_files"
+	if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create upload directory",
+			"data":    err.Error(),
+		})
+	}
+
+	// Extract file if provided
+	var filePath string
+	if files, ok := form.File["upload_file"]; ok && len(files) > 0 {
+		file := files[0]
+		ext := strings.ToLower(filepath.Ext(file.Filename))
+
+		// Validate the file type (photo or PDF)
+		allowedExtensions := []string{".jpg", ".jpeg", ".png", ".pdf"}
+		if !contains(allowedExtensions, ext) {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Invalid file type. Only JPG, JPEG, PNG, and PDF are allowed.",
+			})
+		}
+
+		// Generate unique file name to avoid conflicts
+		filePath = filepath.Join(uploadDir, file.Filename)
+		if err := c.SaveFile(file, filePath); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to upload file",
+				"data":    err.Error(),
+			})
+		}
+	}
+
+	// Create a new Customer instance
+	customer := &customerRegistration.Customer{
+		Surname:     c.FormValue("surname"),
+		Firstname:   c.FormValue("firstname"),
+		Othername:   c.FormValue("othername"),
+		Gender:      c.FormValue("gender"),
+		Nationality: c.FormValue("nationality"),
+		Age:         uint(age),
+		DOB:         c.FormValue("dob"),
+		Telephone:   c.FormValue("telephone"),
+		Email:       c.FormValue("email"),
+		NIN:         c.FormValue("nin"),
+		CreatedBy:   c.FormValue("created_by"),
+		UpdatedBy:   c.FormValue("updated_by"),
+		UploadFile:  filePath, // Store file path
 	}
 
 	// Attempt to create the customer record using the repository
@@ -238,8 +307,8 @@ func (h *CustomerController) GetSingleCustomer(c *fiber.Ctx) error {
 
 // =======================
 
-func (r *CustomerRepositoryImpl) UpdateCustomer(customer *customerRegistration.Customer) error {
-	return r.db.Save(customer).Error
+func (r *CustomerRepositoryImpl) UpdateCustomer(id string, updates map[string]interface{}) error {
+	return r.db.Model(&customerRegistration.Customer{}).Where("id = ?", id).Updates(updates).Error
 }
 
 // Define the UpdateCustomer struct
@@ -257,7 +326,6 @@ type UpdateCustomerPayload struct {
 	UpdatedBy   string `json:"updated_by"`
 }
 
-// UpdateCustomer handler function
 func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 	// Get the customer ID from the route parameters
 	id := c.Params("id")
@@ -288,11 +356,95 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update the customer fields using the payload
-	updateCustomerFields(&customer, payload) // Pass the parsed payload
+	// Check if the request body is empty
+	if (UpdateCustomerPayload{} == payload) {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Empty request body",
+		})
+	}
 
-	// Save the changes to the database
-	if err := h.repo.UpdateCustomer(&customer); err != nil {
+	// Convert payload to a map for partial update
+	updates := make(map[string]interface{})
+
+	if payload.Surname != "" {
+		updates["surname"] = payload.Surname
+	}
+	if payload.Firstname != "" {
+		updates["firstname"] = payload.Firstname
+	}
+	if payload.Othername != "" {
+		updates["othername"] = payload.Othername
+	}
+	if payload.Gender != "" {
+		updates["gender"] = payload.Gender
+	}
+	if payload.Nationality != "" {
+		updates["nationality"] = payload.Nationality
+	}
+	if payload.Age != 0 {
+		updates["age"] = payload.Age
+	}
+	if payload.DOB != "" {
+		updates["dob"] = payload.DOB
+	}
+	if payload.Telephone != "" {
+		updates["telephone"] = payload.Telephone
+	}
+	if payload.Email != "" {
+		updates["email"] = payload.Email
+	}
+	if payload.NIN != "" {
+		updates["nin"] = payload.NIN
+	}
+	if payload.UpdatedBy != "" {
+		updates["updated_by"] = payload.UpdatedBy
+	}
+
+	// Handle file upload
+	file, err := c.FormFile("upload_file")
+	if err == nil { // If a new file is uploaded
+		uploadDir := "./uploads/customer_files/"
+		uploadPath := fmt.Sprintf("%s%s", uploadDir, file.Filename)
+
+		// Ensure the directory exists
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to create upload directory",
+				"data":    err.Error(),
+			})
+		}
+
+		// **Delete old file if it exists**
+		if customer.UploadFile != "" {
+			oldFilePath := customer.UploadFile
+			if _, err := os.Stat(oldFilePath); err == nil {
+				if err := os.Remove(oldFilePath); err != nil {
+					return c.Status(500).JSON(fiber.Map{
+						"status":  "error",
+						"message": "Failed to delete existing file",
+						"data":    err.Error(),
+					})
+				}
+			}
+		}
+
+		// Save the new file
+		if err := c.SaveFile(file, uploadPath); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to upload file",
+				"data":    err.Error(),
+			})
+		}
+
+		// Update the file path in the database
+		updates["upload_file"] = uploadPath
+	}
+
+	// Update the customer in the database
+	if err := h.repo.UpdateCustomer(id, updates); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to update customer",
@@ -300,27 +452,12 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the updated customer
+	// Return success response
 	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
-		"message": "customer updated successfully",
-		"data":    customer,
+		"message": "Customer updated successfully",
+		"data":    updates,
 	})
-}
-
-// UpdateCustomerFields updates the fields of a customer using the UpdateCustomer struct
-func updateCustomerFields(customer *customerRegistration.Customer, updateCustomerData UpdateCustomerPayload) {
-	customer.Surname = updateCustomerData.Surname
-	customer.Firstname = updateCustomerData.Firstname
-	customer.Othername = updateCustomerData.Othername
-	customer.Gender = updateCustomerData.Gender
-	customer.Nationality = updateCustomerData.Nationality
-	customer.Age = updateCustomerData.Age
-	customer.DOB = updateCustomerData.DOB
-	customer.Telephone = updateCustomerData.Telephone
-	customer.Email = updateCustomerData.Email
-	customer.NIN = updateCustomerData.NIN
-	customer.UpdatedBy = updateCustomerData.UpdatedBy
 }
 
 // ======================
@@ -369,6 +506,41 @@ func (h *CustomerController) DeleteCustomerByID(c *fiber.Ctx) error {
 		"message": "Customer deleted successfully",
 		"data":    customer,
 	})
+}
+
+// =======================
+
+func (h *CustomerController) FetchCustomerUpload(c *fiber.Ctx) error {
+	// Get the customer ID from the route parameters
+	id := c.Params("id")
+
+	// Find the customer in the database
+	customer, err := h.repo.GetCustomerByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Customer not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve customer",
+			"data":    err.Error(),
+		})
+	}
+
+	// Check if the upload path exists
+	if customer.UploadFile == "" {
+		return c.Status(404).JSON(fiber.Map{
+			"status":  "error",
+			"message": "No file uploaded for this customer",
+		})
+	}
+
+	// Serve the file from the upload path
+	filePath := customer.UploadFile
+	return c.SendFile(filePath)
 }
 
 // // =================================================================
@@ -979,3 +1151,58 @@ func (h *CustomerController) DeleteCustomerAddressById(c *fiber.Ctx) error {
 
 // 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Customer address deleted successfully"})
 // }
+
+// ======================
+
+func (r *CustomerRepositoryImpl) SearchPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error) {
+	// Get query parameters from request
+	surname := c.Query("surname")
+	firstname := c.Query("firstname")
+	gender := c.Query("gender")
+	nationality := c.Query("nationality")
+
+	// Start building the query
+	query := r.db.Model(&customerRegistration.Customer{})
+
+	// Apply filters based on provided parameters
+	if surname != "" {
+		query = query.Where("surname LIKE ?", "%"+surname+"%")
+	}
+	if firstname != "" {
+		query = query.Where("othername LIKE ?", "%"+firstname+"%")
+	}
+	if gender != "" {
+		query = query.Where("gender = ?", gender)
+	}
+	if nationality != "" {
+		query = query.Where("nationality = ?", nationality)
+	}
+
+	// Call the pagination helper
+	pagination, customers, err := utils.Paginate(c, query, customerRegistration.Customer{})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &pagination, customers, nil
+}
+
+func (h *CustomerController) SearchCustomers(c *fiber.Ctx) error {
+	// Call the repository function to get paginated search results
+	pagination, customers, err := h.repo.SearchPaginatedCustomers(c)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve customers",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the response with pagination details
+	return c.Status(200).JSON(fiber.Map{
+		"status":     "success",
+		"message":    "Customers retrieved successfully",
+		"pagination": pagination,
+		"data":       customers,
+	})
+}

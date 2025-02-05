@@ -18,7 +18,7 @@ authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-  "vin_number": "1HGCM82633A123456",
+  "chasis_number": "1HGCM82633A123456",
   "engine_number": "ENG123456789",
   "engine_capacity": "2000cc",
   "make": "Toyota",
@@ -35,7 +35,7 @@ Content-Type: application/json
   "body_type": "Sedan",
   "colour": "Blue",
   "auction": "Tokyo Auto Auctions",
-  "currency": "USD",
+  "currency": "Yen",
   "millage":40000,
 	"fuel_consumption":"Disel",
 	"ps": false,
@@ -46,7 +46,9 @@ Content-Type: application/json
   "sw": false,
   "navigation": false,
 	"ac": false,  
-  "bid_price": 15000.00,
+  "bid_price": 15000000.00,
+  "vat_tax": 18.00,
+  "dollar_rate": 150,
   "purchase_date": "2024-01-01",
   "from_company_id": 2,
   "to_company_id": 1,
@@ -62,7 +64,6 @@ Content-Type: application/json
   "created_by": "admin",
   "updated_by": "admin"
 }
-
 
 ###
 # Fetch cars
@@ -87,7 +88,7 @@ Content-Type: application/json
 
 {
   "car_uuid": "123e4567-e89b-12d3-a456-426614174000",
-  "vin_number": "1HGCM82633A123456",
+  "chasis_number": "1HGCM82633A123456",
   "engine_number": "ENG123456789",
   "engine_capacity": "2000cc",
   "make": "Toyota",
@@ -104,7 +105,7 @@ Content-Type: application/json
   "body_type": "Sedan",
   "colour": "Blue",
   "auction": "Tokyo Auto Auctions",
-  "currency": "USD",
+  "currency": "Yen",
   "millage":40000,
 	"fuel_consumption":"",
 	"ps": false,
@@ -115,7 +116,9 @@ Content-Type: application/json
   "sw": false,
   "navigation": false,
 	"ac": false,  
-  "bid_price": 15000.00,
+  "bid_price": 15000000.00,
+  "vat_tax": 18.00,
+  "dollar_rate": 150,
   "purchase_date": "2024-01-01",
   "from_company_id": 2,
   "to_company_id": 1,
@@ -133,7 +136,6 @@ Content-Type: application/json
 {
   "broker_name": "John Doe",
   "broker_number": "+256-712-345-678",
-  "vat_tax": 18.00,
   "number_plate": "UBH 123A",
   "customer_id": 1,
   "car_status": "In stock",

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"strconv"
@@ -97,4 +98,60 @@ func ValidateStruct(data interface{}) map[string]string {
 		errors[err.Field()] = err.Tag()
 	}
 	return errors
+}
+
+func StrToInt(value string) int {
+	result, err := strconv.Atoi(value)
+	if err != nil {
+		log.Printf("Error converting string to int: %s", err)
+		return 0
+	}
+	return result
+}
+
+func StrToFloat(value string) float64 {
+	result, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		log.Printf("Error converting string to float: %s", err)
+		return 0.0
+	}
+	return result
+}
+
+func StrToBool(value string) bool {
+	result, err := strconv.ParseBool(value)
+	if err != nil {
+		log.Printf("Error converting string to bool: %s", err)
+		return false
+	}
+	return result
+}
+
+func StrToUint(value string) uint {
+	result, err := strconv.Atoi(value)
+	if err != nil {
+		log.Printf("Error converting string to uint: %s", err)
+		return 0
+	}
+	return uint(result)
+}
+
+func StrToUintPointer(value string) *uint {
+	result, err := strconv.Atoi(value)
+	if err != nil {
+		log.Printf("Error converting string to uint: %s", err)
+		return nil
+	}
+	resultUint := uint(result)
+	return &resultUint
+}
+
+// Converts a string to a pointer to an int
+func StrToIntPointer(value string) *int {
+	result, err := strconv.Atoi(value)
+	if err != nil {
+		log.Printf("Error converting string to int: %s", err)
+		return nil
+	}
+	return &result
 }

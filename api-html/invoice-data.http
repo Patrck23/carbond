@@ -13,21 +13,18 @@ content-type: application/json
 @hostname = http://127.0.0.1:8080/api
 @bearer = {{tokenAPI.response.body.token}}
 
-POST {{hostname}}/customer
+POST {{hostname}}/shipping/invoices
 authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-  "surname": "Tumwesigye",
-  "firstname": "John",
-  "othername": "Michael",
-  "gender": "Male",
-  "nationality": "Ugandan",
-  "age": 35,
-  "dob": "1989-05-15",
-  "telephone": "+256-701-234-567",
-  "email": "john.doe@example.com",
-  "nin": "CM8901234567ABCD",
+  "invoice_no": "FGTG908",
+  "ship_date": "1989-05-15",
+  "currency": "Yen",
+  "total_cost": 77777,
+  "vessel_name": "MALL MARINA",
+  "from_location": "JAK",
+  "to_location": "MOMBASA",
   "created_by": "admin",
   "updated_by": "admin"
 }
@@ -48,43 +45,41 @@ Content-Type: application/json
 # }
 
 ###
-# Fetch customers
-GET {{hostname}}/customers?page=1&limit=50
-authorization: bearer {{bearer}}
-
-###
-# Fetch customers
-GET {{hostname}}/customers/search?gender=male&page=1&limit=10
+# Fetch Invoices
+GET {{hostname}}/shipping/invoices?page=1&limit=50
 authorization: bearer {{bearer}}
 
 ###
 # Fetch customer by ID
-GET {{hostname}}/customer/1
+GET {{hostname}}/shipping/invoice/1
+authorization: bearer {{bearer}}
+
+###
+# Fetch customer by ID
+GET {{hostname}}/shipping/invoice/no/FGTG908
 authorization: bearer {{bearer}}
 
 ###
 # Update customer by ID
-PUT {{hostname}}/customer/1
+PUT {{hostname}}/shipping/invoice/1
 authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-  "surname": "Tumwesigye",
-  "firstname": "Godfrey",
-  "othername": "Michael",
-  "gender": "Male",
-  "nationality": "Ugandan",
-  "age": 45,
-  "dob": "1989-05-15",
-  "telephone": "+256-701-234-567",
-  "email": "john.doe@example.com",
-  "nin": "CM8901234567ABJKD",
-  "updated_by": "Patrick"
+  "invoice_no": "FGTG908",
+  "ship_date": "1989-06-15",
+  "currency": "Yen",
+  "total_cost": 828829,
+  "vessel_name": "MALL MARINA",
+  "from_location": "JAK",
+  "to_location": "MOMBASA",
+  "created_by": "admin",
+  "updated_by": "admin"
 }
 
 ###
 # Delete customer by ID
-DELETE  {{hostname}}/customer/2
+DELETE  {{hostname}}/shipping/invoice/1
 authorization: bearer {{bearer}}
 
 
