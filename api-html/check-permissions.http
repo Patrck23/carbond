@@ -1,17 +1,52 @@
-GET http://127.0.0.1:8080/api/check-permissions?role_code=resource.reader&resource_code=resource.all
+@role_code = resource.reader
+@resource_code = resource.all
+@hostname = http://127.0.0.1:8080/api
+
+# @name tokenAPI
+POST {{hostname}}/api/auth/login
+content-type: application/json
+
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
 
 ###
-# Explicit permissions
-GET http://127.0.0.1:8080/api/explict-permissions?role_code=resource.reader&resource_code=resource.all
+# @bearer = {{tokenAPI.response.body.token}}
+
+# Check permissions
+GET {{hostname}}/check-permissions?role_code={{role_code}}&resource_code={{resource_code}}
+# authorization: bearer {{bearer}}
 
 ###
-# Get Permissions
-GET http://127.0.0.1:8080/api/permissions?role_code=resource.reader&resource_code=resource.all
+# Get Explicit permissions
+GET {{hostname}}/explict-permissions?role_code={{role_code}}&resource_code={{resource_code}}
 
 ###
-# Get Resources
-GET http://127.0.0.1:8080/api/resources
+# Get Wildcard-permissions
+GET {{hostname}}/wildcard-permissions?role_code=resource.admin&resource_pattern=resource.*
+
+###
+# Get Granted Permissions
+GET {{hostname}}/permissions?role_code={{role_code}}&resource_code={{resource_code}}
+
+###
+# Get Resources1
+GET {{hostname}}/resources
 
 ###
 # Get Resource
-GET http://127.0.0.1:8080/api/resources/resource.all
+GET {{hostname}}/resources/{{resource_code}}
+
+###
+# Do permissions exist
+GET {{hostname}}/exist-permissions?resource_code={{resource_code}}
+
+###
+# "/group-role-exist"
+GET {{hostname}}/group-role-exist?group_code=admin
+
+
+###
+# roles-resource-permisions
+GET {{hostname}}/roles-resource-permisions?role_codes={{role_code}}&resource_code={{resource_code}}

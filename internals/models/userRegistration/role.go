@@ -49,31 +49,30 @@ type RWXD struct {
 	D bool `json:"d"` // Delete
 }
 
-// Implement the Valuer interface for RWXD (convert to JSON for database storage)
-func (r RWXD) Value() (driver.Value, error) {
-	return json.Marshal(r) // Convert RWXD to JSON
+type Permissions struct {
+	Allow RWXD `json:"allow"` // Store Allow as JSON
+	Deny  RWXD `json:"deny"`  // Store Deny as JSON
 }
 
-// Implement the Scanner interface for RWXD (convert JSON from database to struct)
-func (r *RWXD) Scan(value interface{}) error {
+// Ensure `Permissions` implements `Valuer` and `Scanner`
+func (p Permissions) Value() (driver.Value, error) {
+	return json.Marshal(p)
+}
+
+func (p *Permissions) Scan(value interface{}) error {
 	bytes, ok := value.([]byte)
 	if !ok {
 		return fmt.Errorf("failed to convert database value to byte slice")
 	}
-	return json.Unmarshal(bytes, r) // Convert JSON to RWXD
+	return json.Unmarshal(bytes, p)
 }
 
-// Permissions specifies allow/deny permissions on a resource
-type Permissions struct {
-	Allow RWXD `gorm:"type:json"` // Store Allow as JSON
-	Deny  RWXD `gorm:"type:json"` // Store Deny as JSON
-}
-
+// RoleResourcePermission struct
 type RoleResourcePermission struct {
 	gorm.Model
-	RoleCode     string      `gorm:"index"` // Foreign key to the role
-	ResourceCode string      `gorm:"index"` // Foreign key to the resource
-	Permissions  Permissions `gorm:"type:json"`
+	RoleCode     string      `gorm:"index"`      // Foreign key to the role
+	ResourceCode string      `gorm:"index"`      // Foreign key to the resource
+	Permissions  Permissions `gorm:"type:jsonb"` // Use jsonb for PostgreSQL, json for MySQL
 	CreatedBy    string      `gorm:"size:100" json:"created_by"`
 	UpdatedBy    string      `gorm:"size:100" json:"updated_by"`
 }

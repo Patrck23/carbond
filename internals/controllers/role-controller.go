@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"car-bond/internals/models/userRegistration"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -358,7 +359,7 @@ type PermissionService interface {
 	GetWildCardPermissions(roleCode, resourcePattern string) ([]userRegistration.RoleWildCardPermission, error)
 	ResourceExplicitPermissionsExists(resourceCode string) (bool, error)
 	GroupsWithRoleExists(roleCode string) (bool, error)
-	GetPermissions(roleCodes string, resourceCode string) ([]userRegistration.RoleResourcePermission, error)
+	GetPermissions(roleCodes []string, resourceCode string) ([]userRegistration.RoleResourcePermission, error)
 }
 
 // CreatePermission creates a new role-resource permission
@@ -379,28 +380,27 @@ func (s *DatabaseService) CreateWildCardPermission(permission *userRegistration.
 
 // GetGrantedPermissions calculates permissions for roles on a resource
 func (s *DatabaseService) GetGrantedPermissions(roleCode, resourceCode string) (*userRegistration.Permissions, error) {
-	var permissions userRegistration.Permissions
+	var roleResourcePermission userRegistration.RoleResourcePermission
 
-	// Query to calculate the permissions using JSON fields
+	// Query to retrieve the entire row
 	if err := s.db.Raw(`
-        SELECT 
-			permissions->'Allow' AS allow,
-			permissions->'Deny' AS deny
+		SELECT permissions
 		FROM role_resource_permissions
 		WHERE role_code = ? AND resource_code = ?
-    `, roleCode, resourceCode).Scan(&permissions).Error; err != nil {
+		LIMIT 1
+	`, roleCode, resourceCode).Scan(&roleResourcePermission).Error; err != nil {
 		return nil, err
 	}
 
-	// Return the permissions as JSON
-	return &permissions, nil
+	// Return only the permissions field
+	return &roleResourcePermission.Permissions, nil
 }
 
 // Check checks the permissions for a given role and resource
 func (s *DatabaseService) CheckPermissions(roleCode, resourceCode string, requestedPerms userRegistration.Permissions) (userRegistration.Permissions, error) {
 	var permissions userRegistration.Permissions
 	if err := s.db.Raw(`
-        SELECT permissions->'Allow' AS allow, permissions->'Deny' AS deny
+        SELECT permissions
         FROM role_resource_permissions
         WHERE role_code = ? AND resource_code = ?
     `, roleCode, resourceCode).Scan(&permissions.Allow).Error; err != nil {
@@ -408,19 +408,6 @@ func (s *DatabaseService) CheckPermissions(roleCode, resourceCode string, reques
 	}
 	return permissions, nil
 }
-
-// // Get retrieves explicitly defined permissions for a role on a resource
-// func (s *DatabaseService) GetExplicitPermissions(roleCode, resourceCode string) (userRegistration.RoleResourcePermission, error) {
-// 	var permissions userRegistration.RoleResourcePermission
-
-// 	// Use the `First` method to retrieve the first matching record.
-// 	if err := s.db.Select("permissions").Where("role_code = ? AND resource_code = ?", roleCode, resourceCode).Scan(&permissions).Error; err != nil {
-// 		fmt.Println("Error fetching permissions:", err)
-// 		return permissions, err // Return the empty struct and the error
-// 	}
-
-// 	return permissions, nil // Return the permissions and no error
-// }
 
 // Get retrieves explicitly defined permissions for a role on a resource
 func (s *DatabaseService) GetExplicitPermissions(roleCode, resourceCode string) (userRegistration.RoleResourcePermission, error) {
@@ -459,10 +446,21 @@ func (s *DatabaseService) ResourceExplicitPermissionsExists(resourceCode string)
 }
 
 // Exists checks if there are groups assigned a specific role
-func (s *DatabaseService) GroupsWithRoleExists(roleCode string) (bool, error) {
+func (s *DatabaseService) GroupsWithRoleExists(groupCode string) (bool, error) {
+	var group userRegistration.Group
+
+	// First, find the group by its Code
+	if err := s.db.Where("code = ?", groupCode).First(&group).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil // Group does not exist, so return false
+		}
+		return false, err // Return error if something goes wrong
+	}
+
+	// Now count roles assigned to the found group
 	var count int64
-	err := s.db.Table("group_roles").
-		Where("role_code = ?", roleCode).
+	err := s.db.Model(&userRegistration.Role{}).
+		Where("group_id = ?", group.ID).
 		Count(&count).Error
 
 	if err != nil {
@@ -473,7 +471,7 @@ func (s *DatabaseService) GroupsWithRoleExists(roleCode string) (bool, error) {
 }
 
 // Get retrieves permissions granted to roles on a specific resource
-func (s *DatabaseService) GetPermissions(roleCodes string, resourceCode string) ([]userRegistration.RoleResourcePermission, error) {
+func (s *DatabaseService) GetPermissions(roleCodes []string, resourceCode string) ([]userRegistration.RoleResourcePermission, error) {
 	var permissions []userRegistration.RoleResourcePermission
 	err := s.db.Where("role_code IN (?) AND resource_code = ?", roleCodes, resourceCode).
 		Find(&permissions).Error
@@ -550,31 +548,6 @@ func (pc *PermissionController) GetGrantedPermissions(c *fiber.Ctx) error {
 	return c.JSON(permissions)
 }
 
-// // CheckPermissions checks if the role has the requested permissions on a resource
-// func (pc *PermissionController) CheckPermissions(c *fiber.Ctx) error {
-// 	roleCode := c.Query("role_code")
-// 	resourceCode := c.Query("resource_code")
-// 	requestedPerms := userRegistration.Permissions{}
-// 	if err := c.BodyParser(&requestedPerms); err != nil {
-// 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse requested permissions"})
-// 	}
-
-// 	permissions, err := pc.service.CheckPermissions(roleCode, resourceCode, requestedPerms)
-// 	if err != nil {
-// 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Cannot check permissions"})
-// 	}
-
-// 	// Compare requested permissions with allowed permissions
-// 	if requestedPerms.Allow.R && !permissions.Allow.R ||
-// 		requestedPerms.Allow.W && !permissions.Allow.W ||
-// 		requestedPerms.Allow.X && !permissions.Allow.X ||
-// 		requestedPerms.Allow.D && !permissions.Allow.D {
-// 		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Insufficient permissions"})
-// 	}
-
-// 	return c.SendStatus(fiber.StatusOK)
-// }
-
 func (pc *PermissionController) CheckPermissions(c *fiber.Ctx) error {
 	roleCode := c.Query("role_code")
 	resourceCode := c.Query("resource_code")
@@ -595,15 +568,15 @@ func (pc *PermissionController) CheckPermissions(c *fiber.Ctx) error {
 		})
 	}
 
-	// Compare requested permissions with the allowed permissions
-	// If any requested permission is not allowed, return an error
+	// Create a map to track permission checks
 	permissionsMap := map[string]bool{
-		"Read":    requestedPerms.Allow.R && !permissions.Allow.R,
-		"Write":   requestedPerms.Allow.W && !permissions.Allow.W,
-		"Execute": requestedPerms.Allow.X && !permissions.Allow.X,
-		"Delete":  requestedPerms.Allow.D && !permissions.Allow.D,
+		"Read":    requestedPerms.Allow.R && !permissions.Allow.R || requestedPerms.Deny.R && permissions.Allow.R,
+		"Write":   requestedPerms.Allow.W && !permissions.Allow.W || requestedPerms.Deny.W && permissions.Allow.W,
+		"Execute": requestedPerms.Allow.X && !permissions.Allow.X || requestedPerms.Deny.X && permissions.Allow.X,
+		"Delete":  requestedPerms.Allow.D && !permissions.Allow.D || requestedPerms.Deny.D && permissions.Allow.D,
 	}
 
+	// Check if any permission request is insufficient
 	for perm, insufficient := range permissionsMap {
 		if insufficient {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
@@ -656,9 +629,9 @@ func (pc *PermissionController) ResourceExplicitPermissionsExists(c *fiber.Ctx) 
 
 // GroupsWithRoleExists checks if there are groups assigned a specific role
 func (pc *PermissionController) GroupsWithRoleExists(c *fiber.Ctx) error {
-	roleCode := c.Query("role_code")
+	groupCode := c.Query("group_code")
 
-	exists, err := pc.service.GroupsWithRoleExists(roleCode)
+	exists, err := pc.service.GroupsWithRoleExists(groupCode)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error checking if groups with role exist"})
 	}
@@ -668,13 +641,19 @@ func (pc *PermissionController) GroupsWithRoleExists(c *fiber.Ctx) error {
 
 // GetPermissions retrieves permissions granted to roles on a specific resource
 func (pc *PermissionController) GetPermissions(c *fiber.Ctx) error {
-	roleCodes := c.Query("role_codes") // Comma-separated role codes
+	// Get roleCodes and resourceCode from query parameters
+	roleCodesStr := c.Query("role_codes") // Comma-separated role codes
 	resourceCode := c.Query("resource_code")
 
+	// Convert the comma-separated string into a slice of strings
+	roleCodes := strings.Split(roleCodesStr, ",")
+
+	// Call the service method to retrieve permissions
 	permissions, err := pc.service.GetPermissions(roleCodes, resourceCode)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Error retrieving permissions"})
 	}
 
+	// Return the retrieved permissions as a JSON response
 	return c.JSON(permissions)
 }
