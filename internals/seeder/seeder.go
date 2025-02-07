@@ -392,8 +392,8 @@ func SeedDatabase(db *gorm.DB) {
 	// Seed RoleWildCardPermissions
 	roleWildCardPermissions := []userRegistration.RoleWildCardPermission{
 		{
-			RoleCode:        "resource.admin",
-			ResourcePattern: "resource.*",
+			RoleCode:     "resource.admin",
+			ResourceCode: "resource.*",
 			Permissions: userRegistration.Permissions{
 				Allow: userRegistration.RWXD{R: true, W: true, X: true, D: true},
 				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
@@ -401,8 +401,8 @@ func SeedDatabase(db *gorm.DB) {
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		}, {
-			RoleCode:        "resource.writer",
-			ResourcePattern: "resource.my",
+			RoleCode:     "resource.writer",
+			ResourceCode: "resource.my",
 			Permissions: userRegistration.Permissions{
 				Allow: userRegistration.RWXD{R: true, W: true, X: false, D: false},
 				Deny:  userRegistration.RWXD{R: false, W: false, X: false, D: false},
@@ -411,8 +411,8 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
-			RoleCode:        "resource.reader",
-			ResourcePattern: "resource.all",
+			RoleCode:     "resource.reader",
+			ResourceCode: "resource.all",
 			Permissions: userRegistration.Permissions{
 				Allow: userRegistration.RWXD{R: true, W: false, X: false, D: false},
 				Deny:  userRegistration.RWXD{R: false, W: false, X: true, D: true},

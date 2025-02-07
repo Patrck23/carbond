@@ -356,7 +356,7 @@ type PermissionService interface {
 	GetGrantedPermissions(roleCode, resourceCode string) (*userRegistration.Permissions, error)
 	CheckPermissions(roleCode, resourceCode string, requestedPerms userRegistration.Permissions) (userRegistration.Permissions, error)
 	GetExplicitPermissions(roleCode, resourceCode string) (userRegistration.RoleResourcePermission, error)
-	GetWildCardPermissions(roleCode, resourcePattern string) ([]userRegistration.RoleWildCardPermission, error)
+	GetWildCardPermissions(roleCode, resourceCode string) ([]userRegistration.RoleWildCardPermission, error)
 	ResourceExplicitPermissionsExists(resourceCode string) (bool, error)
 	GroupsWithRoleExists(roleCode string) (bool, error)
 	GetPermissions(roleCodes []string, resourceCode string) ([]userRegistration.RoleResourcePermission, error)
@@ -423,9 +423,9 @@ func (s *DatabaseService) GetExplicitPermissions(roleCode, resourceCode string) 
 }
 
 // Get retrieves wildcard permissions for a role based on a resource pattern
-func (s *DatabaseService) GetWildCardPermissions(roleCode, resourcePattern string) ([]userRegistration.RoleWildCardPermission, error) {
+func (s *DatabaseService) GetWildCardPermissions(roleCode, resourceCode string) ([]userRegistration.RoleWildCardPermission, error) {
 	var permissions []userRegistration.RoleWildCardPermission
-	if err := s.db.Where("role_code = ? AND resource_pattern LIKE ?", roleCode, resourcePattern).Find(&permissions).Error; err != nil {
+	if err := s.db.Where("role_code = ? AND resource_code = ?", roleCode, resourceCode).Find(&permissions).Error; err != nil {
 		return nil, err
 	}
 	return permissions, nil
@@ -605,9 +605,9 @@ func (pc *PermissionController) GetExplicitPermissions(c *fiber.Ctx) error {
 // GetWildCardPermissions retrieves wildcard permissions for a role based on a resource pattern
 func (pc *PermissionController) GetWildCardPermissions(c *fiber.Ctx) error {
 	roleCode := c.Query("role_code")
-	resourcePattern := c.Query("resource_pattern")
+	resourceCode := c.Query("resource_code")
 
-	permissions, err := pc.service.GetWildCardPermissions(roleCode, resourcePattern)
+	permissions, err := pc.service.GetWildCardPermissions(roleCode, resourceCode)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Cannot retrieve wildcard permissions"})
 	}

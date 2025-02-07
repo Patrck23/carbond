@@ -36,15 +36,52 @@ func NewDatabaseService(db *gorm.DB) *DatabaseService {
 	return &DatabaseService{db: db}
 }
 
+// // CheckPermissions checks the permissions for a given role and resource.
+// func (s *DatabaseService) CheckPermissions(roleCodes []string, resourceCode string) (userRegistration.Permissions, error) {
+// 	var aggregatedPermissions userRegistration.Permissions
+
+// 	// Iterate over all role codes to accumulate permissions
+// 	for _, roleCode := range roleCodes {
+// 		var roleResourcePermission userRegistration.RoleResourcePermission
+
+// 		// Query to get the permissions as a JSON field (assuming permissions is a JSONB field)
+// 		if err := s.db.Raw(
+// 			`SELECT permissions
+//             FROM role_resource_permissions
+//             WHERE role_code = ? AND resource_code = ?`, roleCode, resourceCode).Scan(&roleResourcePermission).Error; err != nil {
+// 			return aggregatedPermissions, err
+// 		}
+
+// 		// Aggregate the permissions across all roles (using OR logic to combine)
+// 		aggregatedPermissions.Allow.R = aggregatedPermissions.Allow.R || roleResourcePermission.Permissions.Allow.R
+// 		aggregatedPermissions.Allow.W = aggregatedPermissions.Allow.W || roleResourcePermission.Permissions.Allow.W
+// 		aggregatedPermissions.Allow.X = aggregatedPermissions.Allow.X || roleResourcePermission.Permissions.Allow.X
+// 		aggregatedPermissions.Allow.D = aggregatedPermissions.Allow.D || roleResourcePermission.Permissions.Allow.D
+
+// 		// Note: You can also aggregate Deny permissions if needed
+// 		aggregatedPermissions.Deny.R = aggregatedPermissions.Deny.R || roleResourcePermission.Permissions.Deny.R
+// 		aggregatedPermissions.Deny.W = aggregatedPermissions.Deny.W || roleResourcePermission.Permissions.Deny.W
+// 		aggregatedPermissions.Deny.X = aggregatedPermissions.Deny.X || roleResourcePermission.Permissions.Deny.X
+// 		aggregatedPermissions.Deny.D = aggregatedPermissions.Deny.D || roleResourcePermission.Permissions.Deny.D
+// 	}
+
+// 	// Print the final aggregated permissions
+// 	fmt.Printf("Aggregated Permissions: %+v\n", aggregatedPermissions)
+
+// 	// Return the aggregated permissions
+// 	return aggregatedPermissions, nil
+// }
+
 // CheckPermissions checks the permissions for a given role and resource.
 func (s *DatabaseService) CheckPermissions(roleCodes []string, resourceCode string) (userRegistration.Permissions, error) {
+	var allPermissions []userRegistration.Permissions // Slice to hold permissions from all roles
 	var aggregatedPermissions userRegistration.Permissions
 
 	// Iterate over all role codes to accumulate permissions
 	for _, roleCode := range roleCodes {
 		var roleResourcePermission userRegistration.RoleResourcePermission
 
-		// Query to get the permissions as a JSON field (assuming permissions is a JSONB field)
+		// Query to get the explicit permissions
 		if err := s.db.Raw(
 			`SELECT permissions
             FROM role_resource_permissions
@@ -52,20 +89,34 @@ func (s *DatabaseService) CheckPermissions(roleCodes []string, resourceCode stri
 			return aggregatedPermissions, err
 		}
 
-		// Print the raw permissions for debugging before aggregation
-		fmt.Printf("Permissions for role %s: %+v\n", roleCode, roleResourcePermission.Permissions)
+		// Append explicit permissions to the slice
+		allPermissions = append(allPermissions, roleResourcePermission.Permissions)
 
-		// Aggregate the permissions across all roles (using OR logic to combine)
-		aggregatedPermissions.Allow.R = aggregatedPermissions.Allow.R || roleResourcePermission.Permissions.Allow.R
-		aggregatedPermissions.Allow.W = aggregatedPermissions.Allow.W || roleResourcePermission.Permissions.Allow.W
-		aggregatedPermissions.Allow.X = aggregatedPermissions.Allow.X || roleResourcePermission.Permissions.Allow.X
-		aggregatedPermissions.Allow.D = aggregatedPermissions.Allow.D || roleResourcePermission.Permissions.Allow.D
+		// Query to get the wildcard permissions
+		var wildCardResourcePermissions userRegistration.RoleWildCardPermission
+		if err := s.db.Raw(
+			`SELECT permissions
+            FROM role_wild_card_permissions
+            WHERE role_code = ? AND resource_code = ?`, roleCode, resourceCode).Scan(&wildCardResourcePermissions).Error; err != nil {
+			return aggregatedPermissions, err
+		}
 
-		// Note: You can also aggregate Deny permissions if needed
-		aggregatedPermissions.Deny.R = aggregatedPermissions.Deny.R || roleResourcePermission.Permissions.Deny.R
-		aggregatedPermissions.Deny.W = aggregatedPermissions.Deny.W || roleResourcePermission.Permissions.Deny.W
-		aggregatedPermissions.Deny.X = aggregatedPermissions.Deny.X || roleResourcePermission.Permissions.Deny.X
-		aggregatedPermissions.Deny.D = aggregatedPermissions.Deny.D || roleResourcePermission.Permissions.Deny.D
+		// Append wildcard permissions to the slice
+		allPermissions = append(allPermissions, wildCardResourcePermissions.Permissions)
+	}
+
+	// Aggregate the permissions across all roles (using OR logic to combine)
+	for _, permissions := range allPermissions {
+		aggregatedPermissions.Allow.R = aggregatedPermissions.Allow.R || permissions.Allow.R
+		aggregatedPermissions.Allow.W = aggregatedPermissions.Allow.W || permissions.Allow.W
+		aggregatedPermissions.Allow.X = aggregatedPermissions.Allow.X || permissions.Allow.X
+		aggregatedPermissions.Allow.D = aggregatedPermissions.Allow.D || permissions.Allow.D
+
+		// Aggregate Deny permissions if needed
+		aggregatedPermissions.Deny.R = aggregatedPermissions.Deny.R || permissions.Deny.R
+		aggregatedPermissions.Deny.W = aggregatedPermissions.Deny.W || permissions.Deny.W
+		aggregatedPermissions.Deny.X = aggregatedPermissions.Deny.X || permissions.Deny.X
+		aggregatedPermissions.Deny.D = aggregatedPermissions.Deny.D || permissions.Deny.D
 	}
 
 	// Print the final aggregated permissions
@@ -75,7 +126,6 @@ func (s *DatabaseService) CheckPermissions(roleCodes []string, resourceCode stri
 	return aggregatedPermissions, nil
 }
 
-// PermissionMiddleware is a Fiber middleware that checks user permissions.
 func PermissionMiddleware(service *DatabaseService, resourceCode string, requestedPerms []string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		roles := getRolesFromRequest(c)
@@ -95,20 +145,33 @@ func PermissionMiddleware(service *DatabaseService, resourceCode string, request
 			})
 		}
 
-		// Create a map to track permission checks
-		permissionsMap := map[string]bool{
-			"r": permissions.Allow.R,
-			"w": permissions.Allow.W,
-			"x": permissions.Allow.X,
-			"d": permissions.Allow.D,
-		}
-
-		// Check if any requested permission is insufficient
+		// Check if the requested permissions are allowed
 		for _, perm := range requestedPerms {
-			if allowed, exists := permissionsMap[perm]; !exists || !allowed {
-				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-					"error": fmt.Sprintf("%s permission denied", perm),
-				})
+			switch perm {
+			case "R":
+				if !permissions.Allow.R {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+						"error": "Read permission denied",
+					})
+				}
+			case "W":
+				if !permissions.Allow.W {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+						"error": "Write permission denied",
+					})
+				}
+			case "X":
+				if !permissions.Allow.X {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+						"error": "Execute permission denied",
+					})
+				}
+			case "D":
+				if !permissions.Allow.D {
+					return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+						"error": "Delete permission denied",
+					})
+				}
 			}
 		}
 

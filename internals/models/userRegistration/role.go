@@ -80,9 +80,9 @@ type RoleResourcePermission struct {
 // RoleWildCardPermission permissions for resource/role
 type RoleWildCardPermission struct {
 	gorm.Model
-	RoleCode        string      `gorm:"size:50;index"` // Restrict RoleCode to 50 characters
-	ResourcePattern string      `gorm:"size:100"`      // Restrict ResourcePattern to 100 characters    // ResourcePattern allows define resource mask using "*" ("resource.*")
-	Permissions     Permissions `gorm:"type:json"`
-	CreatedBy       string      `gorm:"size:100" json:"created_by"`
-	UpdatedBy       string      `gorm:"size:100" json:"updated_by"`
+	RoleCode     string      `gorm:"size:50;index"` // Restrict RoleCode to 50 characters
+	ResourceCode string      `gorm:"size:100"`      // Restrict ResourceCode to 100 characters    // ResourceCode allows define resource mask using "*" ("resource.*")
+	Permissions  Permissions `gorm:"type:json"`
+	CreatedBy    string      `gorm:"size:100" json:"created_by"`
+	UpdatedBy    string      `gorm:"size:100" json:"updated_by"`
 }

@@ -24,7 +24,7 @@ GET {{hostname}}/explict-permissions?role_code={{role_code}}&resource_code={{res
 
 ###
 # Get Wildcard-permissions
-GET {{hostname}}/wildcard-permissions?role_code=resource.admin&resource_pattern=resource.*
+GET {{hostname}}/wildcard-permissions?role_code=resource.admin&resource_code=resource.*
 
 ###
 # Get Granted Permissions
