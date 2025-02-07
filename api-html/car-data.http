@@ -29,7 +29,7 @@ Content-Type: application/json
   "length": 4500,
   "width": 1800,
   "height": 1400,
-  "maunufacture_year": 2020,
+  "manufacture_year": 2020,
   "first_registration_year": 2021,
   "transmission": "Automatic",
   "body_type": "Sedan",
@@ -71,6 +71,11 @@ GET {{hostname}}/cars?page=1&limit=10
 authorization: bearer {{bearer}}
 
 ###
+# Search cars
+GET {{hostname}}/cars?model=Toyota&page=1&limit=25
+authorization: bearer {{bearer}}
+
+###
 # Fetch car by ID
 GET {{hostname}}/car/id/1
 authorization: bearer {{bearer}}
@@ -99,7 +104,7 @@ Content-Type: application/json
   "length": 4500,
   "width": 1800,
   "height": 1400,
-  "maunufacture_year": 2020,
+  "manufacture_year": 2020,
   "first_registration_year": 2021,
   "transmission": "Automatic",
   "body_type": "Sedan",

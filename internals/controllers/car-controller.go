@@ -389,7 +389,7 @@ type UpdateCarPayload struct {
 	Height                int     `json:"height"`
 	CarMillage            int     `json:"millage"`
 	FuelConsumption       string  `json:"fuel_consumption"`
-	ManufactureYear       int     `json:"maunufacture_year"`
+	ManufactureYear       int     `json:"manufacture_year"`
 	FirstRegistrationYear int     `json:"first_registration_year"`
 	Transmission          string  `json:"transmission"`
 	BodyType              string  `json:"body_type"`
@@ -582,14 +582,6 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 			})
 		}
 
-		// // Create a map to track old photo paths
-		// oldPhotoMap := make(map[string]carRegistration.CarPhoto)
-		// fmt.Println("Mapping existing car photos...")
-		// for _, oldPhoto := range car.CarPhotos {
-		// 	oldPhotoMap[oldPhoto.URL] = oldPhoto
-		// 	fmt.Println("Existing photo:", oldPhoto.URL)
-		// }
-
 		oldPhotoMap := make(map[string]carRegistration.CarPhoto)
 		fmt.Println("Mapping existing car photos...")
 
@@ -682,12 +674,8 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		// Update car photos in database
 		fmt.Println("Updating car photos in the database...")
 		fmt.Println(updatedCarPhotos)
-		// updates["car_photos"] = updatedCarPhotos
-
 		fmt.Println("Car photos successfully updated.")
 	}
-
-	// }
 
 	// Proceed with updating other car data
 	if err := h.repo.UpdateCarJapan(id, updates); err != nil {
@@ -1345,8 +1333,9 @@ func (h *CarController) GetCarExpensesFilters(c *fiber.Ctx) error {
 
 // TotalCarExpense represents the total expenses for a car grouped by currency
 type TotalCarExpense struct {
-	Currency string  `json:"currency"`
-	Total    float64 `json:"total"`
+	Currency   string  `json:"currency"`
+	DollarRate float64 `json:"dollar_rate"`
+	Total      float64 `json:"total"`
 }
 
 // GetTotalCarExpenses calculates the total expenses for a given car by its ID, grouped by currency
@@ -1356,8 +1345,8 @@ func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) ([]TotalCarExpense, 
 	// Sum up all expenses for the given car ID, grouped by currency
 	err := r.db.Model(&carRegistration.CarExpense{}).
 		Where("car_id = ?", carID).
-		Select("currency, COALESCE(SUM(amount), 0) AS total").
-		Group("currency").
+		Select("currency, dollar_rate, COALESCE(SUM(amount / dollar_rate), 0) AS total_in_dollars").
+		Group("currency, dollar_rate").
 		Scan(&expenses).Error
 
 	if err != nil {
@@ -1418,8 +1407,10 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	car_tracker := c.Query("carTracker")
 	car_status := c.Query("carStatus")
 	car_payment_status := c.Query("carPaymentStatus")
-	maunufacture_year := c.Query("maunufactureYear")
+	manufacture_year := c.Query("maunufactureYear")
 	bid_price := c.Query("bidPrice")
+	maxBidPrice := c.Query("max_bid_price")
+	minBidPrice := c.Query("min_bid_price")
 
 	// Start building the query
 	query := r.db.Model(&carRegistration.Car{})
@@ -1482,9 +1473,23 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 		}
 	}
 
-	if maunufacture_year != "" {
-		if _, err := strconv.Atoi(maunufacture_year); err == nil {
-			query = query.Where("maunufacture_year = ?", maunufacture_year)
+	if minBidPrice != "" {
+		minBidPriceValue, err := strconv.ParseFloat(minBidPrice, 64)
+		if err == nil {
+			query = query.Where("bid_price >= ?", minBidPriceValue)
+		}
+	}
+
+	if maxBidPrice != "" {
+		maxBidPriceValue, err := strconv.ParseFloat(maxBidPrice, 64)
+		if err == nil {
+			query = query.Where("bid_price <= ?", maxBidPriceValue)
+		}
+	}
+
+	if manufacture_year != "" {
+		if _, err := strconv.Atoi(manufacture_year); err == nil {
+			query = query.Where("manufacture_year = ?", manufacture_year)
 		}
 	}
 

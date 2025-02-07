@@ -22,7 +22,7 @@ type Car struct {
 	Length                int                          `gorm:"size:100;not null" json:"length"`
 	Width                 int                          `gorm:"size:100;not null" json:"width"`
 	Height                int                          `gorm:"size:100;not null" json:"height"`
-	ManufactureYear       int                          `gorm:"not null" json:"maunufacture_year"`
+	ManufactureYear       int                          `gorm:"not null" json:"manufacture_year"`
 	FirstRegistrationYear int                          `gorm:"not null" json:"first_registration_year"`
 	Transmission          string                       `json:"transmission"`
 	BodyType              string                       `json:"body_type"`
