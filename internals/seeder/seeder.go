@@ -223,7 +223,7 @@ func SeedDatabase(db *gorm.DB) {
 	resources := []userRegistration.Resource{
 		{
 			Code:        "resource.*",
-			Name:        "Dashboard",
+			Name:        "Resources",
 			Description: "Access everything",
 			Internal:    true,
 			CreatedBy:   "Seeder",
@@ -231,7 +231,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "resource.all",
-			Name:        "Dashboard",
+			Name:        "Read all Resouces",
 			Description: "Access to the dashboard",
 			Internal:    false,
 			CreatedBy:   "Seeder",
@@ -239,7 +239,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "resource.my",
-			Name:        "Settings",
+			Name:        "personal resource",
 			Description: "Access to settings page",
 			Internal:    false,
 			CreatedBy:   "Seeder",
@@ -247,7 +247,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "users.*",
-			Name:        "Dashboard",
+			Name:        "All users",
 			Description: "Access to all users",
 			Internal:    true,
 			CreatedBy:   "Seeder",
@@ -255,7 +255,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "users.all",
-			Name:        "Dashboard",
+			Name:        "Access to all users",
 			Description: "Read users",
 			Internal:    false,
 			CreatedBy:   "Seeder",
@@ -263,7 +263,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "users.my",
-			Name:        "Dashboard",
+			Name:        "Just the user",
 			Description: "Edit users",
 			Internal:    false,
 			CreatedBy:   "Seeder",
@@ -271,7 +271,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "documents.*",
-			Name:        "Dashboard",
+			Name:        "All document access",
 			Description: "Access to all documents",
 			Internal:    true,
 			CreatedBy:   "Seeder",
@@ -279,7 +279,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "documents.all",
-			Name:        "Dashboard",
+			Name:        "Read documents",
 			Description: "Read all documents",
 			Internal:    false,
 			CreatedBy:   "Seeder",
@@ -287,7 +287,7 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Code:        "documents.my",
-			Name:        "Dashboard",
+			Name:        "View user documents",
 			Description: "Edit my documents",
 			Internal:    false,
 			CreatedBy:   "Seeder",

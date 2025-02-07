@@ -1,0 +1,17 @@
+GET http://127.0.0.1:8080/api/check-permissions?role_code=resource.reader&resource_code=resource.all
+
+###
+# Explicit permissions
+GET http://127.0.0.1:8080/api/explict-permissions?role_code=resource.reader&resource_code=resource.all
+
+###
+# Get Permissions
+GET http://127.0.0.1:8080/api/permissions?role_code=resource.reader&resource_code=resource.all
+
+###
+# Get Resources
+GET http://127.0.0.1:8080/api/resources
+
+###
+# Get Resource
+GET http://127.0.0.1:8080/api/resources/resource.all
