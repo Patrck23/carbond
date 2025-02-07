@@ -36,42 +36,6 @@ func NewDatabaseService(db *gorm.DB) *DatabaseService {
 	return &DatabaseService{db: db}
 }
 
-// // CheckPermissions checks the permissions for a given role and resource.
-// func (s *DatabaseService) CheckPermissions(roleCodes []string, resourceCode string) (userRegistration.Permissions, error) {
-// 	var aggregatedPermissions userRegistration.Permissions
-
-// 	// Iterate over all role codes to accumulate permissions
-// 	for _, roleCode := range roleCodes {
-// 		var roleResourcePermission userRegistration.RoleResourcePermission
-
-// 		// Query to get the permissions as a JSON field (assuming permissions is a JSONB field)
-// 		if err := s.db.Raw(
-// 			`SELECT permissions
-//             FROM role_resource_permissions
-//             WHERE role_code = ? AND resource_code = ?`, roleCode, resourceCode).Scan(&roleResourcePermission).Error; err != nil {
-// 			return aggregatedPermissions, err
-// 		}
-
-// 		// Aggregate the permissions across all roles (using OR logic to combine)
-// 		aggregatedPermissions.Allow.R = aggregatedPermissions.Allow.R || roleResourcePermission.Permissions.Allow.R
-// 		aggregatedPermissions.Allow.W = aggregatedPermissions.Allow.W || roleResourcePermission.Permissions.Allow.W
-// 		aggregatedPermissions.Allow.X = aggregatedPermissions.Allow.X || roleResourcePermission.Permissions.Allow.X
-// 		aggregatedPermissions.Allow.D = aggregatedPermissions.Allow.D || roleResourcePermission.Permissions.Allow.D
-
-// 		// Note: You can also aggregate Deny permissions if needed
-// 		aggregatedPermissions.Deny.R = aggregatedPermissions.Deny.R || roleResourcePermission.Permissions.Deny.R
-// 		aggregatedPermissions.Deny.W = aggregatedPermissions.Deny.W || roleResourcePermission.Permissions.Deny.W
-// 		aggregatedPermissions.Deny.X = aggregatedPermissions.Deny.X || roleResourcePermission.Permissions.Deny.X
-// 		aggregatedPermissions.Deny.D = aggregatedPermissions.Deny.D || roleResourcePermission.Permissions.Deny.D
-// 	}
-
-// 	// Print the final aggregated permissions
-// 	fmt.Printf("Aggregated Permissions: %+v\n", aggregatedPermissions)
-
-// 	// Return the aggregated permissions
-// 	return aggregatedPermissions, nil
-// }
-
 // CheckPermissions checks the permissions for a given role and resource.
 func (s *DatabaseService) CheckPermissions(roleCodes []string, resourceCode string) (userRegistration.Permissions, error) {
 	var allPermissions []userRegistration.Permissions // Slice to hold permissions from all roles
