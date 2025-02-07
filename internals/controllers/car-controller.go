@@ -630,6 +630,15 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		// Remove old images that were not retained (those still in oldPhotoMap)
 		fmt.Println("Removing old images that are no longer needed...")
 		for oldPath, oldPhoto := range oldPhotoMap {
+			// Now delete the car photo from the database using the ID
+			if err := h.repo.DeleteCarPhotoByID(oldPhoto.ID); err != nil {
+				fmt.Println("Error deleting car photo record:", err)
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"status":  "error",
+					"message": fmt.Sprintf("Failed to delete car photo record with ID: %d", oldPhoto.ID),
+					"data":    err.Error(),
+				})
+			}
 			// Check if file exists before attempting deletion
 			if _, err := os.Stat(oldPath); err == nil {
 				fmt.Println("Deleting old image:", oldPath)
@@ -638,16 +647,6 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 						"status":  "error",
 						"message": "Failed to delete old image",
-						"data":    err.Error(),
-					})
-				}
-
-				// Now delete the car photo from the database using the ID
-				if err := h.repo.DeleteCarPhotoByID(oldPhoto.ID); err != nil {
-					fmt.Println("Error deleting car photo record:", err)
-					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-						"status":  "error",
-						"message": fmt.Sprintf("Failed to delete car photo record with ID: %d", oldPhoto.ID),
 						"data":    err.Error(),
 					})
 				}

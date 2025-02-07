@@ -54,6 +54,7 @@ Content-Type: application/json
   "to_company_id": 1,
   "destination": "Kampala, Uganda",
   "port": "Port of Yokohama",
+  "car_shipping_invoice_id": null,
   "broker_name": "",
   "broker_number": "",
   "vat_tax": null,
@@ -92,7 +93,6 @@ authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-  "car_uuid": "123e4567-e89b-12d3-a456-426614174000",
   "chasis_number": "1HGCM82633A123456",
   "engine_number": "ENG123456789",
   "engine_capacity": "2000cc",
@@ -129,6 +129,7 @@ Content-Type: application/json
   "to_company_id": 1,
   "destination": "Kampala, Uganda",
   "port": "Port of Yokohama",
+  "car_shipping_invoice_id": null,
   "updated_by": "admin"
 }
 
@@ -220,3 +221,5 @@ authorization: bearer {{bearer}}
 # Get total carexpense by ID
 GET {{hostname}}/total-car-expense/1
 authorization: bearer {{bearer}}
+
+
