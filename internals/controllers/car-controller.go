@@ -38,7 +38,7 @@ type CarRepository interface {
 	FindCarExpensesByCarIdAndCurrency(carId, currency string) ([]carRegistration.CarExpense, error)
 	FindCarExpensesByThree(carId, expenseDate, currency string) ([]carRegistration.CarExpense, error)
 	GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency string) ([]carRegistration.CarExpense, error)
-	GetTotalCarExpenses(carID uint) ([]TotalCarExpense, error)
+	GetTotalCarExpenses(carID uint) (CarExpenseResponse, error)
 
 	// Photos
 	CreateCarPhoto(photo *carRegistration.CarPhoto) error
@@ -1330,29 +1330,82 @@ func (h *CarController) GetCarExpensesFilters(c *fiber.Ctx) error {
 // Car Port
 // ===================================================================================================
 
-// TotalCarExpense represents the total expenses for a car grouped by currency
+// TotalCarExpense represents an individual expense for a car
 type TotalCarExpense struct {
 	Currency   string  `json:"currency"`
 	DollarRate float64 `json:"dollar_rate"`
 	Total      float64 `json:"total"`
 }
 
-// GetTotalCarExpenses calculates the total expenses for a given car by its ID, grouped by currency
-func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) ([]TotalCarExpense, error) {
+// CarExpenseResponse represents the response structure for car expenses
+type CarExpenseResponse struct {
+	TotalCarPrice            float64           `json:"total_car_price"`              // Total car price in dollars
+	BidPrice                 float64           `json:"bid_price"`                    // Bid price in dollars
+	VATPrice                 float64           `json:"vat_tax"`                      // VAT price in dollars
+	TotalExpense             float64           `json:"total_expense"`                // Total expenses in dollars
+	Expenses                 []TotalCarExpense `json:"expenses"`                     // List of expenses
+	TotalCarPriceAndExpenses float64           `json:"total_car_price_and_expenses"` // Total car price and expenses
+}
+
+// GetTotalCarExpenses calculates the total expenses for a given car by its ID
+func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) (CarExpenseResponse, error) {
 	var expenses []TotalCarExpense
+	var carDetails struct {
+		Currency   string  `json:"currency"`
+		DollarRate float64 `json:"dollar_rate"`
+		VATTax     float64 `json:"vat_tax"`
+		BidPrice   float64 `json:"bid_price"`
+	}
+
+	// Fetch car details
+	err := r.db.Model(&carRegistration.Car{}).
+		Select("currency, dollar_rate, vat_tax, bid_price").
+		Where("id = ?", carID).
+		Scan(&carDetails).Error
+
+	if err != nil {
+		return CarExpenseResponse{}, err
+	}
+
+	// Debugging output
+	fmt.Printf("Car Details: %+v\n", carDetails)
 
 	// Sum up all expenses for the given car ID, grouped by currency
-	err := r.db.Model(&carRegistration.CarExpense{}).
+	err = r.db.Model(&carRegistration.CarExpense{}).
 		Where("car_id = ?", carID).
-		Select("currency, dollar_rate, COALESCE(SUM(amount / dollar_rate), 0) AS total_in_dollars").
+		Select("currency, dollar_rate, COALESCE(SUM(amount / dollar_rate), 0) AS total").
 		Group("currency, dollar_rate").
 		Scan(&expenses).Error
 
 	if err != nil {
-		return nil, err
+		return CarExpenseResponse{}, err
 	}
 
-	return expenses, nil
+	// Calculate total expenses
+	totalExpense := 0.0
+	for _, expense := range expenses {
+		totalExpense += expense.Total
+	}
+
+	// Calculate VAT price in dollars
+	vatPriceInDollars := (carDetails.BidPrice * carDetails.VATTax / 100) / carDetails.DollarRate
+
+	// Prepare the response
+	response := CarExpenseResponse{
+		TotalCarPrice:            (carDetails.BidPrice / carDetails.DollarRate) + vatPriceInDollars,                // Total car price in dollars
+		BidPrice:                 carDetails.BidPrice / carDetails.DollarRate,                                      // Bid price in dollars
+		VATPrice:                 vatPriceInDollars,                                                                // VAT price in dollars
+		TotalExpense:             totalExpense,                                                                     // Total expenses in dollars
+		Expenses:                 expenses,                                                                         // List of expenses
+		TotalCarPriceAndExpenses: (carDetails.BidPrice / carDetails.DollarRate) + vatPriceInDollars + totalExpense, // Total car price and expenses
+	}
+
+	// If there are no expenses, set expenses to an empty slice
+	if len(expenses) == 0 {
+		response.Expenses = []TotalCarExpense{}
+	}
+
+	return response, nil
 }
 
 // GetTotalCarExpenses handles the request to get car expenses
