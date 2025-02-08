@@ -777,6 +777,75 @@ func updateCar2Fields(car *carRegistration.Car, updateCarData UpdateCarPayload2)
 
 // ====================
 
+type UpdateCarPayload3 struct {
+	CarShippingInvoiceID uint   `json:"car_shipping_invoice_id"`
+	UpdatedBy            string `json:"updated_by"`
+}
+
+// UpdateCar handler function
+func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
+	// Get the car ID from the route parameters
+	id := c.Params("id")
+
+	// Find the car in the database
+	car, err := h.repo.GetCarByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve car",
+			"data":    err.Error(),
+		})
+	}
+
+	// Parse the request body into the UpdateCarPayload struct
+	var payloadInv UpdateCarPayload3
+	if err := c.BodyParser(&payloadInv); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
+	}
+
+	// Update the car fields using the payload
+	updateCar3Fields(&car, payloadInv) // Pass the parsed payload
+
+	// Save the changes to the database
+	if err := h.repo.UpdateCar(&car); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update car",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the updated car
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car updated successfully",
+		"data":    car,
+	})
+}
+
+// UpdateCarFields updates the fields of a car using the updateCar struct
+func updateCar3Fields(car *carRegistration.Car, updateCarData UpdateCarPayload3) {
+	// Update the car field
+	if updateCarData.CarShippingInvoiceID != 0 {
+		car.CarShippingInvoiceID = &updateCarData.CarShippingInvoiceID
+	} else {
+		car.CarShippingInvoiceID = nil
+	}
+	car.UpdatedBy = updateCarData.UpdatedBy
+}
+
+// ====================
+
 // DeleteByID deletes a car by ID
 func (r *CarRepositoryImpl) DeleteByID(id string) error {
 	if err := r.db.Delete(&carRegistration.Car{}, "id = ?", id).Error; err != nil {

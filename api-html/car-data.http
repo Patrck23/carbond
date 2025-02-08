@@ -150,6 +150,17 @@ Content-Type: application/json
 }
 
 ###
+# Update car shipping-invoice id
+PUT {{hostname}}/car/1/shipping-invoice
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "car_shipping_invoice_id": 1,
+  "updated_by": "admin"
+}
+
+###
 # Delete car by ID
 DELETE  {{hostname}}/car/2
 authorization: bearer {{bearer}}
