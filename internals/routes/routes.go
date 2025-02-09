@@ -145,6 +145,8 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	customer.Post("/contact", middleware.Protected(), customerController.CreateCustomerContact)
 	customer.Put("/contact/:id", middleware.Protected(), customerController.UpdateCustomerContact)
 	customer.Delete("/:customerId/contact/:id", middleware.Protected(), customerController.DeleteCustomerContactById)
+	// Customer upload
+	customer.Get("/:id/upload", middleware.Protected(), customerController.FetchCustomerUpload)
 	// Customer address
 	api.Get("/:companyId/addresses", middleware.Protected(), customerController.GetCustomerAddressesByCompanyId)
 	customer.Get("/addresses/:customerId", middleware.Protected(), customerController.GetCustomerAddressesByCustomerId)

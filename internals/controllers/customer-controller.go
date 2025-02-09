@@ -115,7 +115,8 @@ func (h *CustomerController) CreateCustomer(c *fiber.Ctx) error {
 		}
 
 		// Generate unique file name to avoid conflicts
-		filePath = filepath.Join(uploadDir, file.Filename)
+		cleanFileName := strings.ReplaceAll(file.Filename, " ", "_")
+		filePath = filepath.Join(uploadDir, cleanFileName)
 		if err := c.SaveFile(file, filePath); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
@@ -405,7 +406,6 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 	file, err := c.FormFile("upload_file")
 	if err == nil { // If a new file is uploaded
 		uploadDir := "./uploads/customer_files/"
-		uploadPath := fmt.Sprintf("%s%s", uploadDir, file.Filename)
 
 		// Ensure the directory exists
 		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
@@ -415,6 +415,10 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 				"data":    err.Error(),
 			})
 		}
+
+		// Replace spaces in file name with underscores
+		safeFileName := strings.ReplaceAll(file.Filename, " ", "_")
+		uploadPath := fmt.Sprintf("%s%s", uploadDir, safeFileName)
 
 		// **Delete old file if it exists**
 		if customer.UploadFile != "" {
