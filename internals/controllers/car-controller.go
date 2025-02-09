@@ -5,6 +5,7 @@ import (
 	"car-bond/internals/utils"
 	"fmt"
 	"os"
+	"strings"
 
 	"errors"
 	"strconv"
@@ -108,8 +109,9 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 	var carPhotos []carRegistration.CarPhoto
 
 	for _, file := range files {
-		// Generate a unique file name
-		filePath := fmt.Sprintf("%s/%s", uploadDir, file.Filename)
+		// Sanitize file name (replace spaces with underscores)
+		cleanFileName := strings.ReplaceAll(file.Filename, " ", "_")
+		filePath := fmt.Sprintf("%s/%s", uploadDir, cleanFileName)
 
 		// Save file to disk
 		if err := c.SaveFile(file, filePath); err != nil {
@@ -600,7 +602,8 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		fmt.Println("Processing uploaded images...")
 		for _, file := range files {
 			// Generate the new file path
-			filePath := fmt.Sprintf("%s%s", uploadDir, file.Filename)
+			cleanFileName := strings.ReplaceAll(file.Filename, " ", "_")
+			filePath := fmt.Sprintf("%s/%s", uploadDir, cleanFileName)
 			fmt.Println("Processing file:", file.Filename, "->", filePath)
 
 			// Check if this image was previously stored (exists in oldPhotoMap)
