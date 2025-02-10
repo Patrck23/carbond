@@ -211,7 +211,13 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 	country := companyLocation.Country
 
 	// Retrieve session from context
-	session := c.Locals("session").(*session.Session)
+	session, ok := c.Locals("session").(*session.Session)
+	if !ok {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Session not found",
+		})
+	}
 
 	// Store userId, username, and roles in the session
 	session.Set("username", user.Username)
@@ -233,6 +239,12 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 	claims["roles"] = roleCodes
 	claims["exp"] = time.Now().Add(72 * time.Hour).Unix()
 
+	// Create JWT token for refresh
+	refreshToken := jwt.New(jwt.SigningMethodHS256)
+	rtClaims := refreshToken.Claims.(jwt.MapClaims)
+	rtClaims["user_id"] = user.ID
+	rtClaims["exp"] = time.Now().Add(72 * 7 * time.Hour).Unix() // Refresh token expires in 72 hours
+
 	secretKey := config.Config("SECRET")
 	if secretKey == "" {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -250,6 +262,15 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 		})
 	}
 
+	rt, err := refreshToken.SignedString([]byte(secretKey))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to generate refresh token",
+			"data":    err.Error(),
+		})
+	}
+
 	// Populate UserData
 	userData := UserData{
 		ID:        user.ID,
@@ -262,9 +283,10 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 
 	// Return the token and user data
 	return c.JSON(fiber.Map{
-		"status":  "success",
-		"message": "Login successful",
-		"token":   t,
-		"user":    userData,
+		"status":        "success",
+		"message":       "Login successful",
+		"token":         t,
+		"refresh_token": rt,
+		"user":          userData,
 	})
 }
