@@ -233,4 +233,7 @@ authorization: bearer {{bearer}}
 GET {{hostname}}/total-car-expense/1
 authorization: bearer {{bearer}}
 
-
+###
+# Get car uploads
+GET {{hostname}}/car/uploads?id=1
+authorization: bearer {{bearer}}

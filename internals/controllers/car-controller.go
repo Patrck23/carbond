@@ -4,8 +4,10 @@ import (
 	"archive/zip"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/utils"
+	"encoding/base64"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,13 +156,15 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 		FuelConsumption:       c.FormValue("fuel_consumption"),
 		BidPrice:              utils.StrToFloat(c.FormValue("bid_price")),
 		VATTax:                utils.StrToFloat(c.FormValue("vat_tax")),
-		DollarRate:            utils.StrToFloat(c.FormValue("dollar_rate")),
-		PurchaseDate:          c.FormValue("purchase_date"),
+		// DollarRate:            utils.StrToFloat(c.FormValue("dollar_rate")),
+		PurchaseDate: c.FormValue("purchase_date"),
 
 		PowerSteering: utils.StrToBool(c.FormValue("ps")),
 		PowerWindow:   utils.StrToBool(c.FormValue("pw")),
 		ABS:           utils.StrToBool(c.FormValue("abs")),
 		ADS:           utils.StrToBool(c.FormValue("ads")),
+		AirBrake:      utils.StrToBool(c.FormValue("air_brake")),
+		OilBrake:      utils.StrToBool(c.FormValue("oil_brake")),
 		AlloyWheel:    utils.StrToBool(c.FormValue("aw")),
 		SimpleWheel:   utils.StrToBool(c.FormValue("sw")),
 		Navigation:    utils.StrToBool(c.FormValue("navigation")),
@@ -406,20 +410,22 @@ type UpdateCarPayload struct {
 	PowerWindow           bool    `json:"pw"`
 	ABS                   bool    `json:"abs"`
 	ADS                   bool    `json:"ads"`
+	AirBrake              bool    `json:"air_brake"`
+	OilBrake              bool    `json:"oil_brake"`
 	AlloyWheel            bool    `json:"aw"`
 	SimpleWheel           bool    `json:"sw"`
 	Navigation            bool    `json:"navigation"`
 	AC                    bool    `json:"ac"`
 	BidPrice              float64 `json:"bid_price"`
 	VATTax                float64 `json:"vat_tax"`
-	DollarRate            float64 `json:"dollar_rate"`
-	PurchaseDate          string  `json:"purchase_date"`
-	FromCompanyID         uint    `json:"from_company_id"`
-	ToCompanyID           uint    `json:"to_company_id"`
-	Destination           string  `json:"destination"`
-	CarShippingInvoiceID  uint    `json:"car_shipping_invoice_id"`
-	Port                  string  `json:"port"`
-	UpdatedBy             string  `json:"updated_by"`
+	// DollarRate            float64 `json:"dollar_rate"`
+	PurchaseDate         string `json:"purchase_date"`
+	FromCompanyID        uint   `json:"from_company_id"`
+	ToCompanyID          uint   `json:"to_company_id"`
+	Destination          string `json:"destination"`
+	CarShippingInvoiceID uint   `json:"car_shipping_invoice_id"`
+	Port                 string `json:"port"`
+	UpdatedBy            string `json:"updated_by"`
 }
 
 // UpdateCar handler function
@@ -528,6 +534,13 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 	if payload.ADS {
 		updates["ads"] = payload.ADS
 	}
+
+	if payload.AirBrake {
+		updates["air_brake"] = payload.ADS
+	}
+	if payload.OilBrake {
+		updates["oil_brake"] = payload.ADS
+	}
 	if payload.AlloyWheel {
 		updates["alloy_wheel"] = payload.AlloyWheel
 	}
@@ -549,9 +562,9 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 	if payload.VATTax != 0 {
 		updates["vat_tax"] = payload.VATTax
 	}
-	if payload.DollarRate != 0 {
-		updates["dollar_rate"] = payload.DollarRate
-	}
+	// if payload.DollarRate != 0 {
+	// 	updates["dollar_rate"] = payload.DollarRate
+	// }
 	if payload.PurchaseDate != "" {
 		updates["purchase_date"] = payload.PurchaseDate
 	}
@@ -645,7 +658,7 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		for oldPath, oldPhoto := range oldPhotoMap {
 			// Convert stored URL to file path
 			oldFileName := strings.TrimPrefix(oldPath, "./uploads/car_files/")
-			oldFilePath := fmt.Sprintf("%s/%s", uploadDir, oldFileName)
+			oldFilePath := fmt.Sprintf("%s%s", uploadDir, oldFileName)
 
 			fmt.Println("Photo URL:", oldPath, "Photo ID:", oldPhoto.ID)
 
@@ -1428,12 +1441,13 @@ type TotalCarExpense struct {
 
 // CarExpenseResponse represents the response structure for car expenses
 type CarExpenseResponse struct {
-	TotalCarPrice            float64           `json:"total_car_price"`              // Total car price in dollars
-	BidPrice                 float64           `json:"bid_price"`                    // Bid price in dollars
-	VATPrice                 float64           `json:"vat_tax"`                      // VAT price in dollars
-	TotalExpense             float64           `json:"total_expense"`                // Total expenses in dollars
-	Expenses                 []TotalCarExpense `json:"expenses"`                     // List of expenses
-	TotalCarPriceAndExpenses float64           `json:"total_car_price_and_expenses"` // Total car price and expenses
+	TotalCarPriceJapan            float64           `json:"total_car_price_japan"`              // Total car price in dollars
+	BidPrice                      float64           `json:"bid_price"`                          // Bid price in dollars
+	VATPrice                      float64           `json:"vat_tax"`                            // VAT price in dollars
+	TotalExpenseJapan             float64           `json:"total_expense_japan"`                // Total expenses in dollars
+	Expenses                      []TotalCarExpense `json:"expenses"`                           // List of expenses
+	TotalCarPriceAndExpensesJapan float64           `json:"total_car_price_and_expenses_japan"` // Total car price and expenses
+	TotalExpenseOther             float64           `json:"total_expense_other"`                // Total expenses in dollars
 }
 
 // GetTotalCarExpenses calculates the total expenses for a given car by its ID
@@ -1448,7 +1462,7 @@ func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) (CarExpenseResponse,
 
 	// Fetch car details
 	err := r.db.Model(&carRegistration.Car{}).
-		Select("currency, dollar_rate, vat_tax, bid_price").
+		Select("currency, vat_tax, bid_price").
 		Where("id = ?", carID).
 		Scan(&carDetails).Error
 
@@ -1462,7 +1476,19 @@ func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) (CarExpenseResponse,
 	// Sum up all expenses for the given car ID, grouped by currency
 	err = r.db.Model(&carRegistration.CarExpense{}).
 		Where("car_id = ?", carID).
-		Select("currency, dollar_rate, COALESCE(SUM(amount / dollar_rate), 0) AS total").
+		Select(`
+			currency, 
+			dollar_rate, 
+			COALESCE(
+				SUM(
+					CASE 
+						WHEN currency = 'JPY' THEN amount
+						ELSE amount / dollar_rate
+					END
+				), 
+				0
+			) AS total
+		`).
 		Group("currency, dollar_rate").
 		Scan(&expenses).Error
 
@@ -1470,23 +1496,29 @@ func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) (CarExpenseResponse,
 		return CarExpenseResponse{}, err
 	}
 
-	// Calculate total expenses
-	totalExpense := 0.0
+	totalExpenseYen := 0.0
+	totalExpenseOther := 0.0
+
 	for _, expense := range expenses {
-		totalExpense += expense.Total
+		if expense.Currency == "JPY" {
+			totalExpenseYen += expense.Total // Sum Yen separately
+		} else {
+			totalExpenseOther += expense.Total // Sum other currencies converted to dollars
+		}
 	}
 
 	// Calculate VAT price in dollars
-	vatPriceInDollars := (carDetails.BidPrice * carDetails.VATTax / 100) / carDetails.DollarRate
+	vatPrice := (carDetails.BidPrice * carDetails.VATTax / 100) // / carDetails.DollarRate
 
 	// Prepare the response
 	response := CarExpenseResponse{
-		TotalCarPrice:            (carDetails.BidPrice / carDetails.DollarRate) + vatPriceInDollars,                // Total car price in dollars
-		BidPrice:                 carDetails.BidPrice / carDetails.DollarRate,                                      // Bid price in dollars
-		VATPrice:                 vatPriceInDollars,                                                                // VAT price in dollars
-		TotalExpense:             totalExpense,                                                                     // Total expenses in dollars
-		Expenses:                 expenses,                                                                         // List of expenses
-		TotalCarPriceAndExpenses: (carDetails.BidPrice / carDetails.DollarRate) + vatPriceInDollars + totalExpense, // Total car price and expenses
+		TotalCarPriceJapan:            (carDetails.BidPrice) + vatPrice,                   // / carDetails.DollarRate // Total car price in dollars
+		BidPrice:                      carDetails.BidPrice,                                // / carDetails.DollarRate,                                      // Bid price in dollars
+		VATPrice:                      vatPrice,                                           // VAT price in dollars
+		TotalExpenseJapan:             totalExpenseYen,                                    // Total expenses in dollars
+		Expenses:                      expenses,                                           // List of expenses
+		TotalCarPriceAndExpensesJapan: (carDetails.BidPrice) + vatPrice + totalExpenseYen, // Total car price and expenses / carDetails.DollarRate
+		TotalExpenseOther:             totalExpenseOther,
 	}
 
 	// If there are no expenses, set expenses to an empty slice
@@ -1673,7 +1705,7 @@ func (r *CarRepositoryImpl) GetCarPhotosBycarID(carId uint) ([]carRegistration.C
 
 func (h *CarController) FetchCarUploads(c *fiber.Ctx) error {
 	// Get the car ID from the route parameters
-	id := c.Params("id")
+	id := c.Query("id")
 
 	// Find the car in the database
 	car, err := h.repo.GetCarByID(id)
@@ -1766,4 +1798,44 @@ func addFileToZip(zipWriter *zip.Writer, filePath string) error {
 	// Copy the file content into the zip entry
 	_, err = io.Copy(zipFileWriter, file)
 	return err
+}
+
+func (h *CarController) FetchCarUploads64(c *fiber.Ctx) error {
+	id := c.Query("id")
+
+	car, err := h.repo.GetCarByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car not found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to retrieve car", "data": err.Error()})
+	}
+
+	photos, err := h.repo.GetCarPhotosBycarID(car.ID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to retrieve photos", "data": err.Error()})
+	}
+
+	if len(photos) == 0 {
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "No photos found for this car"})
+	}
+
+	var images []map[string]string
+	for _, photo := range photos {
+		// Read image file
+		imageData, err := ioutil.ReadFile(photo.URL)
+		if err != nil {
+			continue
+		}
+
+		// Convert image to base64
+		base64Image := base64.StdEncoding.EncodeToString(imageData)
+		images = append(images, map[string]string{
+			"filename": photo.URL,
+			"data":     "data:image/jpeg;base64," + base64Image,
+		})
+	}
+
+	// Return JSON with images
+	return c.JSON(fiber.Map{"status": "success", "message": "Car images retrieved", "images": images})
 }

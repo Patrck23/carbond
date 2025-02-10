@@ -552,6 +552,12 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
+			Name:      "Packing Fee",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
 			Name:      "Port Fee",
 			Category:  "car",
 			CreatedBy: "Seeder",
