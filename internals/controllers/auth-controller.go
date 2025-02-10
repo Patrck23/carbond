@@ -231,7 +231,7 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 	claims["username"] = user.Username
 	claims["user_id"] = user.ID
 	claims["roles"] = roleCodes
-	claims["exp"] = time.Now().Add(1 * time.Hour).Unix()
+	claims["exp"] = time.Now().Add(72 * time.Hour).Unix()
 
 	secretKey := config.Config("SECRET")
 	if secretKey == "" {
