@@ -100,7 +100,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	shipping.Get("/invoice/:id", middleware.Protected(), shippingController.GetSingleInvoice)
 	shipping.Get("/invoice/no/:no", middleware.Protected(), shippingController.GetShippingInvoiceByInvoiceNum)
 	shipping.Put("/invoice/:id", middleware.Protected(), shippingController.UpdateShippingInvoice)
-	shipping.Delete("/invoice//:id", middleware.Protected(), shippingController.DeleteShippingInvoiceByID)
+	shipping.Delete("/invoice/:id", middleware.Protected(), shippingController.DeleteShippingInvoiceByID)
 
 	companyDbService := controllers.NewCompanyRepository(db)
 	companyController := controllers.NewCompanyController(companyDbService)
