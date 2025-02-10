@@ -115,8 +115,8 @@ func (h *ShippingController) GetAllShippingInvoices(c *fiber.Ctx) error {
 		}
 
 		response = append(response, fiber.Map{
-			"customer": invoice,
-			"cars":     cars,
+			"invoice": invoice,
+			"cars":    cars,
 		})
 	}
 

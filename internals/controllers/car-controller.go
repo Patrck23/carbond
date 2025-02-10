@@ -1,10 +1,13 @@
 package controllers
 
 import (
+	"archive/zip"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/utils"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"errors"
@@ -45,6 +48,7 @@ type CarRepository interface {
 	CreateCarPhoto(photo *carRegistration.CarPhoto) error
 	DeleteCarPhotoByURL(photoURL string) error
 	DeleteCarPhotoByID(photoID uint) error
+	GetCarPhotosBycarID(carId uint) ([]carRegistration.CarPhoto, error)
 }
 
 type CarRepositoryImpl struct {
@@ -123,7 +127,7 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 		}
 
 		// Append to carPhotos
-		carPhotos = append(carPhotos, carRegistration.CarPhoto{URL: fmt.Sprintf("http://localhost:8080/uploads/car_files/%s", cleanFileName)})
+		carPhotos = append(carPhotos, carRegistration.CarPhoto{URL: fmt.Sprintf("./uploads/car_files/%s", cleanFileName)})
 	}
 
 	// Parse other form fields into a Car instance
@@ -318,7 +322,7 @@ func (h *CarController) GetSingleCar(c *fiber.Ctx) error {
 
 func (r *CarRepositoryImpl) GetCarByVin(ChasisNumber string) (carRegistration.Car, error) {
 	var car carRegistration.Car
-	err := r.db.First(&car, "chasis_number = ?", ChasisNumber).Error
+	err := r.db.Preload("CarPhotos").First(&car, "chasis_number = ?", ChasisNumber).Error
 	return car, err
 }
 
@@ -600,8 +604,8 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		for _, file := range files {
 			// Sanitize filename and construct paths
 			cleanFileName := strings.ReplaceAll(file.Filename, " ", "_")
-			filePath := fmt.Sprintf("%s%s", uploadDir, cleanFileName)                           // Ensure the "/" separator
-			fileURL := fmt.Sprintf("http://localhost:8080/uploads/car_files/%s", cleanFileName) // URL for frontend
+			filePath := fmt.Sprintf("%s%s", uploadDir, cleanFileName)       // Ensure the "/" separator
+			fileURL := fmt.Sprintf("./uploads/car_files/%s", cleanFileName) // URL for frontend
 
 			fmt.Println("Processing file:", file.Filename, "->", filePath)
 
@@ -640,7 +644,7 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		fmt.Println("Removing old images that are no longer needed...")
 		for oldPath, oldPhoto := range oldPhotoMap {
 			// Convert stored URL to file path
-			oldFileName := strings.TrimPrefix(oldPath, "http://localhost:8080/uploads/car_files/")
+			oldFileName := strings.TrimPrefix(oldPath, "./uploads/car_files/")
 			oldFilePath := fmt.Sprintf("%s/%s", uploadDir, oldFileName)
 
 			fmt.Println("Photo URL:", oldPath, "Photo ID:", oldPhoto.ID)
@@ -1497,16 +1501,10 @@ func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) (CarExpenseResponse,
 func (h *CarController) GetTotalCarExpenses(c *fiber.Ctx) error {
 	// Convert carId to uint
 	carIDStr := c.Params("id")
-	carID, err := strconv.ParseUint(carIDStr, 10, 32)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Invalid car ID",
-		})
-	}
+	carID := utils.StrToUint(carIDStr)
 
 	// Fetch total car expenses using the repository
-	totalExpenses, err := h.repo.GetTotalCarExpenses(uint(carID))
+	totalExpenses, err := h.repo.GetTotalCarExpenses(carID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -1522,8 +1520,6 @@ func (h *CarController) GetTotalCarExpenses(c *fiber.Ctx) error {
 		"data":    totalExpenses,
 	})
 }
-
-// ==============
 
 // ========================================================================================
 
@@ -1663,4 +1659,111 @@ func (h *CarController) SearchCars(c *fiber.Ctx) error {
 		"pagination": pagination,
 		"data":       cars,
 	})
+}
+
+// ===================
+
+func (r *CarRepositoryImpl) GetCarPhotosBycarID(carId uint) ([]carRegistration.CarPhoto, error) {
+	var photos []carRegistration.CarPhoto
+	if err := r.db.Where("car_id = ?", carId).Find(&photos).Error; err != nil {
+		return nil, err
+	}
+	return photos, nil
+}
+
+func (h *CarController) FetchCarUploads(c *fiber.Ctx) error {
+	// Get the car ID from the route parameters
+	id := c.Params("id")
+
+	// Find the car in the database
+	car, err := h.repo.GetCarByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Car not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve car",
+			"data":    err.Error(),
+		})
+	}
+
+	// Retrieve photos of the car
+	photos, err := h.repo.GetCarPhotosBycarID(car.ID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve photos",
+			"data":    err.Error(),
+		})
+	}
+
+	// Check if photos exist
+	if len(photos) == 0 {
+		return c.Status(404).JSON(fiber.Map{
+			"status":  "error",
+			"message": "No photos found for this car",
+		})
+	}
+
+	// Collect file paths
+	var filePaths []string
+	for _, photo := range photos {
+		// Convert stored URL to file path
+		filePath := strings.TrimPrefix(photo.URL, "./")
+		fmt.Println("Photo URL:", filePath, "Photo ID:", photo.ID)
+		filePaths = append(filePaths, filePath) // Assuming FilePath stores the image location
+	}
+
+	// Create a ZIP file
+	zipFileName := fmt.Sprintf("car_%d_photos.zip", car.ID)
+	zipFilePath := filepath.Join(os.TempDir(), zipFileName)
+	zipFile, err := os.Create(zipFilePath)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create ZIP file",
+			"data":    err.Error(),
+		})
+	}
+	defer zipFile.Close()
+
+	// Write images to ZIP
+	zipWriter := zip.NewWriter(zipFile)
+	for _, filePath := range filePaths {
+		err := addFileToZip(zipWriter, filePath)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to add file to ZIP",
+				"data":    err.Error(),
+			})
+		}
+	}
+	zipWriter.Close()
+
+	// Serve the ZIP file
+	return c.SendFile(zipFilePath)
+}
+
+// Helper function to add a file to the ZIP archive
+func addFileToZip(zipWriter *zip.Writer, filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Create a zip entry
+	zipFileWriter, err := zipWriter.Create(filepath.Base(filePath))
+	if err != nil {
+		return err
+	}
+
+	// Copy the file content into the zip entry
+	_, err = io.Copy(zipFileWriter, file)
+	return err
 }
