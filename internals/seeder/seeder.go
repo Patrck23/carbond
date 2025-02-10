@@ -534,13 +534,13 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
-			Name:      "Carrier car fee",
+			Name:      "Carrier car fee(RISKO)",
 			Category:  "car",
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		},
 		{
-			Name:      "Commission Fee",
+			Name:      "Company Commission Fee",
 			Category:  "car",
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
@@ -558,7 +558,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
-			Name:      "Inspection Fee",
+			Name:      "Inspection Fee(JEVIC)",
 			Category:  "car",
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
@@ -577,6 +577,18 @@ func SeedDatabase(db *gorm.DB) {
 		},
 		{
 			Name:      "Maintenance and Repair Fees",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Road Tax",
+			Category:  "car",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
+		{
+			Name:      "Shipping fee",
 			Category:  "car",
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
