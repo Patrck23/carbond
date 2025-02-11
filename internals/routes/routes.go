@@ -216,7 +216,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	meta.Get("/lengths", middleware.Protected(), metaGController.GetAllLeightUnits)
 	meta.Get("/currency", middleware.Protected(), metaGController.GetAllCurrencies)
 	meta.Get("/expenses", middleware.Protected(), metaGController.GetAllExpenseCategories)
-	meta.Get("/ports", middleware.Protected(), metaGController.FindPortsByName)
+	meta.Get("/ports", middleware.Protected(), metaGController.FindPorts)
 	meta.Get("/payment-modes", middleware.Protected(), metaGController.FindPaymentModeBymode)
 	app.Static("/uploads", "./uploads")
 	NotFoundRoute(app)

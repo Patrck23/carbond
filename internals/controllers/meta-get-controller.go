@@ -14,8 +14,9 @@ type MetaGetRepository interface {
 	GetAllLeightUnits(c *fiber.Ctx) ([]metaData.LeightUnit, error)
 	GetAllCurrencies(c *fiber.Ctx) ([]metaData.Currency, error)
 	GetAllExpenseCategories(c *fiber.Ctx) ([]metaData.ExpenseCategory, error)
-	FindPortsByName(name string) ([]metaData.Port, error)
+	// FindPortsByName(name string) ([]metaData.Port, error)
 	FindPaymentModeBymode(mode string) ([]metaData.PaymentMode, error)
+	FindPorts(c *fiber.Ctx) ([]metaData.Port, error)
 }
 
 type MetaGetRepositoryImpl struct {
@@ -217,26 +218,19 @@ func (h *MetaGetController) GetAllExpenseCategories(c *fiber.Ctx) error {
 
 // ======================================
 
-func (m *MetaGetRepositoryImpl) FindPortsByName(name string) ([]metaData.Port, error) {
+func (m *MetaGetRepositoryImpl) FindPorts(c *fiber.Ctx) ([]metaData.Port, error) {
 	var ports []metaData.Port
-	if err := m.db.Where("name LIKE ?", "%"+name+"%").Find(&ports).Error; err != nil {
+	if err := m.db.Find(&ports).Error; err != nil {
 		return nil, err
 	}
 	return ports, nil
 }
 
-func (h *MetaGetController) FindPortsByName(c *fiber.Ctx) error {
-	// Retrieve companyId and expenseDate from the request parameters
-	name := c.Query("name")
-	if name == "" {
-		return c.Status(400).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Name query parameter is required",
-		})
-	}
+func (h *MetaGetController) FindPorts(c *fiber.Ctx) error {
+	// Retrieve companyId and expenseDate from the request parameter
 
 	// Fetch ports using the repository
-	ports, err := h.repo.FindPortsByName(name)
+	ports, err := h.repo.FindPorts(c)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
