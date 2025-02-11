@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"errors"
@@ -138,7 +139,7 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 		EngineNumber:          c.FormValue("engine_number"),
 		EngineCapacity:        c.FormValue("engine_capacity"),
 		Make:                  c.FormValue("make"),
-		CarModel:              c.FormValue("model"),
+		CarModel:              c.FormValue("car_model"),
 		MaximCarry:            utils.StrToInt(c.FormValue("maxim_carry")),
 		Weight:                utils.StrToInt(c.FormValue("weight")),
 		GrossWeight:           utils.StrToInt(c.FormValue("gross_weight")),
@@ -152,21 +153,21 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 		Colour:                c.FormValue("colour"),
 		Auction:               c.FormValue("auction"),
 		Currency:              c.FormValue("currency"),
-		CarMillage:            utils.StrToInt(c.FormValue("millage")),
+		CarMillage:            utils.StrToInt(c.FormValue("car_millage")),
 		FuelConsumption:       c.FormValue("fuel_consumption"),
 		BidPrice:              utils.StrToFloat(c.FormValue("bid_price")),
 		VATTax:                utils.StrToFloat(c.FormValue("vat_tax")),
 		// DollarRate:            utils.StrToFloat(c.FormValue("dollar_rate")),
 		PurchaseDate: c.FormValue("purchase_date"),
 
-		PowerSteering: utils.StrToBool(c.FormValue("ps")),
-		PowerWindow:   utils.StrToBool(c.FormValue("pw")),
+		PowerSteering: utils.StrToBool(c.FormValue("power_steering")),
+		PowerWindow:   utils.StrToBool(c.FormValue("power_window")),
 		ABS:           utils.StrToBool(c.FormValue("abs")),
 		ADS:           utils.StrToBool(c.FormValue("ads")),
 		AirBrake:      utils.StrToBool(c.FormValue("air_brake")),
 		OilBrake:      utils.StrToBool(c.FormValue("oil_brake")),
-		AlloyWheel:    utils.StrToBool(c.FormValue("aw")),
-		SimpleWheel:   utils.StrToBool(c.FormValue("sw")),
+		AlloyWheel:    utils.StrToBool(c.FormValue("alloy_wheel")),
+		SimpleWheel:   utils.StrToBool(c.FormValue("simple_wheel")),
 		Navigation:    utils.StrToBool(c.FormValue("navigation")),
 		AC:            utils.StrToBool(c.FormValue("ac")),
 
@@ -386,46 +387,45 @@ func (r *CarRepositoryImpl) UpdateCarJapan(id string, updates map[string]interfa
 
 // Define the UpdateCarPayload struct
 type UpdateCarPayload struct {
-	ChasisNumber          string  `json:"chasis_number"`
-	EngineNumber          string  `json:"engine_number"`
-	EngineCapacity        string  `json:"engine_capacity"`
-	Make                  string  `json:"make"`
-	CarModel              string  `json:"model"`
-	MaximCarry            int     `json:"maxim_carry"`
-	Weight                int     `json:"weight"`
-	GrossWeight           int     `json:"gross_weight"`
-	Length                int     `json:"length"`
-	Width                 int     `json:"width"`
-	Height                int     `json:"height"`
-	CarMillage            int     `json:"millage"`
-	FuelConsumption       string  `json:"fuel_consumption"`
-	ManufactureYear       int     `json:"manufacture_year"`
-	FirstRegistrationYear int     `json:"first_registration_year"`
-	Transmission          string  `json:"transmission"`
-	BodyType              string  `json:"body_type"`
-	Colour                string  `json:"colour"`
-	Auction               string  `json:"auction"`
-	Currency              string  `json:"currency"`
-	PowerSteering         bool    `json:"ps"`
-	PowerWindow           bool    `json:"pw"`
-	ABS                   bool    `json:"abs"`
-	ADS                   bool    `json:"ads"`
-	AirBrake              bool    `json:"air_brake"`
-	OilBrake              bool    `json:"oil_brake"`
-	AlloyWheel            bool    `json:"aw"`
-	SimpleWheel           bool    `json:"sw"`
-	Navigation            bool    `json:"navigation"`
-	AC                    bool    `json:"ac"`
-	BidPrice              float64 `json:"bid_price"`
-	VATTax                float64 `json:"vat_tax"`
-	// DollarRate            float64 `json:"dollar_rate"`
-	PurchaseDate         string `json:"purchase_date"`
-	FromCompanyID        uint   `json:"from_company_id"`
-	ToCompanyID          uint   `json:"to_company_id"`
-	Destination          string `json:"destination"`
-	CarShippingInvoiceID uint   `json:"car_shipping_invoice_id"`
-	Port                 string `json:"port"`
-	UpdatedBy            string `json:"updated_by"`
+	ChasisNumber          string `form:"chasis_number"`
+	EngineNumber          string `form:"engine_number"`
+	EngineCapacity        string `form:"engine_capacity"`
+	Make                  string `form:"make"`
+	CarModel              string `form:"car_model"`
+	MaximCarry            string `form:"maxim_carry"`
+	Weight                string `form:"weight"`
+	GrossWeight           string `form:"gross_weight"`
+	Length                string `form:"length"`
+	Width                 string `form:"width"`
+	Height                string `form:"height"`
+	CarMillage            string `form:"car_millage"`
+	FuelConsumption       string `form:"fuel_consumption"`
+	ManufactureYear       string `form:"manufacture_year"`
+	FirstRegistrationYear string `form:"first_registration_year"`
+	Transmission          string `form:"transmission"`
+	BodyType              string `form:"body_type"`
+	Colour                string `form:"colour"`
+	Auction               string `form:"auction"`
+	Currency              string `form:"currency"`
+	PowerSteering         string `form:"power_steering"`
+	PowerWindow           string `form:"power_window"`
+	ABS                   string `form:"abs"`
+	ADS                   string `form:"ads"`
+	AirBrake              string `form:"air_brake"`
+	OilBrake              string `form:"oil_brake"`
+	AlloyWheel            string `form:"alloy_wheel"`
+	SimpleWheel           string `form:"simple_wheel"`
+	Navigation            string `form:"navigation"`
+	AC                    string `form:"ac"`
+	BidPrice              string `form:"bid_price"`
+	VATTax                string `form:"vat_tax"`
+	PurchaseDate          string `form:"purchase_date"`
+	FromCompanyID         string `form:"from_company_id"`
+	ToCompanyID           string `form:"to_company_id"`
+	Destination           string `form:"destination"`
+	CarShippingInvoiceID  string `form:"car_shipping_invoice_id"`
+	Port                  string `form:"port"`
+	UpdatedBy             string `form:"updated_by"`
 }
 
 // UpdateCar handler function
@@ -467,124 +467,33 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		})
 	}
 
-	// Convert payload to a map for partial update
-	updates := make(map[string]interface{})
-
-	// Fill the updates map with non-zero or non-empty values from the payload
-	if payload.ChasisNumber != "" {
-		updates["chasis_number"] = payload.ChasisNumber
-	}
-	if payload.EngineNumber != "" {
-		updates["engine_number"] = payload.EngineNumber
-	}
-	if payload.EngineCapacity != "" {
-		updates["engine_capacity"] = payload.EngineCapacity
-	}
-	if payload.Make != "" {
-		updates["make"] = payload.Make
-	}
-	if payload.CarModel != "" {
-		updates["car_model"] = payload.CarModel
-	}
-	if payload.MaximCarry != 0 {
-		updates["maxim_carry"] = payload.MaximCarry
-	}
-	if payload.Weight != 0 {
-		updates["weight"] = payload.Weight
-	}
-	if payload.GrossWeight != 0 {
-		updates["gross_weight"] = payload.GrossWeight
-	}
-	if payload.Length != 0 {
-		updates["length"] = payload.Length
-	}
-	if payload.Width != 0 {
-		updates["width"] = payload.Width
-	}
-	if payload.Height != 0 {
-		updates["height"] = payload.Height
-	}
-	if payload.ManufactureYear != 0 {
-		updates["manufacture_year"] = payload.ManufactureYear
-	}
-	if payload.FirstRegistrationYear != 0 {
-		updates["first_registration_year"] = payload.FirstRegistrationYear
-	}
-	if payload.Transmission != "" {
-		updates["transmission"] = payload.Transmission
-	}
-	if payload.BodyType != "" {
-		updates["body_type"] = payload.BodyType
-	}
-	if payload.Colour != "" {
-		updates["colour"] = payload.Colour
-	}
-	if payload.Auction != "" {
-		updates["auction"] = payload.Auction
-	}
-	if payload.PowerSteering {
-		updates["power_steering"] = payload.PowerSteering
-	}
-	if payload.PowerWindow {
-		updates["power_window"] = payload.PowerWindow
-	}
-	if payload.ABS {
-		updates["abs"] = payload.ABS
-	}
-	if payload.ADS {
-		updates["ads"] = payload.ADS
-	}
-
-	if payload.AirBrake {
-		updates["air_brake"] = payload.ADS
-	}
-	if payload.OilBrake {
-		updates["oil_brake"] = payload.ADS
-	}
-	if payload.AlloyWheel {
-		updates["alloy_wheel"] = payload.AlloyWheel
-	}
-	if payload.SimpleWheel {
-		updates["simple_wheel"] = payload.SimpleWheel
-	}
-	if payload.Navigation {
-		updates["navigation"] = payload.Navigation
-	}
-	if payload.AC {
-		updates["ac"] = payload.AC
-	}
-	if payload.Currency != "" {
-		updates["currency"] = payload.Currency
-	}
-	if payload.BidPrice != 0 {
-		updates["bid_price"] = payload.BidPrice
-	}
-	if payload.VATTax != 0 {
-		updates["vat_tax"] = payload.VATTax
-	}
-	// if payload.DollarRate != 0 {
-	// 	updates["dollar_rate"] = payload.DollarRate
-	// }
-	if payload.PurchaseDate != "" {
-		updates["purchase_date"] = payload.PurchaseDate
-	}
-	if payload.FromCompanyID != 0 {
-		updates["from_company_id"] = payload.FromCompanyID
-	}
-	if payload.ToCompanyID != 0 {
-		updates["to_company_id"] = payload.ToCompanyID
-	}
-	if payload.Destination != "" {
-		updates["destination"] = payload.Destination
-	}
-	if payload.CarShippingInvoiceID != 0 {
-		updates["car_shipping_invoice_id"] = payload.CarShippingInvoiceID
-	}
-	if payload.UpdatedBy != "" {
-		updates["updated_by"] = payload.UpdatedBy
-	}
-
 	form, err := c.MultipartForm()
+
+	// Convert struct fields into a map dynamically
+	updates := make(map[string]interface{})
+	val := reflect.ValueOf(payload)
+	typ := reflect.TypeOf(payload)
+
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldName := typ.Field(i).Tag.Get("form")
+		fieldValue := field.String()
+
+		// Convert field values based on expected type
+		switch fieldName {
+		case "maxim_carry", "weight", "gross_weight", "length", "width", "height", "car_millage", "manufacture_year", "first_registration_year":
+			updates[fieldName] = utils.StrToInt(fieldValue)
+		case "bid_price", "vat_tax":
+			updates[fieldName] = utils.StrToFloat(fieldValue)
+		case "power_steering", "power_window", "abs", "ads", "air_brake", "oil_brake", "alloy_wheel", "simple_wheel", "navigation", "ac":
+			updates[fieldName] = utils.StrToBool(fieldValue)
+		case "from_company_id", "to_company_id", "car_shipping_invoice_id":
+			updates[fieldName] = utils.StrToUintPointer(fieldValue)
+		default:
+			updates[fieldName] = fieldValue
+		}
+	}
+
 	if err == nil {
 		// Extract images
 		files := form.File["images"]
@@ -1559,7 +1468,7 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	// Get query parameters from request
 	chasis_number := c.Query("chasisNumber")
 	make := c.Query("make")
-	model := c.Query("model")
+	model := c.Query("car_model")
 	colour := c.Query("colour")
 	bodyType := c.Query("bodyType")
 	auction := c.Query("auction")

@@ -1,5 +1,7 @@
+
+@hostname = https://clims.health.go.ug/api
 # @name tokenAPI
-POST https://clims.health.go.ug/api/auth/login
+POST {{hostname}}/auth/login
 content-type: application/json
 
 {
@@ -9,11 +11,11 @@ content-type: application/json
 
 ###
 @bearer = {{tokenAPI.response.body.token}}
-GET https://clims.health.go.ug/api/users
+GET {{hostname}}/users
 authorization: bearer {{bearer}}
 
 ###
-POST https://clims.health.go.ug/api/user
+POST {{hostname}}/user
 authorization: bearer {{bearer}}
 Content-Type: application/json
 
@@ -31,3 +33,8 @@ Content-Type: application/json
 	"created_by": "admin",
 	"updated_by": ""
 }
+
+###
+# Get total carexpense by ID
+GET {{hostname}}/total-car-expense/1
+authorization: bearer {{bearer}}
