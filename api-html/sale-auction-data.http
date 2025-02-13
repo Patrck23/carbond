@@ -1,0 +1,64 @@
+# User Login
+@hostname = http://127.0.0.1:8080/api
+# @name tokenAPI
+POST {{hostname}}/auth/login
+content-type: application/json
+
+{
+    "identity":"Admin",
+    "password":"Admin123"
+}
+
+###
+# Sale Registration
+@bearer = {{tokenAPI.response.body.token}}
+
+POST {{hostname}}/auction-sale
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "car_id": 3,
+    "company_id": 2,
+    "auction": "Japan Auction",
+    "auction_date": "2025-01-28",
+    "price": 2000000,
+    "vat_tax": 12,
+    "recycle_fee": 20000,
+    "created_by": "admin",
+    "updated_by": "admin"
+}
+
+###
+# Fetch sales
+GET {{hostname}}/auction-sales?page=1&limit=10
+authorization: bearer {{bearer}}
+
+###
+# Fetch sale by ID
+GET {{hostname}}/auction-sale/1
+authorization: bearer {{bearer}}
+
+###
+# Update sale by ID
+PUT {{hostname}}/auction-sale/1
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+    "car_id": 3,
+    "company_id": 2,
+    "auction": "Japan Auction",
+    "auction_date": "2025-01-21",
+    "price": 2000000,
+    "vat_tax": 10,
+    "recycle_fee": 20000,
+    "updated_by": "admin"
+}
+
+###
+# Delete sale by ID
+DELETE  {{hostname}}/auction-sale/1
+authorization: bearer {{bearer}}
+
+# ====================

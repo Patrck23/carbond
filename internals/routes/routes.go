@@ -203,6 +203,19 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	deposit.Delete("/:id", middleware.Protected(), saleController.DeleteSalePaymentDepositByID)
 	deposit.Put("/:id", middleware.Protected(), saleController.UpdateSalePaymentDeposit)
 
+	// Auction Sale
+	auctionSaleDbService := controllers.NewSaleAuctionRepository(db)
+	auctionSaleController := controllers.NewSaleAuctionController(auctionSaleDbService)
+
+	// Sale
+	api.Get("/auction-sales", middleware.Protected(), auctionSaleController.GetAllCarSales)
+	SaleAuction := api.Group("/auction-sale")
+	SaleAuction.Get("/:id", middleware.Protected(), auctionSaleController.GetCarSale)
+	SaleAuction.Post("/", middleware.Protected(), auctionSaleController.CreateCarSale)
+	SaleAuction.Put("/:id", middleware.Protected(), auctionSaleController.UpdateSale)
+	SaleAuction.Delete("/:id", middleware.Protected(), auctionSaleController.DeleteSaleByID)
+
+	// Meta data
 	metaDbService := controllers.NewExcecute(db)
 	metaController := controllers.NewMetaController(metaDbService)
 

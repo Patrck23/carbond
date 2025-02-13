@@ -38,3 +38,8 @@ Content-Type: application/json
 # Get total carexpense by ID
 GET {{hostname}}/total-car-expense/1
 authorization: bearer {{bearer}}
+
+###
+# Get Car Expenses
+GET {{hostname}}/carExpenses?page=1&limit=10
+authorization: bearer {{bearer}}
