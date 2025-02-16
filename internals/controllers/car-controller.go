@@ -1497,7 +1497,7 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 		query = query.Where("make LIKE ?", "%"+make+"%")
 	}
 	if model != "" {
-		query = query.Where("model = ?", model)
+		query = query.Where("car_model = ?", model)
 	}
 	if colour != "" {
 		query = query.Where("colour = ?", colour)
@@ -1536,14 +1536,14 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	if minMillage != "" {
 		minMillageValue, err := strconv.ParseFloat(minMillage, 64)
 		if err == nil {
-			query = query.Where("millage >= ?", minMillageValue)
+			query = query.Where("car_millage >= ?", minMillageValue)
 		}
 	}
 
 	if maxMillage != "" {
 		maxMillageValue, err := strconv.ParseFloat(maxMillage, 64)
 		if err == nil {
-			query = query.Where("millage <= ?", maxMillageValue)
+			query = query.Where("car_millage <= ?", maxMillageValue)
 		}
 	}
 
