@@ -11,7 +11,11 @@ content-type: application/json
 
 ###
 @bearer = {{tokenAPI.response.body.token}}
-GET {{hostname}}/users
+GET {{hostname}}/cars
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/car/id/3
 authorization: bearer {{bearer}}
 
 ###
@@ -36,10 +40,19 @@ Content-Type: application/json
 
 ###
 # Get total carexpense by ID
-GET {{hostname}}/total-car-expense/1
+GET {{hostname}}/total-car-expense/3
 authorization: bearer {{bearer}}
+
+###
+# Get Car expenses by Car ID
+GET {{hostname}}/car/3/expenses?page=1&limit=25
 
 ###
 # Get Car Expenses
 GET {{hostname}}/carExpenses?page=1&limit=10
+authorization: bearer {{bearer}}
+
+###
+# Delete carexpense by ID
+DELETE {{hostname}}/car/3/expense/11
 authorization: bearer {{bearer}}

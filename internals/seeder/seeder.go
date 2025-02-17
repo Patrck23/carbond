@@ -534,7 +534,7 @@ func SeedDatabase(db *gorm.DB) {
 			UpdatedBy: "",
 		},
 		{
-			Name:      "VAT (Value Added Tax)",
+			Name:      "Port fee VAT (Value Added Tax)",
 			Category:  "car",
 			CreatedBy: "Seeder",
 			UpdatedBy: "",

@@ -237,3 +237,7 @@ authorization: bearer {{bearer}}
 # Get car uploads
 GET {{hostname}}/car/uploads?id=1
 authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/cars/search?from_company_id=2&make=Toyota
+authorization: bearer {{bearer}}
