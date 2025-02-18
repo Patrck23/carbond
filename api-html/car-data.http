@@ -241,3 +241,7 @@ authorization: bearer {{bearer}}
 ###
 GET {{hostname}}/cars/search?from_company_id=2&make=Toyota
 authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/car/dash
+authorization: bearer {{bearer}}

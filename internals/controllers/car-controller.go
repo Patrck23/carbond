@@ -52,6 +52,12 @@ type CarRepository interface {
 	DeleteCarPhotoByURL(photoURL string) error
 	DeleteCarPhotoByID(photoID uint) error
 	GetCarPhotosBycarID(carId uint) ([]carRegistration.CarPhoto, error)
+
+	GetTotalCars() (int64, error)
+	GetDisbandedCars() (int64, error)
+	GetCarsInStock() (int64, error)
+	GetTotalMoneySpent() (float64, error)
+	GetTotalCarsExpenses() (map[string]float64, error)
 }
 
 type CarRepositoryImpl struct {
@@ -1761,4 +1767,124 @@ func (h *CarController) FetchCarUploads64(c *fiber.Ctx) error {
 
 	// Return JSON with images
 	return c.JSON(fiber.Map{"status": "success", "message": "Car images retrieved", "images": images})
+}
+
+// ==========================================
+
+func (r *CarRepositoryImpl) GetTotalCars() (int64, error) {
+	var count int64
+	err := r.db.Model(&carRegistration.Car{}).Count(&count).Error
+	return count, err
+}
+
+func (r *CarRepositoryImpl) GetDisbandedCars() (int64, error) {
+	var count int64
+	err := r.db.Model(&carRegistration.Car{}).Where("to_company_id IS NOT NULL").Count(&count).Error
+	return count, err
+}
+
+func (r *CarRepositoryImpl) GetCarsInStock() (int64, error) {
+	var count int64
+	err := r.db.Model(&carRegistration.Car{}).Count(&count).Error
+	return count, err
+}
+
+func (r *CarRepositoryImpl) GetTotalMoneySpent() (float64, error) {
+	var total float64
+	err := r.db.Model(&carRegistration.Car{}).Select("SUM(bid_price + ((vat_tax * bid_price)/100))").Scan(&total).Error
+	return total, err
+}
+
+func (r *CarRepositoryImpl) GetTotalCarsExpenses() (map[string]float64, error) {
+	var results []struct {
+		Currency   string
+		DollarRate float64
+		Total      float64
+	}
+
+	err := r.db.Model(&carRegistration.CarExpense{}).
+		Select("currency, dollar_rate, SUM(amount) as total").
+		Group("currency, dollar_rate").
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	totalExpenses := map[string]float64{
+		"USD": 0,
+		"JPY": 0,
+		// "TotalUSD": 0,
+	}
+
+	for _, res := range results {
+		if res.Currency == "JPY" {
+			totalExpenses["JPY"] += res.Total
+			// totalExpenses["TotalUSD"] += res.Total * res.DollarRate
+		} else {
+			totalExpenses["USD"] += res.Total * res.DollarRate
+			// totalExpenses["TotalUSD"] += res.Total * res.DollarRate
+		}
+	}
+
+	return totalExpenses, nil
+}
+
+// GetDashboardData returns aggregated statistics for the dashboard
+func (h *CarController) GetDashboardData(c *fiber.Ctx) error {
+	totalCars, err := h.repo.GetTotalCars()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve total cars",
+			"data":    err.Error(),
+		})
+	}
+
+	disbandedCars, err := h.repo.GetDisbandedCars()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve disbanded cars",
+			"data":    err.Error(),
+		})
+	}
+
+	carsInStock, err := h.repo.GetCarsInStock()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve cars in stock",
+			"data":    err.Error(),
+		})
+	}
+
+	totalMoneySpent, err := h.repo.GetTotalMoneySpent()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve total money spent",
+			"data":    err.Error(),
+		})
+	}
+
+	totalCarExpenses, err := h.repo.GetTotalCarsExpenses()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve total car expenses",
+			"data":    err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Dashboard data retrieved successfully",
+		"data": fiber.Map{
+			"total_cars":         totalCars,
+			"disbanded_cars":     disbandedCars,
+			"cars_in_stock":      carsInStock,
+			"total_money_spent":  totalMoneySpent,
+			"total_car_expenses": totalCarExpenses,
+		},
+	})
 }

@@ -80,6 +80,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	api.Get("/total-car-expense/:id", middleware.Protected(), carController.GetTotalCarExpenses)
 	api.Get("/cars/search", middleware.Protected(), carController.SearchCars)
 	car.Get("uploads", middleware.Protected(), carController.FetchCarUploads)
+	car.Get("dash", middleware.Protected(), carController.GetDashboardData)
 
 	car.Post("/upload", middleware.Protected(), func(c *fiber.Ctx) error {
 		return controllers.UploadCarFile(c, db)
