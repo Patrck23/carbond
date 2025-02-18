@@ -30,6 +30,12 @@ func SeedDatabase(db *gorm.DB) {
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		},
+		{
+			Name:      "DAJIMA MOTORS (U) ltd",
+			StartDate: "2000-07-01",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
 	}
 
 	// Check if the companies table already has data
