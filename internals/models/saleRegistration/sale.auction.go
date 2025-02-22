@@ -9,7 +9,7 @@ import (
 
 type SaleAuction struct {
 	gorm.Model
-	CarID              int                         `gorm:"references:ID" json:"car_id"`
+	CarID              int                         `gorm:"unique;references:ID" json:"car_id"`
 	Car                carRegistration.Car         `gorm:"foreignKey:CarID"`
 	CompanyID          int                         `gorm:"references:ID" json:"company_id"`
 	Company            companyRegistration.Company `gorm:"foreignKey:CompanyID"`
