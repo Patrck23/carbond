@@ -13,58 +13,9 @@ content-type: application/json
 @hostname = http://127.0.0.1:8080/api
 @bearer = {{tokenAPI.response.body.token}}
 
-POST {{hostname}}/car
-authorization: bearer {{bearer}}
-Content-Type: application/json
-
-{
-  "chasis_number": "1HGCM82633A123456",
-  "engine_number": "ENG123456789",
-  "engine_capacity": "2000cc",
-  "make": "Toyota",
-  "model": "Corolla",
-  "maxim_carry": 500,
-  "weight": 1200,
-  "gross_weight": 1500,
-  "length": 4500,
-  "width": 1800,
-  "height": 1400,
-  "manufacture_year": 2020,
-  "first_registration_year": 2021,
-  "transmission": "Automatic",
-  "body_type": "Sedan",
-  "colour": "Blue",
-  "auction": "Tokyo Auto Auctions",
-  "currency": "Yen",
-  "millage":40000,
-	"fuel_consumption":"Disel",
-	"ps": false,
-  "pw": false,
-  "abs": false,
-  "ads": false,
-  "aw": false,
-  "sw": false,
-  "navigation": false,
-	"ac": false,  
-  "bid_price": 15000000.00,
-  "vat_tax": 18.00,
-  "dollar_rate": 150,
-  "purchase_date": "2024-01-01",
-  "from_company_id": 2,
-  "to_company_id": 1,
-  "destination": "Kampala, Uganda",
-  "port": "Port of Yokohama",
-  "car_shipping_invoice_id": null,
-  "broker_name": "",
-  "broker_number": "",
-  "vat_tax": null,
-  "number_plate": "",
-  "customer_id": null,
-  "car_status": "",
-  "car_payment_status": "",
-  "created_by": "admin",
-  "updated_by": "admin"
-}
+# POST {{hostname}}/car
+# authorization: bearer {{bearer}}
+# Content-Type: application/json
 
 ###
 # Fetch cars
@@ -88,50 +39,10 @@ authorization: bearer {{bearer}}
 
 ###
 # Update car by ID in Japan
-PUT {{hostname}}/car/1/details
-authorization: bearer {{bearer}}
-Content-Type: application/json
+# PUT {{hostname}}/car/1/details
+# authorization: bearer {{bearer}}
+# Content-Type: application/json
 
-{
-  "chasis_number": "1HGCM82633A123456",
-  "engine_number": "ENG123456789",
-  "engine_capacity": "2000cc",
-  "make": "Toyota",
-  "model": "Corolla",
-  "maxim_carry": 500,
-  "weight": 1200,
-  "gross_weight": 1500,
-  "length": 4500,
-  "width": 1800,
-  "height": 1400,
-  "manufacture_year": 2020,
-  "first_registration_year": 2021,
-  "transmission": "Automatic",
-  "body_type": "Sedan",
-  "colour": "Blue",
-  "auction": "Tokyo Auto Auctions",
-  "currency": "Yen",
-  "millage":40000,
-	"fuel_consumption":"",
-	"ps": false,
-  "pw": false,
-  "abs": false,
-  "ads": false,
-  "aw": false,
-  "sw": false,
-  "navigation": false,
-	"ac": false,  
-  "bid_price": 15000000.00,
-  "vat_tax": 18.00,
-  "dollar_rate": 150,
-  "purchase_date": "2024-01-01",
-  "from_company_id": 2,
-  "to_company_id": 1,
-  "destination": "Kampala, Uganda",
-  "port": "Port of Yokohama",
-  "car_shipping_invoice_id": null,
-  "updated_by": "admin"
-}
 
 ###
 # Update car by ID in Uganda
@@ -144,8 +55,8 @@ Content-Type: application/json
   "broker_number": "+256-712-345-678",
   "number_plate": "UBH 123A",
   "customer_id": 1,
-  "car_status": "In stock",
-  "car_payment_status": "Booked",
+  "car_status": "InStock", // InTransit, InStock, Sold
+  "car_payment_status": "Booked", // Fully Payed, Partially Paid, Booked
   "updated_by": "admin"
 }
 
@@ -187,23 +98,16 @@ POST {{hostname}}/car/expense
 authorization: bearer {{bearer}}
 Content-Type: application/json
 
-# {
-# 	"car_id": 1,
-# 	"description": "VAT (Value Added Tax)",
-# 	"currency": "UGX",
-# 	"amount": 100000,
-# 	"expense_date": "2024-01-01",
-# 	"created_by": "Gadafi",
-# 	"updated_by": "Admin"
-# }
-
 {
 	"car_id": 1,
 	"description": "COMMISSION",
 	"currency": "UGX",
 	"amount": 50000,
 	"expense_date": "2023-05-01",
-	"updated_by": "DN"
+  "carrier_name":"", // if description == "Carrier car fee(RISKO)"
+	"expense_remark":"",
+	"updated_by": "Admin",
+  "created_by": "Admin"
 }
 
 ###
