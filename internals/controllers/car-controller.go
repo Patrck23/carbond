@@ -7,7 +7,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1756,7 +1755,7 @@ func (h *CarController) FetchCarUploads64(c *fiber.Ctx) error {
 	var images []map[string]string
 	for _, photo := range photos {
 		// Read image file
-		imageData, err := ioutil.ReadFile(photo.URL)
+		imageData, err := os.ReadFile(photo.URL)
 		if err != nil {
 			continue
 		}
