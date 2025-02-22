@@ -52,6 +52,7 @@ type Car struct {
 	Port                  string                       `json:"port"`
 	CarShippingInvoiceID  *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"car_shipping_invoice_id"`
 	CarShippingInvoice    *CarShippingInvoice          `gorm:"foreignKey:CarShippingInvoiceID" json:"car_shipping_invoice"`
+	CarStatusJapan        string                       `json:"car_status_japan"` // InStock, Sold, Exported
 	// Uganda Edits
 	BrokerName       string                         `json:"broker_name"`
 	BrokerNumber     string                         `json:"broker_number"`
@@ -59,7 +60,7 @@ type Car struct {
 	CarTracker       bool                           `json:"car_tracker"`
 	CustomerID       *int                           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"customer_id"`
 	Customer         *customerRegistration.Customer `gorm:"foreignKey:CustomerID" json:"customer"`
-	CarStatus        string                         `json:"car_status"`
+	CarStatus        string                         `json:"car_status"` // InStock, Sold
 	CarPaymentStatus string                         `json:"car_payment_status"`
 	CreatedBy        string                         `gorm:"size:100" json:"created_by"`
 	UpdatedBy        string                         `gorm:"size:100" json:"updated_by"`
@@ -77,5 +78,12 @@ type CarPhoto struct {
 
 func (car *Car) BeforeCreate(tx *gorm.DB) (err error) {
 	car.CarUUID = uuid.New()
+	// If ToCompanyID is not nil and not zero, mark as Exported; otherwise, InStock.
+	if car.ToCompanyID != nil && *car.ToCompanyID > 0 {
+		car.CarStatusJapan = "Exported"
+		car.CarStatus = "Instock"
+	} else {
+		car.CarStatusJapan = "InStock"
+	}
 	return
 }

@@ -150,14 +150,14 @@ func (r *SaleAuctionRepositoryImpl) UpdateSale(sale *saleRegistration.SaleAuctio
 
 // Define the UpdateSale struct
 type UpdateSaleAuctionPayload struct {
-	CarID       int     `json:"car_id"`
-	CompanyID   int     `json:"company_id"`
-	Auction     string  `json:"auction"`
-	AuctionDate string  `json:"auction_date"`
-	Price       float64 `json:"price"`
-	VATTax      float64 `json:"vat_tax"`
-	RecycleFee  float64 `json:"recycle_fee"`
-	UpdatedBy   string  `json:"updated_by"`
+	CarID              int     `json:"car_id"`
+	CompanyID          int     `json:"company_id"`
+	AuctionUserCompany string  `json:"auction_user_company"`
+	SaleDate           string  `json:"sale_date"`
+	Price              float64 `json:"price"`
+	VATTax             float64 `json:"vat_tax"`
+	RecycleFee         float64 `json:"recycle_fee"`
+	UpdatedBy          string  `json:"updated_by"`
 }
 
 // UpdateSale handler function
@@ -215,8 +215,8 @@ func (h *SaleAuctionController) UpdateSale(c *fiber.Ctx) error {
 func updateSaleAuctionFields(sale *saleRegistration.SaleAuction, updateSaleData UpdateSaleAuctionPayload) {
 	sale.CarID = updateSaleData.CarID
 	sale.CompanyID = updateSaleData.CompanyID
-	sale.Auction = updateSaleData.Auction
-	sale.AuctionDate = updateSaleData.AuctionDate
+	sale.AuctionUserCompany = updateSaleData.AuctionUserCompany
+	sale.SaleDate = updateSaleData.SaleDate
 	sale.Price = updateSaleData.Price
 	sale.VATTax = updateSaleData.VATTax
 	sale.RecycleFee = updateSaleData.RecycleFee

@@ -57,6 +57,11 @@ type CarRepository interface {
 	GetCarsInStock() (int64, error)
 	GetTotalMoneySpent() (float64, error)
 	GetTotalCarsExpenses() (map[string]float64, error)
+
+	GetComTotalCars(companyID uint) (int64, error)
+	GetComCarsInStock(companyID uint) (int64, error)
+	GetComTotalMoneySpent(companyID uint) (float64, error)
+	GetComTotalCarsExpenses(companyID uint) (map[string]float64, error)
 }
 
 type CarRepositoryImpl struct {
@@ -1782,13 +1787,13 @@ func (r *CarRepositoryImpl) GetTotalCars() (int64, error) {
 
 func (r *CarRepositoryImpl) GetDisbandedCars() (int64, error) {
 	var count int64
-	err := r.db.Model(&carRegistration.Car{}).Where("to_company_id IS NOT NULL").Count(&count).Error
+	err := r.db.Model(&carRegistration.Car{}).Where("car_status_japan != ?", "InStock").Count(&count).Error
 	return count, err
 }
 
 func (r *CarRepositoryImpl) GetCarsInStock() (int64, error) {
 	var count int64
-	err := r.db.Model(&carRegistration.Car{}).Count(&count).Error
+	err := r.db.Model(&carRegistration.Car{}).Where("car_status_japan == ?", "InStock").Count(&count).Error
 	return count, err
 }
 
@@ -1885,6 +1890,124 @@ func (h *CarController) GetDashboardData(c *fiber.Ctx) error {
 		"data": fiber.Map{
 			"total_cars":         totalCars,
 			"disbanded_cars":     disbandedCars,
+			"cars_in_stock":      carsInStock,
+			"total_money_spent":  totalMoneySpent,
+			"total_car_expenses": totalCarExpenses,
+		},
+	})
+}
+
+// ====================================================
+
+// GetTotalCars returns the total count of cars that belong to the given company
+func (r *CarRepositoryImpl) GetComTotalCars(companyID uint) (int64, error) {
+	var count int64
+	// A car is considered for the company if it is either sold from or bought by the company.
+	err := r.db.Model(&carRegistration.Car{}).
+		Where("to_company_id = ?", companyID).
+		Count(&count).Error
+	return count, err
+}
+
+func (r *CarRepositoryImpl) GetComCarsInStock(companyID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&carRegistration.Car{}).
+		Where("to_company_id = ? AND car_status = ?", companyID, "Instock").
+		Count(&count).Error
+	return count, err
+}
+
+func (r *CarRepositoryImpl) GetComTotalMoneySpent(companyID uint) (float64, error) {
+	var total float64
+	err := r.db.Model(&carRegistration.Car{}).
+		Where("from_company_id = ?", companyID).
+		Select("SUM(bid_price + ((vat_tax * bid_price)/100))").
+		Scan(&total).Error
+	return total, err
+}
+
+func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]float64, error) {
+	var results []struct {
+		Currency   string
+		DollarRate float64
+		Total      float64
+	}
+
+	err := r.db.Model(&carRegistration.CarExpense{}).
+		Where("company_id = ?", companyID).
+		Select("currency, dollar_rate, SUM(amount) as total").
+		Group("currency, dollar_rate").
+		Scan(&results).Error
+	if err != nil {
+		return nil, err
+	}
+
+	totalExpenses := map[string]float64{
+		"USD": 0,
+		"JPY": 0,
+	}
+
+	for _, res := range results {
+		if res.Currency == "JPY" {
+			totalExpenses["JPY"] += res.Total
+		} else {
+			totalExpenses["USD"] += res.Total * res.DollarRate
+		}
+	}
+
+	return totalExpenses, nil
+}
+
+// GetDashboardData returns aggregated statistics for the dashboard
+func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
+	companyIdStr := c.Params("companyId")
+	companyId := utils.StrToUint(companyIdStr)
+	if companyId == 0 {
+		return fiber.NewError(fiber.StatusBadRequest, "Invalid company ID")
+	}
+
+	totalCars, err := h.repo.GetComTotalCars(companyId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve total cars",
+			"data":    err.Error(),
+		})
+	}
+
+	carsInStock, err := h.repo.GetComCarsInStock(companyId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve cars in stock",
+			"data":    err.Error(),
+		})
+	}
+
+	totalMoneySpent, err := h.repo.GetComTotalMoneySpent(companyId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve total money spent",
+			"data":    err.Error(),
+		})
+	}
+
+	totalCarExpenses, err := h.repo.GetComTotalCarsExpenses(companyId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve total car expenses",
+			"data":    err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Dashboard data retrieved successfully",
+		"data": fiber.Map{
+			"total_cars": totalCars,
+			// "disbanded_cars":     disbandedCars,
 			"cars_in_stock":      carsInStock,
 			"total_money_spent":  totalMoneySpent,
 			"total_car_expenses": totalCarExpenses,
