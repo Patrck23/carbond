@@ -60,7 +60,7 @@ type Car struct {
 	CarTracker       bool                           `json:"car_tracker"`
 	CustomerID       *int                           `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"customer_id"`
 	Customer         *customerRegistration.Customer `gorm:"foreignKey:CustomerID" json:"customer"`
-	CarStatus        string                         `json:"car_status"` // InStock, Sold
+	CarStatus        string                         `json:"car_status"` // InTransit, InStock, Sold
 	CarPaymentStatus string                         `json:"car_payment_status"`
 	CreatedBy        string                         `gorm:"size:100" json:"created_by"`
 	UpdatedBy        string                         `gorm:"size:100" json:"updated_by"`
@@ -81,7 +81,7 @@ func (car *Car) BeforeCreate(tx *gorm.DB) (err error) {
 	// If ToCompanyID is not nil and not zero, mark as Exported; otherwise, InStock.
 	if car.ToCompanyID != nil && *car.ToCompanyID > 0 {
 		car.CarStatusJapan = "Exported"
-		car.CarStatus = "Instock"
+		car.CarStatus = "InTransit"
 	} else {
 		car.CarStatusJapan = "InStock"
 	}
