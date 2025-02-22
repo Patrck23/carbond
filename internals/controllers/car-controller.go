@@ -1018,12 +1018,14 @@ func (r *CarRepositoryImpl) UpdateCarExpense(expense *carRegistration.CarExpense
 func (h *CarController) UpdateCarExpense(c *fiber.Ctx) error {
 	// Define a struct for input validation
 	type UpdateCarExpenseInput struct {
-		Description string  `json:"description" validate:"required"`
-		Currency    string  `json:"currency" validate:"required"`
-		Amount      float64 `json:"amount" validate:"required,gt=0"`
-		DollarRate  float64 `json:"dollar_rate"`
-		ExpenseDate string  `json:"expense_date" validate:"required"`
-		UpdatedBy   string  `json:"updated_by" validate:"required"`
+		Description   string  `json:"description" validate:"required"`
+		Currency      string  `json:"currency" validate:"required"`
+		Amount        float64 `json:"amount" validate:"required,gt=0"`
+		DollarRate    float64 `json:"dollar_rate"`
+		ExpenseDate   string  `json:"expense_date" validate:"required"`
+		CarrierName   string  `json:"carrier_name"` // if description == "Carrier car fee(RISKO)"
+		ExpenseRemark string  `json:"expense_remark"`
+		UpdatedBy     string  `json:"updated_by" validate:"required"`
 	}
 
 	// Parse the expense ID from the request parameters
@@ -1070,6 +1072,8 @@ func (h *CarController) UpdateCarExpense(c *fiber.Ctx) error {
 	expense.Amount = input.Amount
 	expense.DollarRate = input.DollarRate
 	expense.ExpenseDate = input.ExpenseDate
+	expense.CarrierName = input.CarrierName
+	expense.ExpenseRemark = input.ExpenseRemark
 	expense.UpdatedBy = input.UpdatedBy
 
 	// Save the updated expense using the repository

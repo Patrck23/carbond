@@ -15,7 +15,7 @@ GET {{hostname}}/cars
 authorization: bearer {{bearer}}
 
 ###
-GET {{hostname}}/car/id/3
+GET {{hostname}}/car/id/1
 authorization: bearer {{bearer}}
 
 ###
@@ -56,3 +56,31 @@ authorization: bearer {{bearer}}
 # Delete carexpense by ID
 DELETE {{hostname}}/car/3/expense/11
 authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/cars/search?from_company_id=2
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/car/dash
+authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/customers
+authorization: bearer {{bearer}}
+
+
+###
+PUT {{hostname}}/car/1/sale
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "broker_name": "John Doe",
+  "broker_number": "+256-712-345-678",
+  "number_plate": "UBH 123A",
+  "customer_id": 1,
+  "car_status": "In stock",
+  "car_payment_status": "Booked",
+  "updated_by": "Patrick"
+}

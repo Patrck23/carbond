@@ -248,14 +248,12 @@ func (r *ShippingRepositoryImpl) UpdateShippingInvoice(invoice *carRegistration.
 
 // Define the UpdateShippingInvoice struct
 type UpdateShippingInvoicePayload struct {
-	InvoiceNo    string  `json:"invoice_no"`
-	ShipDate     string  `json:"ship_date"`
-	TotalCost    float64 `json:"total_cost"`
-	Currency     string  `json:"currency"`
-	VesselName   string  `json:"vessel_name"`
-	FromLocation string  `json:"from_location"`
-	ToLocation   string  `json:"to_location"`
-	UpdatedBy    string  `json:"updated_by"`
+	InvoiceNo    string `json:"invoice_no"`
+	ShipDate     string `json:"ship_date"`
+	VesselName   string `json:"vessel_name"`
+	FromLocation string `json:"from_location"`
+	ToLocation   string `json:"to_location"`
+	UpdatedBy    string `json:"updated_by"`
 }
 
 // UpdateShippingInvoice handler function
@@ -313,11 +311,9 @@ func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
 func updateShippingInvoiceFields(invoice *carRegistration.CarShippingInvoice, updateShippingInvoiceData UpdateShippingInvoicePayload) {
 	invoice.InvoiceNo = updateShippingInvoiceData.InvoiceNo
 	invoice.ShipDate = updateShippingInvoiceData.ShipDate
-	invoice.TotalCost = updateShippingInvoiceData.TotalCost
-	invoice.Currency = updateShippingInvoiceData.Currency
 	invoice.VesselName = updateShippingInvoiceData.VesselName
 	invoice.FromLocation = updateShippingInvoiceData.FromLocation
-	invoice.TotalCost = updateShippingInvoiceData.TotalCost
+	invoice.ToLocation = updateShippingInvoiceData.ToLocation
 	invoice.UpdatedBy = updateShippingInvoiceData.UpdatedBy
 }
 
