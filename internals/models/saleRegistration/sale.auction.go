@@ -21,3 +21,11 @@ type SaleAuction struct {
 	CreatedBy          string                      `gorm:"size:100" json:"created_by"`
 	UpdatedBy          string                      `gorm:"size:100" json:"updated_by"`
 }
+
+func (s *SaleAuction) AfterCreate(tx *gorm.DB) (err error) {
+	// Update the associated Car record: set CarStatusJapan to "Sold"
+	err = tx.Model(&carRegistration.Car{}).
+		Where("id = ?", s.CarID).
+		Update("car_status_japan", "Sold").Error
+	return
+}
