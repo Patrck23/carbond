@@ -20,8 +20,8 @@ Content-Type: application/json
 {
     "car_id": 3,
     "company_id": 2,
-    "auction": "Japan Auction",
-    "auction_date": "2025-01-28",
+    "auction_user_company": "Japan Auction",
+    "sale_date": "2025-01-28",
     "price": 2000000,
     "vat_tax": 12,
     "recycle_fee": 20000,
