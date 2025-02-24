@@ -1933,17 +1933,11 @@ func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]
 		Total      float64
 	}
 
-	// err := r.db.Model(&carRegistration.CarExpense{}).
-	// 	Where("company_id = ?", companyID).
-	// 	Select("currency, dollar_rate, SUM(amount) as total").
-	// 	Group("currency, dollar_rate").
-	// 	Scan(&results).Error
-
 	err := r.db.Model(&carRegistration.CarExpense{}).
 		Joins("JOIN cars ON car_expenses.car_id = cars.id").
 		Where("cars.to_company_id = ?", companyID).
-		Select("currency, dollar_rate, SUM(amount) as total, cars.to_company_id").
-		Group("currency, dollar_rate, cars.to_company_id").
+		Select("car_expenses.currency, car_expenses.dollar_rate, SUM(car_expenses.amount) as total, cars.to_company_id").
+		Group("car_expenses.currency, car_expenses.dollar_rate, cars.to_company_id").
 		Scan(&results).Error
 
 	if err != nil {
