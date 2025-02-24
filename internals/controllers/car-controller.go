@@ -1793,7 +1793,7 @@ func (r *CarRepositoryImpl) GetDisbandedCars() (int64, error) {
 
 func (r *CarRepositoryImpl) GetCarsInStock() (int64, error) {
 	var count int64
-	err := r.db.Model(&carRegistration.Car{}).Where("car_status_japan == ?", "InStock").Count(&count).Error
+	err := r.db.Model(&carRegistration.Car{}).Where("car_status_japan = ?", "InStock").Count(&count).Error
 	return count, err
 }
 
@@ -1920,7 +1920,7 @@ func (r *CarRepositoryImpl) GetComCarsInStock(companyID uint) (int64, error) {
 func (r *CarRepositoryImpl) GetComTotalMoneySpent(companyID uint) (float64, error) {
 	var total float64
 	err := r.db.Model(&carRegistration.Car{}).
-		Where("from_company_id = ?", companyID).
+		Where("to_company_id = ?", companyID).
 		Select("SUM(bid_price + ((vat_tax * bid_price)/100))").
 		Scan(&total).Error
 	return total, err
@@ -1933,11 +1933,19 @@ func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]
 		Total      float64
 	}
 
+	// err := r.db.Model(&carRegistration.CarExpense{}).
+	// 	Where("company_id = ?", companyID).
+	// 	Select("currency, dollar_rate, SUM(amount) as total").
+	// 	Group("currency, dollar_rate").
+	// 	Scan(&results).Error
+
 	err := r.db.Model(&carRegistration.CarExpense{}).
-		Where("company_id = ?", companyID).
-		Select("currency, dollar_rate, SUM(amount) as total").
-		Group("currency, dollar_rate").
+		Joins("JOIN cars ON car_expenses.car_id = cars.id").
+		Where("cars.to_company_id = ?", companyID).
+		Select("currency, dollar_rate, SUM(amount) as total, cars.to_company_id").
+		Group("currency, dollar_rate, cars.to_company_id").
 		Scan(&results).Error
+
 	if err != nil {
 		return nil, err
 	}
