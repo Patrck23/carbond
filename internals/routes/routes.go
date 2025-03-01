@@ -61,7 +61,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	})
 
 	// Car
-	api.Get("/cars", carController.GetAllCars) // , middleware.Protected(), middleware.PermissionMiddleware(pdbService, "resource.*", []string{"R", "W"})
+	api.Get("/cars", middleware.Protected(), carController.GetAllCars) // , middleware.Protected(), middleware.PermissionMiddleware(pdbService, "resource.*", []string{"R", "W"})
 	car := api.Group("/car")
 	car.Post("/", middleware.Protected(), carController.CreateCar)
 	car.Get("/id/:id", middleware.Protected(), carController.GetSingleCar)
@@ -216,6 +216,10 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	SaleAuction.Post("/", middleware.Protected(), auctionSaleController.CreateCarSale)
 	SaleAuction.Put("/:id", middleware.Protected(), auctionSaleController.UpdateSale)
 	SaleAuction.Delete("/:id", middleware.Protected(), auctionSaleController.DeleteSaleByID)
+
+	// Alert data
+	// alertDbService := controllers.NewAlertRepository(db)
+	// alertController := controllers.NewAlertController(alertDbService)
 
 	// Meta data
 	metaDbService := controllers.NewExcecute(db)

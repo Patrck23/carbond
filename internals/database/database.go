@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"car-bond/internals/config"
+	"car-bond/internals/models/alertRegistration"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/models/customerRegistration"
@@ -97,6 +98,8 @@ func (d *DBInstance) Migrate() {
 		&userRegistration.Resource{},
 		&userRegistration.RoleResourcePermission{},
 		&userRegistration.RoleWildCardPermission{},
+		// --- Alerts-- //
+		&alertRegistration.Transaction{},
 		// --- Metadata-- //
 		&metaData.VehicleEvaluation{},
 		&metaData.WeightUnit{},

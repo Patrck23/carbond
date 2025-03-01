@@ -2,8 +2,10 @@ package controllers
 
 import (
 	"archive/zip"
+	"car-bond/internals/models/alertRegistration"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/utils"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -52,6 +54,8 @@ type CarRepository interface {
 	DeleteCarPhotoByID(photoID uint) error
 	GetCarPhotosBycarID(carId uint) ([]carRegistration.CarPhoto, error)
 
+	CreateAlert(alert *alertRegistration.Transaction) error
+
 	GetTotalCars() (int64, error)
 	GetDisbandedCars() (int64, error)
 	GetCarsInStock() (int64, error)
@@ -81,6 +85,90 @@ func NewCarController(repo CarRepository) *CarController {
 }
 
 // ==================
+
+func (r *CarRepositoryImpl) CreateAlert(alert *alertRegistration.Transaction) error {
+	return r.db.Create(alert).Error
+}
+
+// ConvertCarToTransaction converts car updates to a transaction record
+func ConvertUpdateCarToTransaction(carID uint, updates map[string]interface{}) *alertRegistration.Transaction {
+	// Retrieve from and to company IDs as pointers
+	fromCompanyID, okFrom := updates["from_company_id"].(*uint)
+	toCompanyID, okTo := updates["to_company_id"].(*uint)
+
+	// If the value is nil or missing, assign zero
+	if !okFrom || fromCompanyID == nil {
+		fromCompanyID = new(uint) // Create a zero-initialized uint pointer
+		*fromCompanyID = 0        // Assign 0
+	}
+
+	if !okTo || toCompanyID == nil {
+		toCompanyID = new(uint) // Create a zero-initialized uint pointer
+		*toCompanyID = 0        // Assign 0
+	}
+
+	// Initialize the transaction object
+	transaction := &alertRegistration.Transaction{
+		CarChasisNumber: updates["chasis_number"].(string),
+		FromCompanyId:   *fromCompanyID, // Dereference the pointer
+		ToCompanyId:     *toCompanyID,   // Dereference the pointer
+		CreatedBy:       updates["updated_by"].(string),
+		UpdatedBy:       updates["updated_by"].(string),
+		ViewStatus:      false,
+	}
+
+	// Set the TransactionType based on the condition
+	if *toCompanyID > 0 {
+		transaction.TransactionType = "InTransit"
+	} else {
+		transaction.TransactionType = "Storage" // Set a default value if needed
+	}
+
+	return transaction
+}
+
+// ConvertCarToTransaction maps Car struct to Transaction struct
+func ConvertCarToTransaction(car *carRegistration.Car) *alertRegistration.Transaction {
+	return &alertRegistration.Transaction{
+		CarChasisNumber: car.ChasisNumber,
+		TransactionType: getTransactionType(car),
+		FromCompanyId:   getFromCompanyID(car),
+		ToCompanyId:     getToCompanyID(car),
+		ViewStatus:      false,
+		CreatedBy:       car.CreatedBy,
+		UpdatedBy:       car.UpdatedBy,
+	}
+}
+
+// Determine transaction type based on car status
+func getTransactionType(car *carRegistration.Car) string { // InStock, Sold, Exported
+	if car.CarStatusJapan == "Sold" {
+		return "Sale"
+	} else if car.CarStatusJapan == "InTransit" {
+		return "Export"
+	} else if car.CarStatusJapan == "InStock" {
+		return "Storage"
+	}
+	return "Unknown"
+}
+
+// Get FromCompanyID (defaults to 0 if nil)
+func getFromCompanyID(car *carRegistration.Car) uint {
+	if car.FromCompanyID != nil {
+		return *car.FromCompanyID
+	}
+	return 0
+}
+
+// Get ToCompanyID (defaults to 0 if nil)
+func getToCompanyID(car *carRegistration.Car) uint {
+	if car.ToCompanyID != nil {
+		return *car.ToCompanyID
+	}
+	return 0
+}
+
+// ========================
 
 func (r *CarRepositoryImpl) CreateCarPhoto(photo *carRegistration.CarPhoto) error {
 	return r.db.Create(photo).Error
@@ -205,6 +293,14 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 			"message": "Failed to create car",
 			"data":    err.Error(),
 		})
+	}
+
+	// Convert Car to Transaction
+	transaction := ConvertCarToTransaction(car)
+
+	// Save to database
+	if err := h.repo.CreateAlert(transaction); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create transaction"})
 	}
 
 	// Return success response
@@ -625,7 +721,14 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 		// Log final updates
 		fmt.Println("Final updatedCarPhotos list:", updatedCarPhotos)
 		fmt.Println("Car photos successfully updated.")
+	}
 
+	// Convert Car to Transaction
+	transaction := ConvertUpdateCarToTransaction(car.ID, updates)
+
+	// Save to database
+	if err := h.repo.CreateAlert(transaction); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create transaction"})
 	}
 
 	// Proceed with updating other car data
@@ -1918,12 +2021,22 @@ func (r *CarRepositoryImpl) GetComCarsInStock(companyID uint) (int64, error) {
 }
 
 func (r *CarRepositoryImpl) GetComTotalMoneySpent(companyID uint) (float64, error) {
-	var total float64
+	var total sql.NullFloat64 // Use sql.NullFloat64 to handle NULL
 	err := r.db.Model(&carRegistration.Car{}).
 		Where("to_company_id = ?", companyID).
+		Where("cars.deleted_at IS NULL").
 		Select("SUM(bid_price + ((vat_tax * bid_price)/100))").
 		Scan(&total).Error
-	return total, err
+
+	if err != nil {
+		return 0, err
+	}
+
+	if !total.Valid {
+		return 0, nil // Return 0 if there's no data to sum
+	}
+
+	return total.Float64, nil // Return the actual value
 }
 
 func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]float64, error) {
@@ -2008,8 +2121,7 @@ func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "Dashboard data retrieved successfully",
 		"data": fiber.Map{
-			"total_cars": totalCars,
-			// "disbanded_cars":     disbandedCars,
+			"total_cars":         totalCars,
 			"cars_in_stock":      carsInStock,
 			"total_money_spent":  totalMoneySpent,
 			"total_car_expenses": totalCarExpenses,
