@@ -218,8 +218,9 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	SaleAuction.Delete("/:id", middleware.Protected(), auctionSaleController.DeleteSaleByID)
 
 	// Alert data
-	// alertDbService := controllers.NewAlertRepository(db)
-	// alertController := controllers.NewAlertController(alertDbService)
+	alertDbService := controllers.NewAlertRepository(db)
+	alertController := controllers.NewAlertController(alertDbService)
+	api.Get("/alerts/search", middleware.Protected(), alertController.SearchAlerts)
 
 	// Meta data
 	metaDbService := controllers.NewExcecute(db)

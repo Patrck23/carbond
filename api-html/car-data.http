@@ -149,3 +149,7 @@ authorization: bearer {{bearer}}
 ###
 GET {{hostname}}/car/dash/1
 authorization: bearer {{bearer}}
+
+###
+GET {{hostname}}/alerts/search?from_company_id=2
+authorization: bearer {{bearer}}
