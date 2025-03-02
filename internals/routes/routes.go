@@ -180,6 +180,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	sale.Post("/", middleware.Protected(), saleController.CreateCarSale)
 	sale.Put("/:id", middleware.Protected(), saleController.UpdateSale)
 	sale.Delete("/:id", middleware.Protected(), saleController.DeleteSaleByID)
+	sale.Get("/statement/:customerId", middleware.Protected(), saleController.GenerateCustomerStatement)
 
 	// Invoice
 	api.Get("/invoices", middleware.Protected(), saleController.GetSalePayments)
@@ -221,6 +222,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	alertDbService := controllers.NewAlertRepository(db)
 	alertController := controllers.NewAlertController(alertDbService)
 	api.Get("/alerts/search", middleware.Protected(), alertController.SearchAlerts)
+	api.Put("/alert/:id", middleware.Protected(), alertController.UpdateAlert)
 
 	// Meta data
 	metaDbService := controllers.NewExcecute(db)

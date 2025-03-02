@@ -1,10 +1,14 @@
 package controllers
 
 import (
+	"car-bond/internals/models/carRegistration"
+	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/utils"
 	"errors"
+	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -44,6 +48,9 @@ type SaleRepository interface {
 	UpdateSalePaymentDeposit(payment *saleRegistration.SalePaymentDeposit) error
 	DeleteSalePaymentDepositByID(id string) error
 	GetPaymentDeposits(c *fiber.Ctx, name string) (*utils.Pagination, []saleRegistration.SalePaymentDeposit, error)
+
+	// Customer statement
+	GenerateCustomerStatement(customerID uint) (*CustomerStatement, error)
 }
 
 type SaleRepositoryImpl struct {
@@ -269,7 +276,7 @@ type UpdateSalePayload struct {
 	TotalPrice    float64 `json:"total_price"`
 	DollarRate    float64 `json:"dollar_rate"`
 	SaleDate      string  `json:"sale_date"`
-	CarID         int     `json:"car_id"`
+	CarID         uint    `json:"car_id"`
 	CompanyID     int     `json:"company_id"`
 	IsFullPayment bool    `json:"is_full_payment"`
 	InitalPayment float64 `json:"initial_payment"`
@@ -1210,5 +1217,209 @@ func (h *SaleController) DeleteSalePaymentDepositByID(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "payment deposit deleted successfully",
 		"data":    deposit,
+	})
+}
+
+// ================================
+
+func (r *SaleRepositoryImpl) GetOutstandingBalanceByCustomerID(customerID uint) (float64, error) {
+	var sales []saleRegistration.Sale
+	var totalPaid float64
+	var totalOutstanding float64
+
+	// Fetch all sales linked to cars owned by the customer
+	if err := r.db.
+		Joins("JOIN cars ON sales.car_id = cars.id").
+		Where("cars.customer_id = ?", customerID).
+		Find(&sales).Error; err != nil {
+		return 0, err
+	}
+
+	// If no sales found, return zero balance
+	if len(sales) == 0 {
+		return 0, fmt.Errorf("no sales found for this customer")
+	}
+
+	// Iterate over each sale to compute outstanding balances
+	for _, sale := range sales {
+		totalPaid = 0
+
+		// Sum all payments for the sale
+		if err := r.db.Model(&saleRegistration.SalePayment{}).
+			Where("sale_id = ?", sale.ID).
+			Select("COALESCE(SUM(amount_payed), 0)").
+			Scan(&totalPaid).Error; err != nil {
+			return 0, err
+		}
+
+		// Calculate outstanding balance for this sale
+		outstandingBalance := sale.TotalPrice - totalPaid
+		if outstandingBalance > 0 {
+			totalOutstanding += outstandingBalance
+		}
+	}
+
+	return totalOutstanding, nil
+}
+
+// =========================
+
+type PaymentRecord struct {
+	PaymentDate time.Time `json:"payment_date"`
+	Amount      float64   `json:"amount"`
+}
+
+type SaleStatement struct {
+	CarID             uint            `json:"car_id"`
+	CarModel          string          `json:"car_model"`
+	ChasisNumber      string          `json:"chasis_number"`
+	TotalSaleAmount   float64         `json:"total_sale_amount"`
+	TotalPaid         float64         `json:"total_paid"`
+	OutstandingAmount float64         `json:"outstanding_amount"`
+	Payments          []PaymentRecord `json:"payments"`
+}
+
+type CustomerStatement struct {
+	CustomerID       uint            `json:"customer_id"`
+	CustomerName     string          `json:"customer_name"`
+	TotalSales       float64         `json:"total_sales"`
+	TotalPaid        float64         `json:"total_paid"`
+	TotalOutstanding float64         `json:"total_outstanding"`
+	Sales            []SaleStatement `json:"sales"`
+}
+
+func (r *SaleRepositoryImpl) GenerateCustomerStatement(customerID uint) (*CustomerStatement, error) {
+	var customer customerRegistration.Customer
+	var cars []carRegistration.Car
+	var sales []saleRegistration.Sale
+	var totalSales, totalPaid, totalOutstanding float64
+
+	// Fetch Customer details
+	if err := r.db.First(&customer, customerID).Error; err != nil {
+		return nil, fmt.Errorf("customer not found")
+	}
+
+	// Fetch all cars owned by the customer
+	if err := r.db.Where("customer_id = ?", customerID).Find(&cars).Error; err != nil {
+		return nil, err
+	}
+
+	// Fetch all sales linked to the customer’s cars
+	if err := r.db.Where("car_id IN (?)", getCarIDs(cars)).Find(&sales).Error; err != nil {
+		return nil, err
+	}
+
+	var saleStatements []SaleStatement
+
+	// Process each sale
+	for _, sale := range sales {
+		var payments []PaymentRecord
+		var totalSalePaid float64
+
+		// Fetch all payments for this sale
+		rows, err := r.db.Raw(`
+			SELECT amount_payed, payment_date 
+			FROM sale_payments 
+			WHERE sale_id = ? 
+			ORDER BY payment_date ASC`, sale.ID).Rows()
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var payment PaymentRecord
+			if err := rows.Scan(&payment.Amount, &payment.PaymentDate); err != nil {
+				return nil, err
+			}
+			payments = append(payments, payment)
+			totalSalePaid += payment.Amount
+		}
+
+		// Calculate outstanding balance
+		outstanding := sale.TotalPrice - totalSalePaid
+
+		// Create Sale Statement
+		saleStatements = append(saleStatements, SaleStatement{
+			CarID:             sale.CarID,
+			CarModel:          getCarModelByID(cars, sale.CarID),
+			ChasisNumber:      getChasisNumberByID(cars, sale.CarID),
+			TotalSaleAmount:   sale.TotalPrice,
+			TotalPaid:         totalSalePaid,
+			OutstandingAmount: outstanding,
+			Payments:          payments,
+		})
+
+		// Update totals
+		totalSales += sale.TotalPrice
+		totalPaid += totalSalePaid
+		totalOutstanding += outstanding
+	}
+
+	// Create and return the full statement
+	return &CustomerStatement{
+		CustomerID:       customerID,
+		CustomerName:     customer.Surname + " " + customer.Firstname + " " + customer.Othername,
+		TotalSales:       totalSales,
+		TotalPaid:        totalPaid,
+		TotalOutstanding: totalOutstanding,
+		Sales:            saleStatements,
+	}, nil
+}
+
+// Helper function to extract car IDs from []Car
+func getCarIDs(cars []carRegistration.Car) []uint {
+	var ids []uint
+	for _, car := range cars {
+		ids = append(ids, car.ID)
+	}
+	return ids
+}
+
+// Helper function to get car model by ID
+func getCarModelByID(cars []carRegistration.Car, carID uint) string {
+	for _, car := range cars {
+		if car.ID == carID {
+			return car.CarModel
+		}
+	}
+	return ""
+}
+
+// Helper function to get chasis number by ID
+func getChasisNumberByID(cars []carRegistration.Car, carID uint) string {
+	for _, car := range cars {
+		if car.ID == carID {
+			return car.ChasisNumber
+		}
+	}
+	return ""
+}
+
+func (h *SaleController) GenerateCustomerStatement(c *fiber.Ctx) error {
+	customerIdstr := c.Params("customerId")
+	customerID := utils.StrToUint(customerIdstr)
+
+	// Fetch the customer statement from the repository
+	statement, err := h.repo.GenerateCustomerStatement(customerID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Deposit not found for the specified payment",
+			})
+		}
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to fetch the statement",
+			"error":   err.Error(),
+		})
+	}
+
+	// Return the fetched payment
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "statement fetched successfully",
+		"data":    statement,
 	})
 }

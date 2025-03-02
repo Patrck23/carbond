@@ -143,3 +143,9 @@ authorization: bearer {{bearer}}
 ###
 GET {{hostname}}/deposit/Absa Bank
 authorization: bearer {{bearer}}
+
+
+# Sale statement
+###
+GET {{hostname}}/sale/statement/1
+authorization: bearer {{bearer}}

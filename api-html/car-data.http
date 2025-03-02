@@ -153,3 +153,14 @@ authorization: bearer {{bearer}}
 ###
 GET {{hostname}}/alerts/search?from_company_id=2
 authorization: bearer {{bearer}}
+
+###
+# Update alert by ID
+PUT {{hostname}}/alert/2
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+	"view_status": true,
+	"updated_by": "Admin"
+}

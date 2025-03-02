@@ -12,6 +12,8 @@ import (
 type AlertRepository interface {
 	CreateAlert(alert *alertRegistration.Transaction) error
 	SearchPaginatedAlerts(c *fiber.Ctx) (*utils.Pagination, []alertRegistration.Transaction, error)
+	GetAlertByID(id string) (alertRegistration.Transaction, error)
+	UpdateAlert(alert *alertRegistration.Transaction) error
 }
 
 type AlertRepositoryImpl struct {
@@ -128,4 +130,79 @@ func (h *AlertController) SearchAlerts(c *fiber.Ctx) error {
 		"pagination": pagination,
 		"data":       alerts,
 	})
+}
+
+// ======================
+
+func (r *AlertRepositoryImpl) GetAlertByID(id string) (alertRegistration.Transaction, error) {
+	var alert alertRegistration.Transaction
+	err := r.db.First(&alert, "id = ?", id).Error
+	return alert, err
+}
+
+func (r *AlertRepositoryImpl) UpdateAlert(alert *alertRegistration.Transaction) error {
+	return r.db.Save(alert).Error
+}
+
+// Define the UpdateAlert struct
+type UpdateAlertPayload struct {
+	ViewStatus bool   `json:"view_status"`
+	UpdatedBy  string `json:"updated_by"`
+}
+
+// UpdateAlert handler function
+func (h *AlertController) UpdateAlert(c *fiber.Ctx) error {
+	// Get the Alert ID from the route parameters
+	id := c.Params("id")
+
+	// Find the alert in the database
+	alert, err := h.repo.GetAlertByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return c.Status(404).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Alert not found",
+			})
+		}
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve Alert",
+			"data":    err.Error(),
+		})
+	}
+
+	// Parse the request body into the UpdateAlertPayload struct
+	var payload UpdateAlertPayload
+	if err := c.BodyParser(&payload); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
+	}
+
+	// Update the Alert fields using the payload
+	updateAlertFields(&alert, payload) // Pass the parsed payload
+
+	// Save the changes to the database
+	if err := h.repo.UpdateAlert(&alert); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update alert",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return the updated alert
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "alert updated successfully",
+		"data":    alert,
+	})
+}
+
+// UpdateAlertFields updates the fields of a alert using the UpdateAlert struct
+func updateAlertFields(alert *alertRegistration.Transaction, updateAlertData UpdateAlertPayload) {
+	alert.ViewStatus = updateAlertData.ViewStatus
+	alert.UpdatedBy = updateAlertData.UpdatedBy
 }
