@@ -6,11 +6,10 @@ import (
 
 type CustomerContact struct {
 	gorm.Model
-	CustomerID         uint    `json:"customer_id"`
-	ContactType        string  `json:"contact_type"`
-	ContactInformation string `json:"contact_information"`
-	CreatedBy          string `json:"created_by"`
+	CustomerID         uint     `json:"customer_id"`
+	ContactType        string   `json:"contact_type"`
+	ContactInformation string   `json:"contact_information"`
+	CreatedBy          string   `json:"created_by"`
 	UpdatedBy          string   `json:"updated_by"`
-	Customer    	   Customer `gorm:"foreignKey:CustomerID;references:ID" json:"customer"`
+	Customer           Customer `gorm:"foreignKey:CustomerID;references:ID" json:"customer"`
 }
-

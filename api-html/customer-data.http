@@ -88,3 +88,34 @@ DELETE  {{hostname}}/customer/2
 authorization: bearer {{bearer}}
 
 
+# Customer contact
+
+###
+POST {{hostname}}/customer/contact
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "customer_id": 1,
+  "contact_type": "Email",
+  "contact_information": "cust1@cus.com",
+  "created_by": "admin",
+  "updated_by": "admin"
+}
+
+# Customer Address
+
+###
+POST {{hostname}}/customer/address
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "customer_id": 1,
+  "district": "district1",
+  "subcounty": "subcounty1",
+  "parish": "parish1",
+  "village":"village1",
+  "created_by": "admin",
+  "updated_by": "admin"
+}
