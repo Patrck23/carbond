@@ -236,6 +236,7 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 	car := &carRegistration.Car{
 		ChasisNumber:          c.FormValue("chasis_number"),
 		EngineNumber:          c.FormValue("engine_number"),
+		FrameNumber:           c.FormValue("frame_number"),
 		EngineCapacity:        c.FormValue("engine_capacity"),
 		Make:                  c.FormValue("make"),
 		CarModel:              c.FormValue("car_model"),
@@ -496,6 +497,7 @@ func (r *CarRepositoryImpl) UpdateCarJapan(id string, updates map[string]interfa
 type UpdateCarPayload struct {
 	ChasisNumber          string `form:"chasis_number"`
 	EngineNumber          string `form:"engine_number"`
+	FrameNumber           string `form:"frame_number"`
 	EngineCapacity        string `form:"engine_capacity"`
 	Make                  string `form:"make"`
 	CarModel              string `form:"car_model"`
@@ -983,6 +985,47 @@ func (h *CarController) CreateCarExpense(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "Car expense created successfully",
 		"data":    carExpense,
+	})
+}
+
+// ========================
+
+// CreateCarExpenses handles the creation of multiple car expenses
+func (h *CarController) CreateCarExpenses(c *fiber.Ctx) error {
+	// Parse the request body into a slice of CarExpense structs
+	var carExpenses []carRegistration.CarExpense
+	if err := c.BodyParser(&carExpenses); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
+	}
+
+	// Validate if there are any expenses in the request
+	if len(carExpenses) == 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "No car expenses provided",
+		})
+	}
+
+	// Insert each car expense into the database
+	for _, expense := range carExpenses {
+		if err := h.repo.CreateCarExpense(&expense); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to create car expense",
+				"data":    err.Error(),
+			})
+		}
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car expenses created successfully",
+		"data":    carExpenses,
 	})
 }
 

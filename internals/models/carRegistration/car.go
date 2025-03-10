@@ -14,6 +14,7 @@ type Car struct {
 	ChasisNumber          string                       `gorm:"size:100;not null;unique" json:"chasis_number"`
 	EngineNumber          string                       `gorm:"size:100;not null;unique" json:"engine_number"`
 	EngineCapacity        string                       `gorm:"size:100;not null" json:"engine_capacity"`
+	FrameNumber           string                       `gorm:"size:100;not null" json:"frame_number"`
 	Make                  string                       `gorm:"size:100;not null" json:"make"`
 	CarModel              string                       `gorm:"size:100;not null" json:"car_model"`
 	MaximCarry            int                          `gorm:"size:100;not null" json:"maxim_carry"`
