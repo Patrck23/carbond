@@ -64,6 +64,7 @@ type CarRepository interface {
 
 	GetComTotalCars(companyID uint) (int64, error)
 	GetComCarsInStock(companyID uint) (int64, error)
+	GetComCarsSold(companyID uint) (int64, error)
 	GetComTotalMoneySpent(companyID uint) (float64, error)
 	GetComTotalCarsExpenses(companyID uint) (map[string]float64, error)
 }
@@ -2020,6 +2021,14 @@ func (r *CarRepositoryImpl) GetComCarsInStock(companyID uint) (int64, error) {
 	return count, err
 }
 
+func (r *CarRepositoryImpl) GetComCarsSold(companyID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&carRegistration.Car{}).
+		Where("to_company_id = ? AND car_status = ?", companyID, "Sold").
+		Count(&count).Error
+	return count, err
+}
+
 func (r *CarRepositoryImpl) GetComTotalMoneySpent(companyID uint) (float64, error) {
 	var total sql.NullFloat64 // Use sql.NullFloat64 to handle NULL
 	err := r.db.Model(&carRegistration.Car{}).
@@ -2090,6 +2099,15 @@ func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
 		})
 	}
 
+	carsSold, err := h.repo.GetComCarsSold(companyId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve cars sold",
+			"data":    err.Error(),
+		})
+	}
+
 	carsInStock, err := h.repo.GetComCarsInStock(companyId)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -2123,6 +2141,7 @@ func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
 		"data": fiber.Map{
 			"total_cars":         totalCars,
 			"cars_in_stock":      carsInStock,
+			"cars_sold":          carsSold,
 			"total_money_spent":  totalMoneySpent,
 			"total_car_expenses": totalCarExpenses,
 		},
