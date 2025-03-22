@@ -48,6 +48,8 @@ type CarRepository interface {
 	GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency string) ([]carRegistration.CarExpense, error)
 	GetTotalCarExpenses(carID uint) (CarExpenseResponse, error)
 
+	CreateCarPhotos(photos []carRegistration.CarPhoto) error
+	CreateCarExpenses(expenses []carRegistration.CarExpense) error
 	// Photos
 	CreateCarPhoto(photo *carRegistration.CarPhoto) error
 	DeleteCarPhotoByURL(photoURL string) error
@@ -2190,3 +2192,82 @@ func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
 		},
 	})
 }
+
+// ===================================
+
+type CreateCarInput struct {
+	Car carRegistration.Car `json:"car"`
+	// CarPhotos   []carRegistration.CarPhoto   `json:"car_photos"`
+	CarExpenses []carRegistration.CarExpense `json:"car_expenses"`
+}
+
+// CreateCarPhotos creates car photos in the database
+func (r *CarRepositoryImpl) CreateCarPhotos(photos []carRegistration.CarPhoto) error {
+	if len(photos) == 0 {
+		return nil
+	}
+	return r.db.Create(&photos).Error
+}
+
+// CreateCarExpenses creates car expenses in the database
+func (r *CarRepositoryImpl) CreateCarExpenses(expenses []carRegistration.CarExpense) error {
+	if len(expenses) == 0 {
+		return nil
+	}
+	return r.db.Create(&expenses).Error
+}
+
+// CreateCarWithDetails handles the creation of a car with photos and expenses
+func (h *CarController) CreateCarWithDetails(c *fiber.Ctx) error {
+	// Parse the request body into a CreateCarInput struct
+	input := new(CreateCarInput)
+	if err := c.BodyParser(input); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input data",
+			"data":    err.Error(),
+		})
+	}
+
+	// Create the car in the database
+	if err := h.repo.CreateCar(&input.Car); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to create car",
+			"data":    err.Error(),
+		})
+	}
+
+	// // Associate photos with the car
+	// for i := range input.CarPhotos {
+	// 	input.CarPhotos[i].CarID = input.Car.ID
+	// }
+	// if err := h.repo.CreateCarPhotos(input.CarPhotos); err != nil {
+	// 	return c.Status(500).JSON(fiber.Map{
+	// 		"status":  "error",
+	// 		"message": "Failed to add car photos",
+	// 		"data":    err.Error(),
+	// 	})
+	// }
+
+	// Associate expenses with the car
+	for i := range input.CarExpenses {
+		input.CarExpenses[i].CarID = input.Car.ID
+	}
+	if err := h.repo.CreateCarExpenses(input.CarExpenses); err != nil {
+		return c.Status(500).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to add car expenses",
+			"data":    err.Error(),
+		})
+	}
+
+	// Return success response
+	return c.Status(201).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car with details created successfully",
+		"data":    input.Car,
+	})
+}
+
+// ===========================================================
