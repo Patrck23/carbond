@@ -276,6 +276,7 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 		// Convert IDs from string to uint
 		FromCompanyID:        utils.StrToUintPointer(c.FormValue("from_company_id")),
 		ToCompanyID:          utils.StrToUintPointer(c.FormValue("to_company_id")),
+		OtherEntity:          c.FormValue("other_entity"),
 		CarShippingInvoiceID: utils.StrToUintPointer(c.FormValue("car_shipping_invoice_id")),
 		BrokerName:           c.FormValue("broker_name"),
 		BrokerNumber:         c.FormValue("broker_number"),
@@ -533,6 +534,7 @@ type UpdateCarPayload struct {
 	PurchaseDate          string `form:"purchase_date"`
 	FromCompanyID         string `form:"from_company_id"`
 	ToCompanyID           string `form:"to_company_id"`
+	OtherEntity           string `json:"other_entity"`
 	Destination           string `form:"destination"`
 	CarShippingInvoiceID  string `form:"car_shipping_invoice_id"`
 	Port                  string `form:"port"`

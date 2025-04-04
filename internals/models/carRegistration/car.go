@@ -49,6 +49,7 @@ type Car struct {
 	FromCompany           *companyRegistration.Company `gorm:"foreignKey:FromCompanyID;references:ID" json:"from_company"`
 	ToCompanyID           *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"to_company_id"`
 	ToCompany             *companyRegistration.Company `gorm:"foreignKey:ToCompanyID;references:ID" json:"to_company"`
+	OtherEntity           string                       `json:"other_entity"`
 	Destination           string                       `json:"destination"`
 	Port                  string                       `json:"port"`
 	CarShippingInvoiceID  *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"car_shipping_invoice_id"`
