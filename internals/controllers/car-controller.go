@@ -1178,7 +1178,9 @@ func (h *CarController) UpdateCarExpense(c *fiber.Ctx) error {
 		Amount        float64 `json:"amount" validate:"required,gt=0"`
 		DollarRate    float64 `json:"dollar_rate"`
 		ExpenseDate   string  `json:"expense_date" validate:"required"`
-		CarrierName   string  `json:"carrier_name"` // if description == "Carrier car fee(RISKO)"
+		CompanyName   string  `json:"company_name"`
+		Destination   string  `json:"destination"`
+		ExpenseVAT    float64 `json:"expense_vat"`
 		ExpenseRemark string  `json:"expense_remark"`
 		UpdatedBy     string  `json:"updated_by" validate:"required"`
 	}
@@ -1227,7 +1229,9 @@ func (h *CarController) UpdateCarExpense(c *fiber.Ctx) error {
 	expense.Amount = input.Amount
 	expense.DollarRate = input.DollarRate
 	expense.ExpenseDate = input.ExpenseDate
-	expense.CarrierName = input.CarrierName
+	expense.CompanyName = input.CompanyName
+	expense.ExpenseVAT = input.ExpenseVAT
+	expense.Destination = input.Destination
 	expense.ExpenseRemark = input.ExpenseRemark
 	expense.UpdatedBy = input.UpdatedBy
 
