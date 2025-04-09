@@ -1560,8 +1560,8 @@ func (r *CarRepositoryImpl) GetTotalCarExpenses(carID uint) (CarExpenseResponse,
 			COALESCE(
 				SUM(
 					CASE 
-						WHEN currency = 'JPY' THEN amount
-						ELSE amount / dollar_rate
+						WHEN currency = 'JPY' THEN amount * (1 + expense_vat/100)
+						ELSE (amount * (1 + expense_vat/100)) / dollar_rate
 					END
 				), 
 				0
@@ -2112,7 +2112,7 @@ func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]
 	err := r.db.Model(&carRegistration.CarExpense{}).
 		Joins("JOIN cars ON car_expenses.car_id = cars.id").
 		Where("cars.to_company_id = ?", companyID).
-		Select("car_expenses.currency, car_expenses.dollar_rate, SUM(car_expenses.amount) as total, cars.to_company_id").
+		Select("car_expenses.currency, car_expenses.dollar_rate, SUM(car_expenses.amount * (1+car_expenses.expense_vat/ 100.0)) as total, cars.to_company_id").
 		Group("car_expenses.currency, car_expenses.dollar_rate, cars.to_company_id").
 		Scan(&results).Error
 
