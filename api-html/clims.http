@@ -1,6 +1,6 @@
 
-@hostname = https://kkmadinatrading.com/api
-# @hostname = https://clims.health.go.ug/api
+# @hostname = https://kkmadinatrading.com/api
+@hostname = https://clims.health.go.ug/api
 # @name tokenAPI
 POST {{hostname}}/auth/login
 content-type: application/json
@@ -84,4 +84,90 @@ Content-Type: application/json
   "car_status": "In stock",
   "car_payment_status": "Booked",
   "updated_by": "Patrick"
+}
+
+###
+POST {{hostname}}/car/all-details
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "car": {"chasis_number": "ABC123456789XYZ",
+			"engine_number": "ENG987654321",
+			"engine_capacity": "2000cc",
+			"frame_number": "FRM123456789",
+			"make": "Toyota",
+			"car_model": "Corolla",
+			"maxim_carry": 5,
+			"weight": 1200,
+			"gross_weight": 1500,
+			"length": 4500,
+			"width": 1750,
+			"height": 1450,
+			"manufacture_year": 2022,
+			"first_registration_year": 2023,
+			"transmission": "Automatic",
+			"body_type": "Sedan",
+			"colour": "White",
+			"auction": "Yes",
+			"currency": "USD",
+			"car_millage": 30000,
+			"fuel_consumption": "Petro",
+			"power_steering": true,
+			"power_window": true,
+			"abs": true,
+			"ads": false,
+			"air_brake": false,
+			"oil_brake": true,
+			"alloy_wheel": true,
+			"simple_wheel": false,
+			"navigation": true,
+			"ac": true,
+			"bid_price": 15000.50,
+			"vat_tax": 10,
+			"purchase_date": "2024-03-20",
+			"from_company_id": 2,
+			"to_company_id": 1,
+			"other_entity":"",
+			"destination": "Kampala, Uganda",
+			"port": "Port of Yokohama",
+			"car_shipping_invoice_id": null,
+			"car_status_japan": "Exported",
+			"broker_name": "",
+			"broker_number": "",
+			"number_plate": "",
+			"car_tracker": true,
+			"customer_id": null,
+			"car_status": "InTransit",
+			"car_payment_status": "",
+			"created_by": "admin",
+			"updated_by": "admin"},
+  "car_expenses": [
+    {
+      "description": "Shipping Fee",
+      "currency": "USD",
+      "amount": 1200.00,
+      "dollar_rate": 1.0,
+      "expense_date": "2024-03-15",
+      "company_name": "ABC Logistics",
+	  "destination":"",
+	  "expense_vat": 120,
+      "expense_remark": "Paid in full",
+      "created_by": "admin",
+      "updated_by": "admin"
+    },
+    {
+      "description": "Customs Duty",
+      "currency": "UGX",
+      "amount": 5000000,
+      "dollar_rate": 3800,
+      "expense_date": "2024-03-18",
+      "company_name": "URA",
+	  "destination":"",
+	  "expense_vat": 120,
+      "expense_remark": "Pending clearance",
+      "created_by": "admin",
+      "updated_by": "admin"
+    }
+  ]
 }

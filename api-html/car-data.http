@@ -29,7 +29,7 @@ authorization: bearer {{bearer}}
 
 ###
 # Fetch car by ID
-GET {{hostname}}/car/id/1
+GET {{hostname}}/car/id/2
 authorization: bearer {{bearer}}
 
 ###
@@ -134,7 +134,7 @@ authorization: bearer {{bearer}}
 
 ###
 # Get total carexpense by ID
-GET {{hostname}}/total-car-expense/1
+GET {{hostname}}/total-car-expense/2
 authorization: bearer {{bearer}}
 
 ###
@@ -208,6 +208,7 @@ Content-Type: application/json
 			"purchase_date": "2024-03-20",
 			"from_company_id": 2,
 			"to_company_id": 1,
+			"other_entity":"",
 			"destination": "Kampala, Uganda",
 			"port": "Port of Yokohama",
 			"car_shipping_invoice_id": null,
@@ -228,7 +229,9 @@ Content-Type: application/json
       "amount": 1200.00,
       "dollar_rate": 1.0,
       "expense_date": "2024-03-15",
-      "carrier_name": "ABC Logistics",
+      "company_name": "ABC Logistics",
+	  "destination":"",
+	  "expense_vat": 120,
       "expense_remark": "Paid in full",
       "created_by": "admin",
       "updated_by": "admin"
@@ -239,7 +242,9 @@ Content-Type: application/json
       "amount": 5000000,
       "dollar_rate": 3800,
       "expense_date": "2024-03-18",
-      "carrier_name": "URA",
+      "company_name": "URA",
+	  "destination":"",
+	  "expense_vat": 120,
       "expense_remark": "Pending clearance",
       "created_by": "admin",
       "updated_by": "admin"

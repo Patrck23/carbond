@@ -1669,7 +1669,7 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	}
 
 	if to_company != "" {
-		query = query.Where("other_entity LIKE ?", "%"+to_company+"%")
+		query = query.Where("other_entity ILIKE ?", "%"+to_company+"%")
 	} else if to_company_id != "" {
 		if _, err := strconv.Atoi(to_company_id); err == nil {
 			query = query.Where("to_company_id = ?", to_company_id)
@@ -1677,10 +1677,10 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	}
 
 	if chasis_number != "" {
-		query = query.Where("chasis_number LIKE ?", "%"+chasis_number+"%")
+		query = query.Where("chasis_number ILIKE ?", "%"+chasis_number+"%")
 	}
 	if make != "" {
-		query = query.Where("make LIKE ?", "%"+make+"%")
+		query = query.Where("make ILIKE ?", "%"+make+"%")
 	}
 	if model != "" {
 		query = query.Where("car_model = ?", model)
@@ -1689,10 +1689,10 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 		query = query.Where("colour = ?", colour)
 	}
 	if bodyType != "" {
-		query = query.Where("body_type LIKE ?", "%"+bodyType+"%")
+		query = query.Where("body_type ILIKE ?", "%"+bodyType+"%")
 	}
 	if auction != "" {
-		query = query.Where("auction LIKE ?", "%"+auction+"%")
+		query = query.Where("auction ILIKE ?", "%"+auction+"%")
 	}
 	if destination != "" {
 		query = query.Where("destination = ?", destination)
@@ -1701,7 +1701,7 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 		query = query.Where("port = ?", port)
 	}
 	if broker_name != "" {
-		query = query.Where("broker_name LIKE ?", "%"+broker_name+"%")
+		query = query.Where("broker_name ILIKE ?", "%"+broker_name+"%")
 	}
 	if car_status != "" {
 		query = query.Where("car_status = ?", car_status)
@@ -1969,7 +1969,7 @@ func (r *CarRepositoryImpl) GetTotalCarsExpenses() (map[string]float64, error) {
 	}
 
 	err := r.db.Model(&carRegistration.CarExpense{}).
-		Select("currency, dollar_rate, SUM(amount) as total").
+		Select("currency, dollar_rate, SUM(amount * (1 + expense_vat * amount) / 100) as total").
 		Group("currency, dollar_rate").
 		Scan(&results).Error
 	if err != nil {
