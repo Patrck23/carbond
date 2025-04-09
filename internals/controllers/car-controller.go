@@ -1668,23 +1668,13 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 		}
 	}
 
-	if to_company_id != "" {
+	if to_company != "" {
+		query = query.Where("other_entity LIKE ?", "%"+to_company+"%")
+	} else if to_company_id != "" {
 		if _, err := strconv.Atoi(to_company_id); err == nil {
 			query = query.Where("to_company_id = ?", to_company_id)
 		}
 	}
-
-	if to_company != "" {
-		query = query.Where("other_entity LIKE ?", "%"+to_company+"%")
-	}
-
-	// if other_entity != "" {
-	// 	query = query.Where("other_entity LIKE ?", "%"+other_entity+"%")
-	// } else if to_company_id != "" {
-	// 	if _, err := strconv.Atoi(to_company_id); err == nil {
-	// 		query = query.Where("to_company_id = ?", to_company_id)
-	// 	}
-	// }
 
 	if chasis_number != "" {
 		query = query.Where("chasis_number LIKE ?", "%"+chasis_number+"%")
