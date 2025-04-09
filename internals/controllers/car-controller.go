@@ -1656,6 +1656,7 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	minBidPrice := c.Query("min_bid_price")
 	to_company_id := c.Query("to_company_id")
 	from_company_id := c.Query("from_company_id")
+	other_entity := c.Query("OtherEntity")
 
 	// Start building the query
 	query := r.db.Model(&carRegistration.Car{})
@@ -1667,7 +1668,19 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 		}
 	}
 
-	if to_company_id != "" {
+	// if to_company_id != "" {
+	// 	if _, err := strconv.Atoi(to_company_id); err == nil {
+	// 		query = query.Where("to_company_id = ?", to_company_id)
+	// 	}
+	// }
+
+	// if other_entity != "" {
+	// 	query = query.Where("other_entity LIKE ?", "%"+other_entity+"%")
+	// }
+
+	if other_entity != "" {
+		query = query.Where("other_entity LIKE ?", "%"+other_entity+"%")
+	} else if to_company_id != "" {
 		if _, err := strconv.Atoi(to_company_id); err == nil {
 			query = query.Where("to_company_id = ?", to_company_id)
 		}

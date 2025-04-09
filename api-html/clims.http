@@ -1,5 +1,6 @@
 
-@hostname = https://kkmadinatrading.com/api
+# @hostname = https://kkmadinatrading.com/api
+@hostname = https://clims.health.go.ug/api
 # @name tokenAPI
 POST {{hostname}}/auth/login
 content-type: application/json
