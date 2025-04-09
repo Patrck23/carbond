@@ -1654,9 +1654,9 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	bid_price := c.Query("bidPrice")
 	maxBidPrice := c.Query("max_bid_price")
 	minBidPrice := c.Query("min_bid_price")
-	// to_company_id := c.Query("to_company_id")
-	from_company_id := c.Query("from_company_id")
+	to_company_id := c.Query("to_company_id")
 	to_company := c.Query("OtherEntity")
+	from_company_id := c.Query("from_company_id")
 
 	// Start building the query
 	query := r.db.Model(&carRegistration.Car{})
@@ -1665,6 +1665,12 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	if from_company_id != "" {
 		if _, err := strconv.Atoi(from_company_id); err == nil {
 			query = query.Where("from_company_id = ?", from_company_id)
+		}
+	}
+
+	if to_company_id != "" {
+		if _, err := strconv.Atoi(to_company_id); err == nil {
+			query = query.Where("to_company_id = ?", to_company_id)
 		}
 	}
 
