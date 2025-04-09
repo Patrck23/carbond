@@ -12,7 +12,7 @@ content-type: application/json
 
 ###
 @bearer = {{tokenAPI.response.body.token}}
-GET {{hostname}}/users
+GET {{hostname}}/cars
 authorization: bearer {{bearer}}
 
 ###

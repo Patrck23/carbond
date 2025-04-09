@@ -87,5 +87,14 @@ func (car *Car) BeforeCreate(tx *gorm.DB) (err error) {
 	} else {
 		car.CarStatusJapan = "InStock"
 	}
+
+	// Set OtherEntity to ToCompany.Name if it's empty and ToCompanyID is valid
+	if car.OtherEntity == "" && car.ToCompanyID != nil && *car.ToCompanyID > 0 {
+		var company companyRegistration.Company
+		if err := tx.First(&company, *car.ToCompanyID).Error; err == nil {
+			car.OtherEntity = company.Name
+		}
+	}
+
 	return
 }
