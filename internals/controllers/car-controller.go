@@ -1655,7 +1655,7 @@ func (r *CarRepositoryImpl) SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination
 	maxBidPrice := c.Query("max_bid_price")
 	minBidPrice := c.Query("min_bid_price")
 	to_company_id := c.Query("to_company_id")
-	to_company := c.Query("OtherEntity")
+	to_company := c.Query("to_company")
 	from_company_id := c.Query("from_company_id")
 
 	// Start building the query
