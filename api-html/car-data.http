@@ -143,7 +143,7 @@ GET {{hostname}}/car/uploads?id=1
 authorization: bearer {{bearer}}
 
 ###
-GET {{hostname}}/cars/search?from_company_id=2&make=Toyota
+GET {{hostname}}/cars/search?other_entity=she
 authorization: bearer {{bearer}}
 
 ###
