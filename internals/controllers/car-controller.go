@@ -2310,22 +2310,24 @@ func (h *CarController) CreateCarWithDetails(c *fiber.Ctx) error {
 // ===========================================================
 
 func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expenses []carRegistration.CarExpense) error {
-	// Start transaction
 	tx := r.db.Begin()
 
-	// Update the car
-	if err := tx.Save(car).Error; err != nil {
+	// Omit fields that should not be updated
+	if err := tx.Model(&carRegistration.Car{}).
+		Where("id = ?", car.ID).
+		Omit("car_uuid", "created_at", "created_by").
+		Updates(car).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// Delete existing expenses for the car
+	// Delete existing expenses
 	if err := tx.Where("car_id = ?", car.ID).Delete(&carRegistration.CarExpense{}).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// Add new expenses
+	// Insert new expenses
 	for i := range expenses {
 		expenses[i].CarID = car.ID
 	}
@@ -2336,7 +2338,6 @@ func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expe
 		}
 	}
 
-	// Commit transaction
 	return tx.Commit().Error
 }
 
