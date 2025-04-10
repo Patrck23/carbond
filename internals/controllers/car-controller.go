@@ -46,6 +46,7 @@ type CarRepository interface {
 	FindCarExpensesByCarIdAndCurrency(carId, currency string) ([]carRegistration.CarExpense, error)
 	FindCarExpensesByThree(carId, expenseDate, currency string) ([]carRegistration.CarExpense, error)
 	GetCarExpensesByFour(carId, expenseDate, expenseDescription, currency string) ([]carRegistration.CarExpense, error)
+	UpdateCarWithExpenses(car *carRegistration.Car, expenses []carRegistration.CarExpense) error
 	GetTotalCarExpenses(carID uint) (CarExpenseResponse, error)
 
 	CreateCarPhotos(photos []carRegistration.CarPhoto) error
@@ -1779,12 +1780,39 @@ func (h *CarController) SearchCars(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the response with pagination details
-	return c.Status(200).JSON(fiber.Map{
-		"status":     "success",
-		"message":    "Cars retrieved successfully",
-		"pagination": pagination,
-		"data":       cars,
+	// Initialize a response slice to hold cars with their ports and expenses
+	var response []fiber.Map
+
+	// Iterate over all cars to fetch associated car ports and expenses
+	for _, car := range cars {
+
+		expenses, err := h.repo.GetCarExpenses(car.ID)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to retrieve expenses for car ID " + strconv.Itoa(int(car.ID)),
+				"data":    err.Error(),
+			})
+		}
+
+		// Combine car, ports, and expenses into a single response map
+		response = append(response, fiber.Map{
+			"car":      car,
+			"expenses": expenses,
+		})
+	}
+
+	// Return the paginated response
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Cars and associated data retrieved successfully",
+		"data":    response,
+		"pagination": fiber.Map{
+			"total_items":  pagination.TotalItems,
+			"total_pages":  pagination.TotalPages,
+			"current_page": pagination.CurrentPage,
+			"limit":        pagination.ItemsPerPage,
+		},
 	})
 }
 
@@ -2280,3 +2308,67 @@ func (h *CarController) CreateCarWithDetails(c *fiber.Ctx) error {
 }
 
 // ===========================================================
+
+func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expenses []carRegistration.CarExpense) error {
+	// Start transaction
+	tx := r.db.Begin()
+
+	// Update the car
+	if err := tx.Save(car).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Delete existing expenses for the car
+	if err := tx.Where("car_id = ?", car.ID).Delete(&carRegistration.CarExpense{}).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Add new expenses
+	for i := range expenses {
+		expenses[i].CarID = car.ID
+	}
+	if len(expenses) > 0 {
+		if err := tx.Create(&expenses).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// Commit transaction
+	return tx.Commit().Error
+}
+
+func (h *CarController) UpdateCarWithDetails(c *fiber.Ctx) error {
+	carIDStr := c.Params("id") // Get ID from the URL
+	carID := utils.StrToUint(carIDStr)
+	var input CreateCarInput
+
+	// Parse the body
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
+	}
+
+	// Ensure the Car ID matches the param
+	input.Car.ID = carID
+
+	// Update car and expenses
+	if err := h.repo.UpdateCarWithExpenses(&input.Car, input.CarExpenses); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update car and expenses",
+			"data":    err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Car and expenses updated successfully",
+		"data":    input.Car,
+	})
+}

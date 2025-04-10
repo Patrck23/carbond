@@ -143,7 +143,7 @@ GET {{hostname}}/car/uploads?id=1
 authorization: bearer {{bearer}}
 
 ###
-GET {{hostname}}/cars/search?other_entity=she
+GET {{hostname}}/cars/search?to_company=she
 authorization: bearer {{bearer}}
 
 ###
@@ -167,7 +167,7 @@ Content-Type: application/json
 
 
 ###
-POST {{hostname}}/car/all-details
+PUT {{hostname}}/car/all-details/2
 authorization: bearer {{bearer}}
 Content-Type: application/json
 
@@ -205,12 +205,12 @@ Content-Type: application/json
 			"ac": true,
 			"bid_price": 15000.50,
 			"vat_tax": 10,
-			"purchase_date": "2024-03-20",
+			"purchase_date": "2024-03-02",
 			"from_company_id": 2,
 			"to_company_id": 1,
-			"other_entity":"",
+			"other_entity":"sheraz",
 			"destination": "Kampala, Uganda",
-			"port": "Port of Yokohama",
+			"port": "Port of Yoko",
 			"car_shipping_invoice_id": null,
 			"car_status_japan": "Exported",
 			"broker_name": "",
@@ -231,7 +231,7 @@ Content-Type: application/json
       "expense_date": "2024-03-15",
       "company_name": "ABC Logistics",
 	  "destination":"",
-	  "expense_vat": 120,
+	  "expense_vat": 10,
       "expense_remark": "Paid in full",
       "created_by": "admin",
       "updated_by": "admin"
@@ -244,7 +244,7 @@ Content-Type: application/json
       "expense_date": "2024-03-18",
       "company_name": "URA",
 	  "destination":"",
-	  "expense_vat": 120,
+	  "expense_vat": 10,
       "expense_remark": "Pending clearance",
       "created_by": "admin",
       "updated_by": "admin"
