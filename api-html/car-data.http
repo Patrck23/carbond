@@ -167,7 +167,7 @@ Content-Type: application/json
 
 
 ###
-PUT {{hostname}}/car/all-details/2
+POST {{hostname}}/car/all-details
 authorization: bearer {{bearer}}
 Content-Type: application/json
 
@@ -208,17 +208,17 @@ Content-Type: application/json
 			"purchase_date": "2024-03-02",
 			"from_company_id": 2,
 			"to_company_id": 1,
-			"other_entity":"sheraz",
+			"other_entity":"",
 			"destination": "Kampala, Uganda",
 			"port": "Port of Yoko",
 			"car_shipping_invoice_id": null,
 			"car_status_japan": "Exported",
 			"broker_name": "",
 			"broker_number": "",
-			"number_plate": "",
+			"number_plate": "87788",
 			"car_tracker": true,
 			"customer_id": null,
-			"car_status": "InTransit",
+			"car_status": "Booked",
 			"car_payment_status": "",
 			"created_by": "admin",
 			"updated_by": "admin"},
