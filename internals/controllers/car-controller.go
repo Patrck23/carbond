@@ -1997,11 +1997,16 @@ func (r *CarRepositoryImpl) GetTotalCarsExpenses() (map[string]float64, error) {
 	}
 
 	err := r.db.Model(&carRegistration.CarExpense{}).
-		Select("currency, dollar_rate, SUM(amount * (1 + expense_vat * amount) / 100) as total").
+		Select("currency, dollar_rate, SUM(amount * (1 + (expense_vat/100))) as total").
 		Group("currency, dollar_rate").
 		Scan(&results).Error
 	if err != nil {
 		return nil, err
+	}
+
+	// Print the results
+	for _, summary := range results {
+		fmt.Printf("Currency: %s, Dollar Rate: %.2f, Total: %.2f\n", summary.Currency, summary.DollarRate, summary.Total)
 	}
 
 	totalExpenses := map[string]float64{
@@ -2015,7 +2020,7 @@ func (r *CarRepositoryImpl) GetTotalCarsExpenses() (map[string]float64, error) {
 			totalExpenses["JPY"] += res.Total
 			// totalExpenses["TotalUSD"] += res.Total * res.DollarRate
 		} else {
-			totalExpenses["USD"] += res.Total * res.DollarRate
+			totalExpenses["USD"] += res.Total / res.DollarRate
 			// totalExpenses["TotalUSD"] += res.Total * res.DollarRate
 		}
 	}
@@ -2140,7 +2145,7 @@ func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]
 	err := r.db.Model(&carRegistration.CarExpense{}).
 		Joins("JOIN cars ON car_expenses.car_id = cars.id").
 		Where("cars.to_company_id = ?", companyID).
-		Select("car_expenses.currency, car_expenses.dollar_rate, SUM(car_expenses.amount * (1+car_expenses.expense_vat/ 100.0)) as total, cars.to_company_id").
+		Select("car_expenses.currency, car_expenses.dollar_rate, SUM(car_expenses.amount * (1 + (car_expenses.expense_vat/ 100.0))) as total, cars.to_company_id").
 		Group("car_expenses.currency, car_expenses.dollar_rate, cars.to_company_id").
 		Scan(&results).Error
 
@@ -2157,7 +2162,7 @@ func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]
 		if res.Currency == "JPY" {
 			totalExpenses["JPY"] += res.Total
 		} else {
-			totalExpenses["USD"] += res.Total * res.DollarRate
+			totalExpenses["USD"] += res.Total / res.DollarRate
 		}
 	}
 
