@@ -13,18 +13,19 @@ type Car struct {
 	CarUUID               uuid.UUID                    `json:"car_uuid"`
 	ChasisNumber          string                       `gorm:"size:100;not null;unique" json:"chasis_number"`
 	EngineNumber          string                       `gorm:"size:100;not null;unique" json:"engine_number"`
-	EngineCapacity        string                       `gorm:"size:100;not null" json:"engine_capacity"`
-	FrameNumber           string                       `gorm:"size:100;not null" json:"frame_number"`
-	Make                  string                       `gorm:"size:100;not null" json:"make"`
-	CarModel              string                       `gorm:"size:100;not null" json:"car_model"`
-	MaximCarry            int                          `gorm:"size:100;not null" json:"maxim_carry"`
-	Weight                int                          `gorm:"size:100;not null" json:"weight"`
-	GrossWeight           int                          `gorm:"size:100;not null" json:"gross_weight"`
-	Length                int                          `gorm:"size:100;not null" json:"length"`
-	Width                 int                          `gorm:"size:100;not null" json:"width"`
-	Height                int                          `gorm:"size:100;not null" json:"height"`
-	ManufactureYear       int                          `gorm:"not null" json:"manufacture_year"`
-	FirstRegistrationYear int                          `gorm:"not null" json:"first_registration_year"`
+	EngineCapacity        string                       `gorm:"size:100;" json:"engine_capacity"`
+	FrameNumber           string                       `gorm:"size:100;" json:"frame_number"`
+	Make                  string                       `gorm:"size:100;" json:"make"`
+	CarModel              string                       `gorm:"size:100;" json:"car_model"`
+	SeatCapacity          string                       `gorm:"size:50;" json:"seat_capacity"`
+	MaximCarry            float64                      `gorm:"size:100;" json:"maxim_carry"`
+	Weight                float64                      `gorm:"size:100;" json:"weight"`
+	GrossWeight           float64                      `gorm:"size:100;" json:"gross_weight"`
+	Length                float64                      `gorm:"size:100;" json:"length"`
+	Width                 float64                      `gorm:"size:100;" json:"width"`
+	Height                float64                      `gorm:"size:100;" json:"height"`
+	ManufactureYear       int                          `json:"manufacture_year"`
+	FirstRegistrationYear int                          `json:"first_registration_year"`
 	Transmission          string                       `json:"transmission"`
 	BodyType              string                       `json:"body_type"`
 	Colour                string                       `json:"colour"`
@@ -42,8 +43,8 @@ type Car struct {
 	SimpleWheel           bool                         `gorm:"default:false" json:"simple_wheel"`
 	Navigation            bool                         `gorm:"default:false" json:"navigation"`
 	AC                    bool                         `gorm:"default:false" json:"ac"`
-	BidPrice              float64                      `gorm:"type:numeric;not null" json:"bid_price"`
-	VATTax                float64                      `gorm:"type:numeric;not null" json:"vat_tax"`
+	BidPrice              float64                      `gorm:"type:numeric;" json:"bid_price"`
+	VATTax                float64                      `gorm:"type:numeric;" json:"vat_tax"`
 	PurchaseDate          string                       `gorm:"type:date;not null" json:"purchase_date"`
 	FromCompanyID         *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"from_company_id"`
 	FromCompany           *companyRegistration.Company `gorm:"foreignKey:FromCompanyID;references:ID" json:"from_company"`

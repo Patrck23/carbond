@@ -243,12 +243,13 @@ func (h *CarController) CreateCar(c *fiber.Ctx) error {
 		EngineCapacity:        c.FormValue("engine_capacity"),
 		Make:                  c.FormValue("make"),
 		CarModel:              c.FormValue("car_model"),
-		MaximCarry:            utils.StrToInt(c.FormValue("maxim_carry")),
-		Weight:                utils.StrToInt(c.FormValue("weight")),
-		GrossWeight:           utils.StrToInt(c.FormValue("gross_weight")),
-		Length:                utils.StrToInt(c.FormValue("length")),
-		Width:                 utils.StrToInt(c.FormValue("width")),
-		Height:                utils.StrToInt(c.FormValue("height")),
+		SeatCapacity:          c.FormValue("seat_capacity"),
+		MaximCarry:            utils.StrToFloat(c.FormValue("maxim_carry")),
+		Weight:                utils.StrToFloat(c.FormValue("weight")),
+		GrossWeight:           utils.StrToFloat(c.FormValue("gross_weight")),
+		Length:                utils.StrToFloat(c.FormValue("length")),
+		Width:                 utils.StrToFloat(c.FormValue("width")),
+		Height:                utils.StrToFloat(c.FormValue("height")),
 		ManufactureYear:       utils.StrToInt(c.FormValue("manufacture_year")),
 		FirstRegistrationYear: utils.StrToInt(c.FormValue("first_registration_year")),
 		Transmission:          c.FormValue("transmission"),
@@ -505,6 +506,7 @@ type UpdateCarPayload struct {
 	EngineCapacity        string `form:"engine_capacity"`
 	Make                  string `form:"make"`
 	CarModel              string `form:"car_model"`
+	SeatCapacity          string `form:"seat_capacity"`
 	MaximCarry            string `form:"maxim_carry"`
 	Weight                string `form:"weight"`
 	GrossWeight           string `form:"gross_weight"`
@@ -595,9 +597,9 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 
 		// Convert field values based on expected type
 		switch fieldName {
-		case "maxim_carry", "weight", "gross_weight", "length", "width", "height", "car_millage", "manufacture_year", "first_registration_year":
+		case "car_millage", "manufacture_year", "first_registration_year":
 			updates[fieldName] = utils.StrToInt(fieldValue)
-		case "bid_price", "vat_tax":
+		case "maxim_carry", "weight", "gross_weight", "length", "width", "height", "bid_price", "vat_tax":
 			updates[fieldName] = utils.StrToFloat(fieldValue)
 		case "power_steering", "power_window", "abs", "ads", "air_brake", "oil_brake", "alloy_wheel", "simple_wheel", "navigation", "ac":
 			updates[fieldName] = utils.StrToBool(fieldValue)
