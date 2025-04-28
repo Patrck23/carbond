@@ -18,5 +18,5 @@ type CarExpense struct {
 	ExpenseRemark string  `json:"expense_remark"`
 	CreatedBy     string  `json:"created_by"`
 	UpdatedBy     string  `json:"updated_by"`
-	Car           Car     `gorm:"foreignKey:CarID;references:ID" json:"car"`
+	Car           Car     `gorm:"foreignKey:CarID;references:ID;constraint:OnDelete:CASCADE" json:"car"`
 }
