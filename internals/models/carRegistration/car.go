@@ -12,7 +12,7 @@ type Car struct {
 	gorm.Model
 	CarUUID               uuid.UUID                    `json:"car_uuid"`
 	ChasisNumber          string                       `gorm:"size:100;not null;unique" json:"chasis_number"`
-	EngineNumber          string                       `gorm:"size:100;not null;unique" json:"engine_number"`
+	EngineNumber          string                       `gorm:"size:100;" json:"engine_number"`
 	EngineCapacity        string                       `gorm:"size:100;" json:"engine_capacity"`
 	FrameNumber           string                       `gorm:"size:100;" json:"frame_number"`
 	Make                  string                       `gorm:"size:100;" json:"make"`
