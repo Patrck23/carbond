@@ -4,6 +4,7 @@ import (
 	"car-bond/internals/config"
 	"car-bond/internals/models/userRegistration"
 	"fmt"
+	"strings"
 
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
@@ -141,6 +142,36 @@ func PermissionMiddleware(service *DatabaseService, resourceCode string, request
 
 		// If all checks pass, proceed to the next handler
 		return c.Next()
+	}
+}
+
+func RequireGroupMembership(allowedGroups ...string) fiber.Handler {
+	allowedSet := make(map[string]struct{}, len(allowedGroups))
+	for _, group := range allowedGroups {
+		allowedSet[group] = struct{}{}
+	}
+
+	return func(c *fiber.Ctx) error {
+		userRoles := getRolesFromRequest(c)
+		if len(userRoles) == 0 {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error": "No roles found in session",
+			})
+		}
+
+		for _, role := range userRoles {
+			parts := strings.Split(role, ".")
+			if len(parts) > 1 {
+				suffix := parts[len(parts)-1]
+				if _, ok := allowedSet[suffix]; ok {
+					return c.Next() // Group match found
+				}
+			}
+		}
+
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "Access denied: user does not belong to required group",
+		})
 	}
 }
 

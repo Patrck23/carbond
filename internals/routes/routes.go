@@ -18,7 +18,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	resourceController := controllers.NewResourceController(dbService)
 	permissionController := controllers.NewPermissionController(dbService)
 
-	// pdbService := middleware.NewDatabaseService(db)
+	pdbService := middleware.NewDatabaseService(db)
 
 	api := app.Group("/api")
 	// Define routes
@@ -61,7 +61,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	})
 
 	// Car
-	api.Get("/cars", middleware.Protected(), carController.GetAllCars) // , middleware.Protected(), middleware.PermissionMiddleware(pdbService, "resource.*", []string{"R", "W"})
+	api.Get("/cars", middleware.Protected(), middleware.PermissionMiddleware(pdbService, "resource.*", []string{"R", "W"}), middleware.RequireGroupMembership("admin"), carController.GetAllCars) //, middleware.PermissionMiddleware(pdbService, "resource.*", []string{"R", "W"})
 	car := api.Group("/car")
 	car.Post("/", middleware.Protected(), carController.CreateCar)
 	car.Post("/all-details", middleware.Protected(), carController.CreateCarWithDetails)

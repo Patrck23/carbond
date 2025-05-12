@@ -18,16 +18,16 @@ authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-	"surname":   "Kizza",
-	"firstname": "Joan",
+	"surname":   "Patrick",
+	"firstname": "Ayebazibwe",
 	"othername": "",
-	"gender":    "Female",
-	"title":     "Cashier",
-	"username":  "JoanKizza",
-	"email":     "joan.kizza@gmail.com",
+	"gender":    "Male",
+	"title":     "Manager",
+	"username":  "Payeba",
+	"email":     "patrick.ayebazibwe@gmail.com",
 	"password":  "password",
 	"company_id": 1,
-	"group_id":   3,
+	"group_id":   2,
 	"created_by": "admin",
 	"updated_by": ""
 }

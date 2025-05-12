@@ -3,6 +3,16 @@
 POST http://127.0.0.1:8080/api/auth/login
 content-type: application/json
 
+# {
+#     "identity":"JoanKizza",
+#     "password":"password"
+# }
+
+# {
+#     "identity":"Payeba",
+#     "password":"password"
+# }
+
 {
     "identity":"Admin",
     "password":"Admin123"
