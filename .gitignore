@@ -30,5 +30,5 @@ cmd/*
 # docker files
 Dockerfile
 .dockerignore
-docker-compose.yaml
+docker-compose.yml
 .DS_Store
