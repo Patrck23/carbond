@@ -34,6 +34,7 @@ type CarRepository interface {
 	UpdateCarJapan(id string, updates map[string]interface{}) error
 	CountCarsByInvoiceExcludingID(invoiceID uint, excludeCarID uint) (int64, error)
 	GetCompanyNameByID(id uint) (string, error)
+	GetInvoiceByID(id uint) (carRegistration.CarShippingInvoice, error)
 
 	// Expense
 	CreateCarExpense(expense *carRegistration.CarExpense) error
@@ -880,6 +881,12 @@ func updateCar2Fields(car *carRegistration.Car, updateCarData UpdateCarPayload2)
 
 // ====================
 
+func (r *CarRepositoryImpl) GetInvoiceByID(id uint) (carRegistration.CarShippingInvoice, error) {
+	var invoice carRegistration.CarShippingInvoice
+	err := r.db.First(&invoice, id).Error
+	return invoice, err
+}
+
 type UpdateCarPayload3 struct {
 	CarShippingInvoiceID uint   `json:"car_shipping_invoice_id"`
 	UpdatedBy            string `json:"updated_by"`
@@ -916,10 +923,35 @@ func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
 		})
 	}
 
-	// === Enforce max 4 cars per invoice ===
-	if payloadInv.CarShippingInvoiceID != 0 {
-		// Get current count of cars for this invoice (excluding this car if it's already assigned)
-		count, err := h.repo.CountCarsByInvoiceExcludingID(payloadInv.CarShippingInvoiceID, car.ID)
+	targetInvoiceID := payloadInv.CarShippingInvoiceID
+
+	// === Enforce max 4 cars per invoice + prevent assigning to locked invoice ===
+	if targetInvoiceID != 0 {
+		// Check if the invoice is locked
+		invoice, err := h.repo.GetInvoiceByID(targetInvoiceID)
+		if err != nil {
+			if err == gorm.ErrRecordNotFound {
+				return c.Status(404).JSON(fiber.Map{
+					"status":  "error",
+					"message": "Target invoice not found",
+				})
+			}
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to retrieve invoice",
+				"data":    err.Error(),
+			})
+		}
+
+		if invoice.Locked {
+			return c.Status(400).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Invoice is locked and cannot be modified",
+			})
+		}
+
+		// Count cars on this invoice (excluding current car)
+		count, err := h.repo.CountCarsByInvoiceExcludingID(targetInvoiceID, car.ID)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{
 				"status":  "error",
@@ -2406,39 +2438,6 @@ func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expe
 
 	return tx.Commit().Error
 }
-
-// func (h *CarController) UpdateCarWithDetails(c *fiber.Ctx) error {
-// 	carIDStr := c.Params("id") // Get ID from the URL
-// 	carID := utils.StrToUint(carIDStr)
-// 	var input CreateCarInput
-
-// 	// Parse the body
-// 	if err := c.BodyParser(&input); err != nil {
-// 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-// 			"status":  "error",
-// 			"message": "Invalid input",
-// 			"data":    err.Error(),
-// 		})
-// 	}
-
-// 	// Ensure the Car ID matches the param
-// 	input.Car.ID = carID
-
-// 	// Update car and expenses
-// 	if err := h.repo.UpdateCarWithExpenses(&input.Car, input.CarExpenses); err != nil {
-// 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-// 			"status":  "error",
-// 			"message": "Failed to update car and expenses",
-// 			"data":    err.Error(),
-// 		})
-// 	}
-
-// 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-// 		"status":  "success",
-// 		"message": "Car and expenses updated successfully",
-// 		"data":    input.Car,
-// 	})
-// }
 
 func (h *CarController) UpdateCarWithDetails(c *fiber.Ctx) error {
 	carIDStr := c.Params("id")

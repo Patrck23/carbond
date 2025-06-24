@@ -12,4 +12,6 @@ type CarShippingInvoice struct {
 	ToLocation   string `json:"to_location"`
 	CreatedBy    string `gorm:"size:100" json:"created_by"`
 	UpdatedBy    string `gorm:"size:100" json:"updated_by"`
+
+	Locked bool `gorm:"default:false" json:"locked"` // ← Add this
 }

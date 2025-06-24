@@ -18,6 +18,9 @@ type ShippingRepository interface {
 	GetShippingInvoiceByInvoiceNum(invoiceNo string) (carRegistration.CarShippingInvoice, error)
 	UpdateShippingInvoice(invoice *carRegistration.CarShippingInvoice) error
 	DeleteShippingInvoiceByID(id string) error
+
+	UnlockInvoice(id uint, updatedBy string) error
+	LockInvoice(id uint, updatedBy string) error
 }
 
 type ShippingRepositoryImpl struct {
@@ -362,5 +365,71 @@ func (h *ShippingController) DeleteShippingInvoiceByID(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "invoice deleted successfully",
 		"data":    invoice,
+	})
+}
+
+var ErrAlreadyLocked = errors.New("invoice already locked")
+
+func (r *ShippingRepositoryImpl) LockInvoice(id uint, updatedBy string) error {
+	tx := r.db.Model(&carRegistration.CarShippingInvoice{}).
+		Where("id = ? AND locked = ?", id, false).
+		Updates(map[string]interface{}{
+			"locked":     true,
+			"updated_by": updatedBy,
+		})
+
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		// Either not found or already locked; check which.
+		var tmp carRegistration.CarShippingInvoice
+		if err := r.db.Select("id", "locked").First(&tmp, id).Error; err != nil {
+			return err // not found
+		}
+		return ErrAlreadyLocked
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------
+// 3) Unlock invoice  (optional convenience helper)
+// ---------------------------------------------------------------------
+func (r *ShippingRepositoryImpl) UnlockInvoice(id uint, updatedBy string) error {
+	return r.db.Model(&carRegistration.CarShippingInvoice{}).
+		Where("id = ?", id).
+		Updates(map[string]interface{}{
+			"locked":     false,
+			"updated_by": updatedBy,
+		}).Error
+}
+
+func getUsernameOrDefault(c *fiber.Ctx, def string) string {
+	if v := c.Locals("username"); v != nil {
+		if s, ok := v.(string); ok && s != "" {
+			return s
+		}
+	}
+	return def
+}
+
+func (ic *ShippingController) LockInvoice(c *fiber.Ctx) error {
+	id := utils.StrToUint(c.Params("id"))
+	updatedBy := getUsernameOrDefault(c, "system")
+
+	if err := ic.repo.LockInvoice(id, updatedBy); err != nil {
+		switch err {
+		case gorm.ErrRecordNotFound:
+			return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Invoice not found"})
+		case ErrAlreadyLocked:
+			return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Invoice is already locked"})
+		default:
+			return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to lock invoice", "data": err.Error()})
+		}
+	}
+
+	return c.Status(200).JSON(fiber.Map{
+		"status":  "success",
+		"message": "Invoice locked successfully",
 	})
 }
