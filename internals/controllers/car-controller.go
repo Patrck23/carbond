@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"car-bond/internals/models/alertRegistration"
 	"car-bond/internals/models/carRegistration"
+	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/utils"
 	"database/sql"
 	"encoding/base64"
@@ -32,6 +33,7 @@ type CarRepository interface {
 	SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error)
 	UpdateCarJapan(id string, updates map[string]interface{}) error
 	CountCarsByInvoiceExcludingID(invoiceID uint, excludeCarID uint) (int64, error)
+	GetCompanyNameByID(id uint) (string, error)
 
 	// Expense
 	CreateCarExpense(expense *carRegistration.CarExpense) error
@@ -507,6 +509,14 @@ func (r *CarRepositoryImpl) UpdateCarJapan(id string, updates map[string]interfa
 	return r.db.Model(&carRegistration.Car{}).Where("id = ?", id).Updates(updates).Error
 }
 
+func (r *CarRepositoryImpl) GetCompanyNameByID(id uint) (string, error) {
+	var company companyRegistration.Company
+	if err := r.db.Select("name").First(&company, id).Error; err != nil {
+		return "", err
+	}
+	return company.Name, nil
+}
+
 // Define the UpdateCarPayload struct
 type UpdateCarPayload struct {
 	ChasisNumber          string `form:"chasis_number"`
@@ -745,8 +755,23 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 	// Convert Car to Transaction
 	transaction := ConvertUpdateCarToTransaction(car.ID, updates)
 
-	if toCompanyID, ok := updates["to_company_id"].(*uint); ok && toCompanyID != nil && *toCompanyID != 0 {
-		updates["car_status_japan"] = "Exported"
+	if val, ok := updates["to_company_id"]; ok {
+		if ptr, ok := val.(*uint); ok && ptr != nil && *ptr != 0 {
+			// 1) mark status
+			updates["car_status_japan"] = "Exported"
+
+			// 2) fetch company name & add to updates
+			if name, err := h.repo.GetCompanyNameByID(*ptr); err == nil {
+				updates["other_entity"] = name // <-- new field
+			} else if err != gorm.ErrRecordNotFound {
+				// surface DB error (missing company simply skips the field)
+				return c.Status(500).JSON(fiber.Map{
+					"status":  "error",
+					"message": "Failed to fetch destination company",
+					"data":    err.Error(),
+				})
+			}
+		}
 	}
 
 	// Save to database
@@ -2382,12 +2407,46 @@ func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expe
 	return tx.Commit().Error
 }
 
+// func (h *CarController) UpdateCarWithDetails(c *fiber.Ctx) error {
+// 	carIDStr := c.Params("id") // Get ID from the URL
+// 	carID := utils.StrToUint(carIDStr)
+// 	var input CreateCarInput
+
+// 	// Parse the body
+// 	if err := c.BodyParser(&input); err != nil {
+// 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+// 			"status":  "error",
+// 			"message": "Invalid input",
+// 			"data":    err.Error(),
+// 		})
+// 	}
+
+// 	// Ensure the Car ID matches the param
+// 	input.Car.ID = carID
+
+// 	// Update car and expenses
+// 	if err := h.repo.UpdateCarWithExpenses(&input.Car, input.CarExpenses); err != nil {
+// 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+// 			"status":  "error",
+// 			"message": "Failed to update car and expenses",
+// 			"data":    err.Error(),
+// 		})
+// 	}
+
+// 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+// 		"status":  "success",
+// 		"message": "Car and expenses updated successfully",
+// 		"data":    input.Car,
+// 	})
+// }
+
 func (h *CarController) UpdateCarWithDetails(c *fiber.Ctx) error {
-	carIDStr := c.Params("id") // Get ID from the URL
+	carIDStr := c.Params("id")
 	carID := utils.StrToUint(carIDStr)
+
 	var input CreateCarInput
 
-	// Parse the body
+	// Parse request body
 	if err := c.BodyParser(&input); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"status":  "error",
@@ -2396,10 +2455,29 @@ func (h *CarController) UpdateCarWithDetails(c *fiber.Ctx) error {
 		})
 	}
 
-	// Ensure the Car ID matches the param
+	// Ensure the Car ID matches the route param
 	input.Car.ID = carID
 
-	// Update car and expenses
+	// -------------------------------------------------------------------
+	// OPTIONAL EXPORT + OTHER_ENTITY UPDATE
+	// -------------------------------------------------------------------
+	if input.Car.ToCompanyID != nil && *input.Car.ToCompanyID != 0 {
+		// 1) Mark as Exported
+		input.Car.CarStatusJapan = "Exported"
+
+		// 2) Fetch and assign company name
+		companyName, err := h.repo.GetCompanyNameByID(*input.Car.ToCompanyID)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to fetch destination company",
+				"data":    err.Error(),
+			})
+		}
+		input.Car.OtherEntity = companyName
+	}
+
+	// Update car and its expenses
 	if err := h.repo.UpdateCarWithExpenses(&input.Car, input.CarExpenses); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
