@@ -31,6 +31,7 @@ type CarRepository interface {
 	DeleteByID(id string) error
 	SearchPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error)
 	UpdateCarJapan(id string, updates map[string]interface{}) error
+	CountCarsByInvoiceExcludingID(invoiceID uint, excludeCarID uint) (int64, error)
 
 	// Expense
 	CreateCarExpense(expense *carRegistration.CarExpense) error
@@ -89,6 +90,14 @@ func NewCarController(repo CarRepository) *CarController {
 }
 
 // ==================
+
+func (r *CarRepositoryImpl) CountCarsByInvoiceExcludingID(invoiceID uint, excludeCarID uint) (int64, error) {
+	var count int64
+	err := r.db.Model(&carRegistration.Car{}).
+		Where("car_shipping_invoice_id = ? AND id != ?", invoiceID, excludeCarID).
+		Count(&count).Error
+	return count, err
+}
 
 func (r *CarRepositoryImpl) CreateAlert(alert *alertRegistration.Transaction) error {
 	return r.db.Create(alert).Error
@@ -872,7 +881,7 @@ func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
 		})
 	}
 
-	// Parse the request body into the UpdateCarPayload struct
+	// Parse the request body
 	var payloadInv UpdateCarPayload3
 	if err := c.BodyParser(&payloadInv); err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -882,10 +891,30 @@ func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update the car fields using the payload
-	updateCar3Fields(&car, payloadInv) // Pass the parsed payload
+	// === Enforce max 4 cars per invoice ===
+	if payloadInv.CarShippingInvoiceID != 0 {
+		// Get current count of cars for this invoice (excluding this car if it's already assigned)
+		count, err := h.repo.CountCarsByInvoiceExcludingID(payloadInv.CarShippingInvoiceID, car.ID)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to check car count for invoice",
+				"data":    err.Error(),
+			})
+		}
 
-	// Save the changes to the database
+		if count >= 4 {
+			return c.Status(400).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Invoice already has 4 cars. Cannot assign more.",
+			})
+		}
+	}
+
+	// Update car fields
+	updateCar3Fields(&car, payloadInv)
+
+	// Save the changes
 	if err := h.repo.UpdateCar(&car); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
@@ -894,7 +923,6 @@ func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the updated car
 	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Car updated successfully",
