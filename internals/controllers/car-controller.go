@@ -736,6 +736,10 @@ func (h *CarController) UpdateCar(c *fiber.Ctx) error {
 	// Convert Car to Transaction
 	transaction := ConvertUpdateCarToTransaction(car.ID, updates)
 
+	if toCompanyID, ok := updates["to_company_id"].(*uint); ok && toCompanyID != nil && *toCompanyID != 0 {
+		updates["car_status_japan"] = "Exported"
+	}
+
 	// Save to database
 	if err := h.repo.CreateAlert(transaction); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to create transaction"})
