@@ -894,10 +894,8 @@ type UpdateCarPayload3 struct {
 
 // UpdateCar handler function
 func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
-	// Get the car ID from the route parameters
 	id := c.Params("id")
 
-	// Find the car in the database
 	car, err := h.repo.GetCarByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -913,7 +911,6 @@ func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
 		})
 	}
 
-	// Parse the request body
 	var payloadInv UpdateCarPayload3
 	if err := c.BodyParser(&payloadInv); err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -925,9 +922,8 @@ func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
 
 	targetInvoiceID := payloadInv.CarShippingInvoiceID
 
-	// === Enforce max 4 cars per invoice + prevent assigning to locked invoice ===
 	if targetInvoiceID != 0 {
-		// Check if the invoice is locked
+		// Check if the invoice exists and is not locked
 		invoice, err := h.repo.GetInvoiceByID(targetInvoiceID)
 		if err != nil {
 			if err == gorm.ErrRecordNotFound {
@@ -950,20 +946,11 @@ func (h *CarController) UpdateCar3(c *fiber.Ctx) error {
 			})
 		}
 
-		// Count cars on this invoice (excluding current car)
-		count, err := h.repo.CountCarsByInvoiceExcludingID(targetInvoiceID, car.ID)
-		if err != nil {
-			return c.Status(500).JSON(fiber.Map{
-				"status":  "error",
-				"message": "Failed to check car count for invoice",
-				"data":    err.Error(),
-			})
-		}
-
-		if count >= 4 {
+		// Ensure car is not already assigned to another invoice
+		if car.CarShippingInvoiceID != nil && *car.CarShippingInvoiceID != targetInvoiceID {
 			return c.Status(400).JSON(fiber.Map{
 				"status":  "error",
-				"message": "Invoice already has 4 cars. Cannot assign more.",
+				"message": "Car is already assigned to another invoice",
 			})
 		}
 	}
