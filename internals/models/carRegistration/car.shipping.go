@@ -14,4 +14,6 @@ type CarShippingInvoice struct {
 	UpdatedBy    string `gorm:"size:100" json:"updated_by"`
 
 	Locked bool `gorm:"default:false" json:"locked"` // ← Add this
+
+	Cars []Car `gorm:"many2many:car_shipping_invoice_cars;" json:"cars"`
 }

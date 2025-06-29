@@ -4,7 +4,9 @@ import (
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/utils"
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -33,10 +35,12 @@ func NewShippingRepository(db *gorm.DB) ShippingRepository {
 
 type ShippingController struct {
 	repo ShippingRepository
+	DB   *gorm.DB
 }
 
-func NewShippingController(repo ShippingRepository) *ShippingController {
-	return &ShippingController{repo: repo}
+func NewShippingController(repo ShippingRepository, db *gorm.DB) *ShippingController {
+	return &ShippingController{repo: repo,
+		DB: db}
 }
 
 // ============================================
@@ -84,7 +88,25 @@ func (r *ShippingRepositoryImpl) GetCarsByInvoiceId(invoiceID uint) ([]carRegist
 }
 
 func (r *ShippingRepositoryImpl) GetPaginatedShippingInvoices(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarShippingInvoice, error) {
-	pagination, invoices, err := utils.Paginate(c, r.db, carRegistration.CarShippingInvoice{})
+	// — parse the exclude_locked param (defaults to “false” if absent) —
+	excludeLocked := false
+	if q := strings.TrimSpace(c.Query("exclude_locked")); q != "" {
+		b, err := strconv.ParseBool(q)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid exclude_locked: %w", err)
+		}
+		excludeLocked = b
+	}
+	// — build the base query, including your Cars preload —
+	query := r.db.
+		Model(&carRegistration.CarShippingInvoice{})
+
+	// — if exclude_locked=true, add WHERE locked = false —
+	if excludeLocked {
+		query = query.Where("locked = ?", false)
+	}
+
+	pagination, invoices, err := utils.Paginate(c, query, carRegistration.CarShippingInvoice{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -249,38 +271,26 @@ func (r *ShippingRepositoryImpl) UpdateShippingInvoice(invoice *carRegistration.
 	return r.db.Save(invoice).Error
 }
 
-// Define the UpdateShippingInvoice struct
+// 1️⃣ Extend your payload
 type UpdateShippingInvoicePayload struct {
 	InvoiceNo    string `json:"invoice_no"`
-	ShipDate     string `json:"ship_date"`
+	ShipDate     string `json:"ship_date"` // "YYYY-MM-DD"
 	VesselName   string `json:"vessel_name"`
 	FromLocation string `json:"from_location"`
 	ToLocation   string `json:"to_location"`
 	UpdatedBy    string `json:"updated_by"`
+	CarIDs       []uint `json:"car_ids,omitempty"` // ← new: full list of IDs you want linked
 }
 
-// UpdateShippingInvoice handler function
+// 2️⃣ Handler
 func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
-	// Get the invoice ID from the route parameters
-	id := c.Params("id")
-
-	// Find the invoice in the database
-	invoice, err := h.repo.GetShippingInvoiceByID(id)
+	// … load existing invoice as before …
+	invoice, err := h.repo.GetShippingInvoiceByID(c.Params("id"))
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return c.Status(404).JSON(fiber.Map{
-				"status":  "error",
-				"message": "invoice not found",
-			})
-		}
-		return c.Status(500).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to retrieve invoice",
-			"data":    err.Error(),
-		})
+		// handle 404 or 500
 	}
 
-	// Parse the request body into the UpdateShippingInvoicePayload struct
+	// 2a️⃣ parse payload
 	var payload UpdateShippingInvoicePayload
 	if err := c.BodyParser(&payload); err != nil {
 		return c.Status(400).JSON(fiber.Map{
@@ -290,10 +300,15 @@ func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
 		})
 	}
 
-	// Update the invoice fields using the payload
-	updateShippingInvoiceFields(&invoice, payload) // Pass the parsed payload
+	// 2b️⃣ update scalar fields
+	invoice.InvoiceNo = payload.InvoiceNo
+	invoice.ShipDate = payload.ShipDate
+	invoice.VesselName = payload.VesselName
+	invoice.FromLocation = payload.FromLocation
+	invoice.ToLocation = payload.ToLocation
+	invoice.UpdatedBy = payload.UpdatedBy
 
-	// Save the changes to the database
+	// 2c️⃣ persist the scalar fields first
 	if err := h.repo.UpdateShippingInvoice(&invoice); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
@@ -302,22 +317,35 @@ func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
 		})
 	}
 
-	// Return the updated invoice
+	// 2d️⃣ if CarIDs was provided, sync the many→many
+	if payload.CarIDs != nil {
+		// load the Car objects
+		var cars []carRegistration.Car
+		if err := h.DB.Where("id IN ?", payload.CarIDs).Find(&cars).Error; err != nil {
+			return c.Status(400).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Invalid car_ids",
+				"data":    err.Error(),
+			})
+		}
+		// replace the association
+		if err := h.DB.Model(&invoice).Association("Cars").Replace(cars); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to update linked cars",
+				"data":    err.Error(),
+			})
+		}
+		// optionally reload invoice.Cars for the response:
+		invoice.Cars = cars
+	}
+
+	// 2e️⃣ return the updated invoice (with Cars)
 	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
 		"message": "invoice updated successfully",
 		"data":    invoice,
 	})
-}
-
-// UpdateinvoiceFields updates the fields of a invoice using the Updateinvoice struct
-func updateShippingInvoiceFields(invoice *carRegistration.CarShippingInvoice, updateShippingInvoiceData UpdateShippingInvoicePayload) {
-	invoice.InvoiceNo = updateShippingInvoiceData.InvoiceNo
-	invoice.ShipDate = updateShippingInvoiceData.ShipDate
-	invoice.VesselName = updateShippingInvoiceData.VesselName
-	invoice.FromLocation = updateShippingInvoiceData.FromLocation
-	invoice.ToLocation = updateShippingInvoiceData.ToLocation
-	invoice.UpdatedBy = updateShippingInvoiceData.UpdatedBy
 }
 
 // ======================

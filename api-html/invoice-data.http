@@ -79,7 +79,12 @@ Content-Type: application/json
 
 ###
 # Delete customer by ID
-DELETE  {{hostname}}/shipping/invoice/1
+DELETE {{hostname}}/shipping/invoice/1
+authorization: bearer {{bearer}}
+
+###
+# Delete customer by ID
+PATCH {{hostname}}/shipping/invoice/1/lock
 authorization: bearer {{bearer}}
 
 
