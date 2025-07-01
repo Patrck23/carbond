@@ -282,7 +282,72 @@ type UpdateShippingInvoicePayload struct {
 	CarIDs       []uint `json:"car_ids,omitempty"` // ← new: full list of IDs you want linked
 }
 
-// 2️⃣ Handler
+// // 2️⃣ Handler
+// func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
+// 	// … load existing invoice as before …
+// 	invoice, err := h.repo.GetShippingInvoiceByID(c.Params("id"))
+// 	if err != nil {
+// 		// handle 404 or 500
+// 	}
+
+// 	// 2a️⃣ parse payload
+// 	var payload UpdateShippingInvoicePayload
+// 	if err := c.BodyParser(&payload); err != nil {
+// 		return c.Status(400).JSON(fiber.Map{
+// 			"status":  "error",
+// 			"message": "Invalid input",
+// 			"data":    err.Error(),
+// 		})
+// 	}
+
+// 	// 2b️⃣ update scalar fields
+// 	invoice.InvoiceNo = payload.InvoiceNo
+// 	invoice.ShipDate = payload.ShipDate
+// 	invoice.VesselName = payload.VesselName
+// 	invoice.FromLocation = payload.FromLocation
+// 	invoice.ToLocation = payload.ToLocation
+// 	invoice.UpdatedBy = payload.UpdatedBy
+
+// 	// 2c️⃣ persist the scalar fields first
+// 	if err := h.repo.UpdateShippingInvoice(&invoice); err != nil {
+// 		return c.Status(500).JSON(fiber.Map{
+// 			"status":  "error",
+// 			"message": "Failed to update invoice",
+// 			"data":    err.Error(),
+// 		})
+// 	}
+
+// 	// 2d️⃣ if CarIDs was provided, sync the many→many
+// 	if payload.CarIDs != nil {
+// 		// load the Car objects
+// 		var cars []carRegistration.Car
+// 		if err := h.DB.Where("id IN ?", payload.CarIDs).Find(&cars).Error; err != nil {
+// 			return c.Status(400).JSON(fiber.Map{
+// 				"status":  "error",
+// 				"message": "Invalid car_ids",
+// 				"data":    err.Error(),
+// 			})
+// 		}
+// 		// replace the association
+// 		if err := h.DB.Model(&invoice).Association("Cars").Replace(cars); err != nil {
+// 			return c.Status(500).JSON(fiber.Map{
+// 				"status":  "error",
+// 				"message": "Failed to update linked cars",
+// 				"data":    err.Error(),
+// 			})
+// 		}
+// 		// optionally reload invoice.Cars for the response:
+// 		invoice.Cars = cars
+// 	}
+
+// 	// 2e️⃣ return the updated invoice (with Cars)
+// 	return c.Status(200).JSON(fiber.Map{
+// 		"status":  "success",
+// 		"message": "invoice updated successfully",
+// 		"data":    invoice,
+// 	})
+// }
+
 func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
 	// … load existing invoice as before …
 	invoice, err := h.repo.GetShippingInvoiceByID(c.Params("id"))
@@ -319,31 +384,44 @@ func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
 
 	// 2d️⃣ if CarIDs was provided, sync the many→many
 	if payload.CarIDs != nil {
-		// load the Car objects
-		var cars []carRegistration.Car
-		if err := h.DB.Where("id IN ?", payload.CarIDs).Find(&cars).Error; err != nil {
+		// Step 1: Fetch all requested cars
+		var carsToAssign []carRegistration.Car
+		if err := h.DB.Where("id IN ?", payload.CarIDs).Find(&carsToAssign).Error; err != nil {
 			return c.Status(400).JSON(fiber.Map{
 				"status":  "error",
-				"message": "Invalid car_ids",
+				"message": "Invalid car_ids provided",
 				"data":    err.Error(),
 			})
 		}
-		// replace the association
-		if err := h.DB.Model(&invoice).Association("Cars").Replace(cars); err != nil {
+
+		// Step 2: Unassign these cars from any other invoices
+		// This deletes their entries from the join table (car_shipping_invoice_cars)
+		if err := h.DB.Exec(`
+		DELETE FROM car_shipping_invoice_cars 
+		WHERE car_id IN ? AND car_shipping_invoice_id != ?
+	`, payload.CarIDs, invoice.ID).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{
 				"status":  "error",
-				"message": "Failed to update linked cars",
+				"message": "Failed to unassign cars from other invoices",
 				"data":    err.Error(),
 			})
 		}
-		// optionally reload invoice.Cars for the response:
-		invoice.Cars = cars
+
+		// Step 3: Assign the cars to this invoice
+		if err := h.DB.Model(&invoice).Association("Cars").Replace(carsToAssign); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to reassign cars to invoice",
+				"data":    err.Error(),
+			})
+		}
+		invoice.Cars = carsToAssign
 	}
 
 	// 2e️⃣ return the updated invoice (with Cars)
 	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
-		"message": "invoice updated successfully",
+		"message": "Invoice updated successfully",
 		"data":    invoice,
 	})
 }
