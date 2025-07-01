@@ -15,5 +15,5 @@ type CarShippingInvoice struct {
 
 	Locked bool `gorm:"default:false" json:"locked"` // ← Add this
 
-	Cars []Car `gorm:"many2many:car_shipping_invoice_cars;" json:"cars"`
+	Cars []Car `gorm:"foreignKey:CarShippingInvoiceID" json:"cars"`
 }
