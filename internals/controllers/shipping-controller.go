@@ -394,12 +394,9 @@ func (h *ShippingController) UpdateShippingInvoice(c *fiber.Ctx) error {
 			})
 		}
 
-		// Step 2: Unassign these cars from any other invoices
-		// This deletes their entries from the join table (car_shipping_invoice_cars)
-		if err := h.DB.Exec(`
-		DELETE FROM car_shipping_invoice_cars 
-		WHERE car_id IN ? AND car_shipping_invoice_id != ?
-	`, payload.CarIDs, invoice.ID).Error; err != nil {
+		if err := h.DB.Model(&carRegistration.Car{}).
+			Where("id IN ? AND car_shipping_invoice_id != ?", payload.CarIDs, invoice.ID).
+			Update("car_shipping_invoice_id", nil).Error; err != nil {
 			return c.Status(500).JSON(fiber.Map{
 				"status":  "error",
 				"message": "Failed to unassign cars from other invoices",
