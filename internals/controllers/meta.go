@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"car-bond/internals/models/metaData"
+	"car-bond/internals/repository"
 	"fmt"
 	"log"
 	"os"
@@ -11,56 +12,19 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/xuri/excelize/v2"
-	"gorm.io/gorm"
 )
 
-type Excecute interface {
-	Begin() Excecute
-	Commit() error
-	Rollback()
-	Exec(query string, args ...interface{}) *gorm.DB
-	Create(value interface{}) *gorm.DB
-}
-
-type GormDatabase struct {
-	db *gorm.DB
-}
-
-func NewExcecute(db *gorm.DB) Excecute {
-	return &GormDatabase{db: db}
-}
-
 type MetaController struct {
-	repo Excecute
+	repo repository.Excecute
 }
 
-func NewMetaController(repo Excecute) *MetaController {
+func NewMetaController(repo repository.Excecute) *MetaController {
 	return &MetaController{repo: repo}
 }
 
 // ===============
 
-func (g *GormDatabase) Begin() Excecute {
-	return &GormDatabase{db: g.db.Begin()}
-}
-
-func (g *GormDatabase) Commit() error {
-	return g.db.Commit().Error
-}
-
-func (g *GormDatabase) Rollback() {
-	g.db.Rollback()
-}
-
-func (g *GormDatabase) Exec(query string, args ...interface{}) *gorm.DB {
-	return g.db.Exec(query, args...)
-}
-
-func (g *GormDatabase) Create(value interface{}) *gorm.DB {
-	return g.db.Create(value)
-}
-
-func (m *MetaController) ProcessExcelAndUpload(c *fiber.Ctx, db Excecute) error {
+func (m *MetaController) ProcessExcelAndUpload(c *fiber.Ctx, db repository.Excecute) error {
 	// Begin transaction
 	db = db.Begin()
 

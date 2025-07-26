@@ -3,65 +3,23 @@ package controllers
 import (
 	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/utils"
+
+	"car-bond/internals/repository"
 	"errors"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
-type CompanyRepository interface {
-	CreateCompany(company *companyRegistration.Company) error
-	GetPaginatedCompanies(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.Company, error)
-	GetCompanyByID(id string) (companyRegistration.Company, error)
-	GetCompanyLocations(companyID uint) ([]companyRegistration.CompanyLocation, error)
-	UpdateCompany(company *companyRegistration.Company) error
-	DeleteByID(id string) error
-
-	// Expenses
-	CreateCompanyExpense(expense *companyRegistration.CompanyExpense) error
-	GetPaginatedExpenses(c *fiber.Ctx, companyId string) (*utils.Pagination, []companyRegistration.CompanyExpense, error)
-	FindCompanyExpenseByIdAndCompanyId(id, companyId string) (*companyRegistration.CompanyExpense, error)
-	FindCompanyExpenseById(id string) (*companyRegistration.CompanyExpense, error)
-	UpdateCompanyExpense(expense *companyRegistration.CompanyExpense) error
-	FindCompanyExpenseByCompanyAndId(companyId, expenseId string) (*companyRegistration.CompanyExpense, error)
-	DeleteCompanyExpense(expense *companyRegistration.CompanyExpense) error
-	FindCompanyExpensesByCompanyIdAndExpenseDate(companyId, expenseDate string) ([]companyRegistration.CompanyExpense, error)
-	FindCompanyExpensesByCompanyIdAndExpenseDescription(companyId, expenseDescription string) ([]companyRegistration.CompanyExpense, error)
-	FindCompanyExpensesByCompanyIdAndCurrency(companyId, currency string) ([]companyRegistration.CompanyExpense, error)
-	FindCompanyExpensesByThree(companyId, expenseDate, currency string) ([]companyRegistration.CompanyExpense, error)
-	GetCompanyExpensesByFour(companyId, expenseDate, expenseDescription, currency string) ([]companyRegistration.CompanyExpense, error)
-	GetPaginatedAllExpenses(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.CompanyExpense, error)
-
-	// Locations
-	CreateCompanyLocation(location *companyRegistration.CompanyLocation) error
-	GetAllCompanyLocations(companyId string) ([]companyRegistration.CompanyLocation, error)
-	GetLocationByCompanyId(id, companyId string) (*companyRegistration.CompanyLocation, error)
-	FindLocationById(Id string) (*companyRegistration.CompanyLocation, error)
-	UpdateCompanyLocation(location *companyRegistration.CompanyLocation) error
-	DeleteLocationByID(id string) error
-}
-
-type CompanyRepositoryImpl struct {
-	db *gorm.DB
-}
-
-func NewCompanyRepository(db *gorm.DB) CompanyRepository {
-	return &CompanyRepositoryImpl{db: db}
-}
-
 type CompanyController struct {
-	repo CompanyRepository
+	repo repository.CompanyRepository
 }
 
-func NewCompanyController(repo CompanyRepository) *CompanyController {
+func NewCompanyController(repo repository.CompanyRepository) *CompanyController {
 	return &CompanyController{repo: repo}
 }
 
 // ============================================
-
-func (r *CompanyRepositoryImpl) CreateCompany(company *companyRegistration.Company) error {
-	return r.db.Create(company).Error
-}
 
 func (h *CompanyController) CreateCompany(c *fiber.Ctx) error {
 	// Initialize a new Company instance
@@ -95,14 +53,6 @@ func (h *CompanyController) CreateCompany(c *fiber.Ctx) error {
 
 // ===================
 
-func (r *CompanyRepositoryImpl) GetPaginatedCompanies(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.Company, error) {
-	pagination, companies, err := utils.Paginate(c, r.db, companyRegistration.Company{})
-	if err != nil {
-		return nil, nil, err
-	}
-	return &pagination, companies, nil
-}
-
 func (h *CompanyController) GetAllCompanies(c *fiber.Ctx) error {
 	// Fetch paginated Companies using the repository
 	pagination, companies, err := h.repo.GetPaginatedCompanies(c)
@@ -129,18 +79,6 @@ func (h *CompanyController) GetAllCompanies(c *fiber.Ctx) error {
 }
 
 // =====================
-
-func (r *CompanyRepositoryImpl) GetCompanyLocations(companyID uint) ([]companyRegistration.CompanyLocation, error) {
-	var locations []companyRegistration.CompanyLocation
-	err := r.db.Where("company_id = ?", companyID).Find(&locations).Error
-	return locations, err
-}
-
-func (r *CompanyRepositoryImpl) GetCompanyByID(id string) (companyRegistration.Company, error) {
-	var company companyRegistration.Company
-	err := r.db.First(&company, "id = ?", id).Error
-	return company, err
-}
 
 // GetSingleCompany fetches a company with its associated locations and expenses from the database
 func (h *CompanyController) GetSingleCompany(c *fiber.Ctx) error {
@@ -188,10 +126,6 @@ func (h *CompanyController) GetSingleCompany(c *fiber.Ctx) error {
 }
 
 // ====================
-
-func (r *CompanyRepositoryImpl) UpdateCompany(company *companyRegistration.Company) error {
-	return r.db.Save(company).Error
-}
 
 // Define the UpdateCompany struct
 type UpdateCompanyPayload struct {
@@ -260,14 +194,6 @@ func updateCompanyFields(company *companyRegistration.Company, updateCompanyData
 
 // ======================
 
-// DeleteByID deletes a company by ID
-func (r *CompanyRepositoryImpl) DeleteByID(id string) error {
-	if err := r.db.Delete(&companyRegistration.Company{}, "id = ?", id).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
 // DeleteCompanyByID deletes a Company by its ID
 func (h *CompanyController) DeleteCompanyByID(c *fiber.Ctx) error {
 	// Get the Company ID from the route parameters
@@ -309,11 +235,6 @@ func (h *CompanyController) DeleteCompanyByID(c *fiber.Ctx) error {
 // ==================================================================================================================
 // Create a company expense
 
-// CreateCompanyExpense creates a new company expense in the database
-func (r *CompanyRepositoryImpl) CreateCompanyExpense(expense *companyRegistration.CompanyExpense) error {
-	return r.db.Create(expense).Error
-}
-
 // CreateCompanyExpense handles the creation of a company expense
 func (h *CompanyController) CreateCompanyExpense(c *fiber.Ctx) error {
 	// Parse the request body into a companyExpense struct
@@ -345,14 +266,6 @@ func (h *CompanyController) CreateCompanyExpense(c *fiber.Ctx) error {
 
 // ========================
 
-func (r *CompanyRepositoryImpl) GetPaginatedExpenses(c *fiber.Ctx, companyId string) (*utils.Pagination, []companyRegistration.CompanyExpense, error) {
-	pagination, expenses, err := utils.Paginate(c, r.db.Preload("Company").Where("company_id = ?", companyId), companyRegistration.CompanyExpense{})
-	if err != nil {
-		return nil, nil, err
-	}
-	return &pagination, expenses, nil
-}
-
 func (h *CompanyController) GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
 	companyId := c.Params("companyId")
 
@@ -381,15 +294,6 @@ func (h *CompanyController) GetCompanyExpensesByCompanyId(c *fiber.Ctx) error {
 }
 
 // ========================
-
-func (r *CompanyRepositoryImpl) FindCompanyExpenseByIdAndCompanyId(id, companyId string) (*companyRegistration.CompanyExpense, error) {
-	var expense companyRegistration.CompanyExpense
-	result := r.db.Preload("Company").Where("id = ? AND company_id = ?", id, companyId).First(&expense)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &expense, nil
-}
 
 func (h *CompanyController) GetCompanyExpenseById(c *fiber.Ctx) error {
 	// Retrieve the expense ID and Company ID from the request parameters
@@ -421,18 +325,6 @@ func (h *CompanyController) GetCompanyExpenseById(c *fiber.Ctx) error {
 }
 
 // ========================
-
-func (r *CompanyRepositoryImpl) FindCompanyExpenseById(id string) (*companyRegistration.CompanyExpense, error) {
-	var expense companyRegistration.CompanyExpense
-	if err := r.db.First(&expense, "id = ?", id).Error; err != nil {
-		return nil, err
-	}
-	return &expense, nil
-}
-
-func (r *CompanyRepositoryImpl) UpdateCompanyExpense(expense *companyRegistration.CompanyExpense) error {
-	return r.db.Save(expense).Error
-}
 
 func (h *CompanyController) UpdateCompanyExpense(c *fiber.Ctx) error {
 	// Define a struct for input validation
@@ -508,18 +400,6 @@ func (h *CompanyController) UpdateCompanyExpense(c *fiber.Ctx) error {
 
 // ====================
 
-func (r *CompanyRepositoryImpl) FindCompanyExpenseByCompanyAndId(companyId, expenseId string) (*companyRegistration.CompanyExpense, error) {
-	var expense companyRegistration.CompanyExpense
-	if err := r.db.Where("id = ? AND company_id = ?", expenseId, companyId).First(&expense).Error; err != nil {
-		return nil, err
-	}
-	return &expense, nil
-}
-
-func (r *CompanyRepositoryImpl) DeleteCompanyExpense(expense *companyRegistration.CompanyExpense) error {
-	return r.db.Delete(expense).Error
-}
-
 func (h *CompanyController) DeleteCompanyExpenseById(c *fiber.Ctx) error {
 	// Parse companyId and expenseId from the request parameters
 	companyId := c.Params("companyId")
@@ -561,14 +441,6 @@ func (h *CompanyController) DeleteCompanyExpenseById(c *fiber.Ctx) error {
 
 // Get Company Expenses by Company ID and Expense Date
 
-func (r *CompanyRepositoryImpl) FindCompanyExpensesByCompanyIdAndExpenseDate(companyId, expenseDate string) ([]companyRegistration.CompanyExpense, error) {
-	var expenses []companyRegistration.CompanyExpense
-	if err := r.db.Where("company_id = ? AND expense_date = ?", companyId, expenseDate).Find(&expenses).Error; err != nil {
-		return nil, err
-	}
-	return expenses, nil
-}
-
 func (h *CompanyController) GetCompanyExpensesByCompanyIdAndExpenseDate(c *fiber.Ctx) error {
 	// Retrieve companyId and expenseDate from the request parameters
 	companyId := c.Params("id")
@@ -601,14 +473,6 @@ func (h *CompanyController) GetCompanyExpensesByCompanyIdAndExpenseDate(c *fiber
 // =====================
 
 // Get Company Expenses by Company ID and Expense Description
-
-func (r *CompanyRepositoryImpl) FindCompanyExpensesByCompanyIdAndExpenseDescription(companyId, expenseDescription string) ([]companyRegistration.CompanyExpense, error) {
-	var expenses []companyRegistration.CompanyExpense
-	if err := r.db.Where("company_id = ? AND description = ?", companyId, expenseDescription).Find(&expenses).Error; err != nil {
-		return nil, err
-	}
-	return expenses, nil
-}
 
 func (h *CompanyController) GetCompanyExpensesByCompanyIdAndExpenseDescription(c *fiber.Ctx) error {
 	// Retrieve companyId and expenseDescription from the request parameters
@@ -643,14 +507,6 @@ func (h *CompanyController) GetCompanyExpensesByCompanyIdAndExpenseDescription(c
 
 // // Get Company Expenses by Company ID and Currency
 
-func (r *CompanyRepositoryImpl) FindCompanyExpensesByCompanyIdAndCurrency(companyId, currency string) ([]companyRegistration.CompanyExpense, error) {
-	var expenses []companyRegistration.CompanyExpense
-	if err := r.db.Where("company_id = ? AND currency = ?", companyId, currency).Find(&expenses).Error; err != nil {
-		return nil, err
-	}
-	return expenses, nil
-}
-
 func (h *CompanyController) GetCompanyExpensesByCompanyIdAndCurrency(c *fiber.Ctx) error {
 	// Retrieve companyId and currency from the request parameters
 	companyId := c.Params("id")
@@ -683,14 +539,6 @@ func (h *CompanyController) GetCompanyExpensesByCompanyIdAndCurrency(c *fiber.Ct
 // =======================
 
 // Get Company Expenses by Company ID, Expense Date, and Currency
-
-func (r *CompanyRepositoryImpl) FindCompanyExpensesByThree(companyId, expenseDate, currency string) ([]companyRegistration.CompanyExpense, error) {
-	var expenses []companyRegistration.CompanyExpense
-	if err := r.db.Where("company_id = ? AND expense_date = ? AND currency = ?", companyId, expenseDate, currency).Find(&expenses).Error; err != nil {
-		return nil, err
-	}
-	return expenses, nil
-}
 
 func (h *CompanyController) GetCompanyExpensesByThree(c *fiber.Ctx) error {
 	// Retrieve companyId, expenseDate, and currency from the request parameters
@@ -725,14 +573,6 @@ func (h *CompanyController) GetCompanyExpensesByThree(c *fiber.Ctx) error {
 // ==================
 
 // Get Company Expenses by Company ID, Expense Description, and Currency
-
-func (r *CompanyRepositoryImpl) GetCompanyExpensesByFour(companyId, expenseDate, expenseDescription, currency string) ([]companyRegistration.CompanyExpense, error) {
-	var expenses []companyRegistration.CompanyExpense
-	if err := r.db.Where("company_id = ? AND expense_date = ? AND description = ? AND currency = ?", companyId, expenseDate, expenseDescription, currency).Find(&expenses).Error; err != nil {
-		return nil, err
-	}
-	return expenses, nil
-}
 
 // GetCompanyExpensesFilters handles the request to get company expenses by filters.
 func (h *CompanyController) GetCompanyExpensesFilters(c *fiber.Ctx) error {
@@ -769,14 +609,6 @@ func (h *CompanyController) GetCompanyExpensesFilters(c *fiber.Ctx) error {
 
 // ==================
 
-func (r *CompanyRepositoryImpl) GetPaginatedAllExpenses(c *fiber.Ctx) (*utils.Pagination, []companyRegistration.CompanyExpense, error) {
-	pagination, expenses, err := utils.Paginate(c, r.db, companyRegistration.CompanyExpense{})
-	if err != nil {
-		return nil, nil, err
-	}
-	return &pagination, expenses, nil
-}
-
 func (h *CompanyController) GetAllExpenses(c *fiber.Ctx) error {
 	// Fetch paginated Companies using the repository
 	pagination, companies, err := h.repo.GetPaginatedAllExpenses(c)
@@ -805,10 +637,6 @@ func (h *CompanyController) GetAllExpenses(c *fiber.Ctx) error {
 // ==================================================================================================================
 
 // Create a company location
-
-func (r *CompanyRepositoryImpl) CreateCompanyLocation(location *companyRegistration.CompanyLocation) error {
-	return r.db.Create(location).Error
-}
 
 // CreateCompanyLocation handles the creation of a company location
 func (h *CompanyController) CreateCompanyLocation(c *fiber.Ctx) error {
@@ -843,14 +671,6 @@ func (h *CompanyController) CreateCompanyLocation(c *fiber.Ctx) error {
 
 // Get Company Expenses by Company ID, Expense Description, and Currency
 
-func (r *CompanyRepositoryImpl) GetAllCompanyLocations(companyId string) ([]companyRegistration.CompanyLocation, error) {
-	var locations []companyRegistration.CompanyLocation
-	if err := r.db.Preload("Company").Where("company_id = ?", companyId).Find(&locations).Error; err != nil {
-		return nil, err
-	}
-	return locations, nil
-}
-
 // GetCompanyExpensesFilters handles the request to get company expenses by filters.
 func (h *CompanyController) GetAllCompanyLocations(c *fiber.Ctx) error {
 	companyId := c.Params("id")
@@ -883,15 +703,6 @@ func (h *CompanyController) GetAllCompanyLocations(c *fiber.Ctx) error {
 
 // ===============================
 
-func (r *CompanyRepositoryImpl) GetLocationByCompanyId(id, companyId string) (*companyRegistration.CompanyLocation, error) {
-	var location companyRegistration.CompanyLocation
-	result := r.db.Preload("Company").Where("company_id = ? AND id = ?", companyId).First(&location)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &location, nil
-}
-
 func (h *CompanyController) GetLocationByCompanyId(c *fiber.Ctx) error {
 	companyId := c.Params("companyId")
 	id := c.Params("id")
@@ -921,19 +732,6 @@ func (h *CompanyController) GetLocationByCompanyId(c *fiber.Ctx) error {
 }
 
 // ===============================
-
-func (r *CompanyRepositoryImpl) FindLocationById(Id string) (*companyRegistration.CompanyLocation, error) {
-	var location companyRegistration.CompanyLocation
-	result := r.db.Preload("Company").Where("id = ?", Id).First(&location)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &location, nil
-}
-
-func (r *CompanyRepositoryImpl) UpdateCompanyLocation(location *companyRegistration.CompanyLocation) error {
-	return r.db.Save(location).Error
-}
 
 func (h *CompanyController) UpdateCompanyLocation(c *fiber.Ctx) error {
 	// Define a struct for input validation
@@ -1006,14 +804,6 @@ func (h *CompanyController) UpdateCompanyLocation(c *fiber.Ctx) error {
 }
 
 // ===============================
-
-// Delete Company Location by ID
-func (r *CompanyRepositoryImpl) DeleteLocationByID(id string) error {
-	if err := r.db.Delete(&companyRegistration.CompanyLocation{}, "id = ?", id).Error; err != nil {
-		return err
-	}
-	return nil
-}
 
 // DeleteCompanyByID deletes a company by its ID
 func (h *CompanyController) DeleteLocationByID(c *fiber.Ctx) error {

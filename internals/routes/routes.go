@@ -3,6 +3,7 @@ package routes
 import (
 	"car-bond/internals/controllers"
 	"car-bond/internals/middleware"
+	"car-bond/internals/repository"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -12,7 +13,7 @@ import (
 func SetupRoute(app *fiber.App, db *gorm.DB) {
 
 	// Initialize the dbService and other controllers
-	dbService := controllers.NewDatabaseService(db)
+	dbService := repository.NewDatabaseService(db)
 	groupController := controllers.NewGroupController(dbService)
 	roleController := controllers.NewRoleController(dbService)
 	resourceController := controllers.NewResourceController(dbService)
@@ -50,7 +51,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	api.Get("/group-role-exist", permissionController.GroupsWithRoleExists)
 	api.Get("/roles-resource-permisions", permissionController.GetPermissions)
 
-	carDbService := controllers.NewCarRepository(db)
+	carDbService := repository.NewCarRepository(db)
 	carController := controllers.NewCarController(carDbService)
 	// Create a group for authentication routes
 	authGroup := api.Group("/auth")
@@ -95,7 +96,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 		return controllers.GetFile(c, db)
 	})
 
-	shippingDbService := controllers.NewShippingRepository(db)
+	shippingDbService := repository.NewShippingRepository(db)
 	shippingController := controllers.NewShippingController(shippingDbService, db)
 
 	shipping := api.Group("/shipping")
@@ -107,7 +108,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	shipping.Delete("/invoice/:id", middleware.Protected(), shippingController.DeleteShippingInvoiceByID)
 	shipping.Patch("/invoice/:id/lock", middleware.Protected(), shippingController.LockInvoice)
 
-	companyDbService := controllers.NewCompanyRepository(db)
+	companyDbService := repository.NewCompanyRepository(db)
 	companyController := controllers.NewCompanyController(companyDbService)
 
 	// Company
@@ -131,7 +132,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	company.Put("/location/:id", middleware.Protected(), companyController.UpdateCompanyLocation)
 	company.Delete("/location/:id", middleware.Protected(), companyController.DeleteLocationByID)
 
-	customerDbService := controllers.NewCustomerRepository(db)
+	customerDbService := repository.NewCustomerRepository(db)
 	customerController := controllers.NewCustomerController(customerDbService)
 
 	// Customer
@@ -162,7 +163,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	customer.Put("/address/:id", middleware.Protected(), customerController.UpdateCustomerAddress)
 	customer.Delete("/:customerId/address/:id", middleware.Protected(), customerController.DeleteCustomerAddressById)
 
-	userDbService := controllers.NewUserRepository(db)
+	userDbService := repository.NewUserRepository(db)
 	userController := controllers.NewUserController(userDbService)
 
 	api.Get("/users", middleware.Protected(), userController.GetAllUsers)
@@ -173,7 +174,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	user.Patch("/:id", middleware.Protected(), userController.UpdateUser)
 	user.Delete("/:id", middleware.Protected(), userController.DeleteUserByID)
 
-	saleDbService := controllers.NewSaleRepository(db)
+	saleDbService := repository.NewSaleRepository(db)
 	saleController := controllers.NewSaleController(saleDbService)
 
 	// Sale
@@ -210,7 +211,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	deposit.Put("/:id", middleware.Protected(), saleController.UpdateSalePaymentDeposit)
 
 	// Auction Sale
-	auctionSaleDbService := controllers.NewSaleAuctionRepository(db)
+	auctionSaleDbService := repository.NewSaleAuctionRepository(db)
 	auctionSaleController := controllers.NewSaleAuctionController(auctionSaleDbService)
 
 	// Sale
@@ -222,19 +223,19 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	SaleAuction.Delete("/:id", middleware.Protected(), auctionSaleController.DeleteSaleByID)
 
 	// Alert data
-	alertDbService := controllers.NewAlertRepository(db)
+	alertDbService := repository.NewAlertRepository(db)
 	alertController := controllers.NewAlertController(alertDbService)
 	api.Get("/alerts/search", middleware.Protected(), alertController.SearchAlerts)
 	api.Put("/alert/:id", middleware.Protected(), alertController.UpdateAlert)
 
 	// Meta data
-	metaDbService := controllers.NewExcecute(db)
+	metaDbService := repository.NewExcecute(db)
 	metaController := controllers.NewMetaController(metaDbService)
 
 	// Meta data
 	meta := api.Group("/meta")
 	meta.Post("/vehicle-evaluation", middleware.Protected(), metaController.ProcessExcelAndUploadHandler)
-	metaGDbService := controllers.NewMetaGetRepository(db)
+	metaGDbService := repository.NewMetaGetRepository(db)
 	metaGController := controllers.NewMetaGetController(metaGDbService)
 	meta.Get("/vehicle-evaluation", middleware.Protected(), metaGController.FetchVehicleEvaluationsByDescription)
 	meta.Get("/weights", middleware.Protected(), metaGController.GetAllWeightUnits)

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"car-bond/internals/models/customerRegistration"
+	"car-bond/internals/repository"
 	"car-bond/internals/utils"
 	"errors"
 	"fmt"
@@ -15,57 +16,15 @@ import (
 	"gorm.io/gorm"
 )
 
-type CustomerRepository interface {
-	CreateCustomer(customer *customerRegistration.Customer) error
-	GetPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error)
-	GetCustomerAddresses(customerID uint) ([]customerRegistration.CustomerAddress, error)
-	GetCustomerContacts(customerID uint) ([]customerRegistration.CustomerContact, error)
-	// UpdateCustomer(customer *customerRegistration.Customer) error
-	UpdateCustomer(id string, updates map[string]interface{}) error
-	GetCustomerByID(id string) (customerRegistration.Customer, error)
-	DeleteByID(id string) error
-	SearchPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error)
-
-	// Contact
-	CreateCustomerContact(address *customerRegistration.CustomerContact) error
-	GetCustomerContactsByCustomerId(customerId string) ([]customerRegistration.CustomerContact, error)
-	GetPaginatedContacts(c *fiber.Ctx, customerId string) (*utils.Pagination, []customerRegistration.CustomerContact, error)
-	GetCustomerContactByIdAndCustomerId(id, customerId string) (*customerRegistration.CustomerContact, error)
-	GetCustomerContactById(id string) (*customerRegistration.CustomerContact, error)
-	UpdateCustomerContact(contact *customerRegistration.CustomerContact) error
-	DeleteCustomerContactById(id, customerId string) error
-
-	// Address
-	CreateCustomerAddress(address *customerRegistration.CustomerAddress) error
-	GetPaginatedAddresses(c *fiber.Ctx, companyId string) (*utils.Pagination, []customerRegistration.CustomerAddress, error)
-	GetCustomerAddressesByCustomerId(customerId string) ([]customerRegistration.CustomerContact, error)
-	GetCustomerAddressByIdAndCustomerId(id, customerId string) (*customerRegistration.CustomerAddress, error)
-	GetCustomerAddressById(id string) (*customerRegistration.CustomerAddress, error)
-	UpdateCustomerAddress(address *customerRegistration.CustomerAddress) error
-	DeleteCustomerAddressById(id, customerId string) error
-}
-
-type CustomerRepositoryImpl struct {
-	db *gorm.DB
-}
-
-func NewCustomerRepository(db *gorm.DB) CustomerRepository {
-	return &CustomerRepositoryImpl{db: db}
-}
-
 type CustomerController struct {
-	repo CustomerRepository
+	repo repository.CustomerRepository
 }
 
-func NewCustomerController(repo CustomerRepository) *CustomerController {
+func NewCustomerController(repo repository.CustomerRepository) *CustomerController {
 	return &CustomerController{repo: repo}
 }
 
 // ============================================
-
-func (r *CustomerRepositoryImpl) CreateCustomer(customer *customerRegistration.Customer) error {
-	return r.db.Create(customer).Error
-}
 
 func (h *CustomerController) CreateCustomer(c *fiber.Ctx) error {
 	// Parse form data
@@ -162,30 +121,6 @@ func (h *CustomerController) CreateCustomer(c *fiber.Ctx) error {
 
 // =====================
 
-func (r *CustomerRepositoryImpl) GetCustomerAddresses(customerID uint) ([]customerRegistration.CustomerAddress, error) {
-	var addresses []customerRegistration.CustomerAddress
-	err := r.db.Where("customer_id = ?", customerID).Find(&addresses).Error
-	return addresses, err
-}
-
-// ====================
-
-func (r *CustomerRepositoryImpl) GetCustomerContacts(customerID uint) ([]customerRegistration.CustomerContact, error) {
-	var contacts []customerRegistration.CustomerContact
-	err := r.db.Where("customer_id = ?", customerID).Find(&contacts).Error
-	return contacts, err
-}
-
-// ==============
-
-func (r *CustomerRepositoryImpl) GetPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error) {
-	pagination, customers, err := utils.Paginate(c, r.db, customerRegistration.Customer{})
-	if err != nil {
-		return nil, nil, err
-	}
-	return &pagination, customers, nil
-}
-
 func (h *CustomerController) GetAllCustomers(c *fiber.Ctx) error {
 	pagination, customers, err := h.repo.GetPaginatedCustomers(c)
 	if err != nil {
@@ -244,12 +179,6 @@ func (h *CustomerController) GetAllCustomers(c *fiber.Ctx) error {
 
 // =====================
 
-func (r *CustomerRepositoryImpl) GetCustomerByID(id string) (customerRegistration.Customer, error) {
-	var customer customerRegistration.Customer
-	err := r.db.First(&customer, "id = ?", id).Error
-	return customer, err
-}
-
 // GetSingleCustomer fetches a customer with its associated contacts and addresses from the database
 func (h *CustomerController) GetSingleCustomer(c *fiber.Ctx) error {
 	// Get the Customer ID from the route parameters
@@ -307,10 +236,6 @@ func (h *CustomerController) GetSingleCustomer(c *fiber.Ctx) error {
 }
 
 // =======================
-
-func (r *CustomerRepositoryImpl) UpdateCustomer(id string, updates map[string]interface{}) error {
-	return r.db.Model(&customerRegistration.Customer{}).Where("id = ?", id).Updates(updates).Error
-}
 
 // Define the UpdateCustomer struct
 type UpdateCustomerPayload struct {
@@ -466,14 +391,6 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 
 // ======================
 
-// DeleteByID deletes a customer by ID
-func (r *CustomerRepositoryImpl) DeleteByID(id string) error {
-	if err := r.db.Delete(&customerRegistration.Customer{}, "id = ?", id).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
 // DeleteCustomerByID deletes a Customer by its ID
 func (h *CustomerController) DeleteCustomerByID(c *fiber.Ctx) error {
 	// Get the Customer ID from the route parameters
@@ -549,11 +466,6 @@ func (h *CustomerController) FetchCustomerUpload(c *fiber.Ctx) error {
 
 // // =================================================================
 
-// CreateCustomerContact creates a new customer contact in the database
-func (r *CustomerRepositoryImpl) CreateCustomerContact(address *customerRegistration.CustomerContact) error {
-	return r.db.Create(address).Error
-}
-
 // CreateCustomerContact handles the creation of a customer contact
 func (h *CustomerController) CreateCustomerContact(c *fiber.Ctx) error {
 	// Parse the request body into a customerContact struct
@@ -585,14 +497,6 @@ func (h *CustomerController) CreateCustomerContact(c *fiber.Ctx) error {
 
 // ========================
 
-func (r *CustomerRepositoryImpl) GetCustomerContactsByCustomerId(customerId string) ([]customerRegistration.CustomerContact, error) {
-	var contacts []customerRegistration.CustomerContact
-	if err := r.db.Where("customer_id = ?", customerId).Find(&contacts).Error; err != nil {
-		return nil, err
-	}
-	return contacts, nil
-}
-
 func (h *CustomerController) GetCustomerContactsByCustomerId(c *fiber.Ctx) error {
 	// Retrieve customerId from the request parameters
 	customerId := c.Params("id")
@@ -622,14 +526,6 @@ func (h *CustomerController) GetCustomerContactsByCustomerId(c *fiber.Ctx) error
 }
 
 // ======================
-
-func (r *CustomerRepositoryImpl) GetPaginatedContacts(c *fiber.Ctx, companyId string) (*utils.Pagination, []customerRegistration.CustomerContact, error) {
-	pagination, contacts, err := utils.Paginate(c, r.db.Preload("Customer").Where("company_id = ?", companyId), customerRegistration.CustomerContact{})
-	if err != nil {
-		return nil, nil, err
-	}
-	return &pagination, contacts, nil
-}
 
 func (h *CustomerController) GetCustomerContactsByCompanyId(c *fiber.Ctx) error {
 	companyId := c.Params("companyId")
@@ -662,15 +558,6 @@ func (h *CustomerController) GetCustomerContactsByCompanyId(c *fiber.Ctx) error 
 
 // Get Customer Contact by ID
 
-func (r *CustomerRepositoryImpl) GetCustomerContactByIdAndCustomerId(id, customerId string) (*customerRegistration.CustomerContact, error) {
-	var contact customerRegistration.CustomerContact
-	result := r.db.Preload("Customer").Where("id = ? AND customer_id = ?", id, customerId).First(&contact)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &contact, nil
-}
-
 func (h *CustomerController) GetCustomerContactById(c *fiber.Ctx) error {
 	// Retrieve the contact ID and customer ID from the request parameters
 	id := c.Params("id")
@@ -701,19 +588,6 @@ func (h *CustomerController) GetCustomerContactById(c *fiber.Ctx) error {
 }
 
 // ==========================
-
-func (r *CustomerRepositoryImpl) GetCustomerContactById(id string) (*customerRegistration.CustomerContact, error) {
-	var contact customerRegistration.CustomerContact
-	result := r.db.Preload("Customer").Where("id = ?", id).First(&contact)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &contact, nil
-}
-
-func (r *CustomerRepositoryImpl) UpdateCustomerContact(contact *customerRegistration.CustomerContact) error {
-	return r.db.Save(contact).Error
-}
 
 func (h *CustomerController) UpdateCustomerContact(c *fiber.Ctx) error {
 	// Define a struct for input validation
@@ -787,14 +661,6 @@ func (h *CustomerController) UpdateCustomerContact(c *fiber.Ctx) error {
 
 // ==========================
 
-// Delete Company contact by ID
-func (r *CustomerRepositoryImpl) DeleteCustomerContactById(id, customerId string) error {
-	if err := r.db.Delete(&customerRegistration.CustomerContact{}, "id = ? AND customer_id = ?", id, customerId).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
 // DeleteCompanyByID deletes a company by its ID
 func (h *CustomerController) DeleteCustomerContactById(c *fiber.Ctx) error {
 	// Get the company ID from the route parameters
@@ -836,14 +702,6 @@ func (h *CustomerController) DeleteCustomerContactById(c *fiber.Ctx) error {
 
 // =================================================================
 
-func (r *CustomerRepositoryImpl) GetPaginatedAddresses(c *fiber.Ctx, companyId string) (*utils.Pagination, []customerRegistration.CustomerAddress, error) {
-	pagination, contacts, err := utils.Paginate(c, r.db.Preload("Customer").Where("company_id = ?", companyId), customerRegistration.CustomerAddress{})
-	if err != nil {
-		return nil, nil, err
-	}
-	return &pagination, contacts, nil
-}
-
 func (h *CustomerController) GetCustomerAddressesByCompanyId(c *fiber.Ctx) error {
 	companyId := c.Params("companyId")
 
@@ -872,11 +730,6 @@ func (h *CustomerController) GetCustomerAddressesByCompanyId(c *fiber.Ctx) error
 }
 
 // ================================
-
-// CreateCustomerAddress creates a new customer address in the database
-func (r *CustomerRepositoryImpl) CreateCustomerAddress(address *customerRegistration.CustomerAddress) error {
-	return r.db.Create(address).Error
-}
 
 // CreateCustomerAddress handles the creation of a customer address
 func (h *CustomerController) CreateCustomerAddress(c *fiber.Ctx) error {
@@ -908,12 +761,6 @@ func (h *CustomerController) CreateCustomerAddress(c *fiber.Ctx) error {
 }
 
 // ===================================
-
-func (r *CustomerRepositoryImpl) GetCustomerAddressesByCustomerId(customerId string) ([]customerRegistration.CustomerContact, error) {
-	var addresses []customerRegistration.CustomerContact
-	err := r.db.Preload("Customer").Where("customer_id = ?", customerId).Find(&addresses).Error
-	return addresses, err
-}
 
 func (h *CustomerController) GetCustomerAddressesByCustomerId(c *fiber.Ctx) error {
 	customerId := c.Params("id")
@@ -948,15 +795,6 @@ func (h *CustomerController) GetCustomerAddressesByCustomerId(c *fiber.Ctx) erro
 
 // // Get Customer Address by ID
 
-func (r *CustomerRepositoryImpl) GetCustomerAddressByIdAndCustomerId(id, customerId string) (*customerRegistration.CustomerAddress, error) {
-	var contact customerRegistration.CustomerAddress
-	result := r.db.Preload("Customer").Where("id = ? AND customer_id = ?", id, customerId).First(&contact)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &contact, nil
-}
-
 func (h *CustomerController) GetCustomerAddressById(c *fiber.Ctx) error {
 	// Retrieve the contact ID and customer ID from the request parameters
 	id := c.Params("id")
@@ -987,19 +825,6 @@ func (h *CustomerController) GetCustomerAddressById(c *fiber.Ctx) error {
 }
 
 // ========================================
-
-func (r *CustomerRepositoryImpl) GetCustomerAddressById(id string) (*customerRegistration.CustomerAddress, error) {
-	var address customerRegistration.CustomerAddress
-	result := r.db.Preload("Customer").Where("id = ?", id).First(&address)
-	if result.Error != nil {
-		return nil, result.Error
-	}
-	return &address, nil
-}
-
-func (r *CustomerRepositoryImpl) UpdateCustomerAddress(address *customerRegistration.CustomerAddress) error {
-	return r.db.Save(address).Error
-}
 
 func (h *CustomerController) UpdateCustomerAddress(c *fiber.Ctx) error {
 	// Define a struct for input validation
@@ -1077,14 +902,6 @@ func (h *CustomerController) UpdateCustomerAddress(c *fiber.Ctx) error {
 
 // ==========================
 
-// Delete Company contact by ID
-func (r *CustomerRepositoryImpl) DeleteCustomerAddressById(id, customerId string) error {
-	if err := r.db.Delete(&customerRegistration.CustomerAddress{}, "id = ? AND customer_id = ?", id, customerId).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
 // DeleteCompanyByID deletes a company by its ID
 func (h *CustomerController) DeleteCustomerAddressById(c *fiber.Ctx) error {
 	// Get the company ID from the route parameters
@@ -1157,39 +974,6 @@ func (h *CustomerController) DeleteCustomerAddressById(c *fiber.Ctx) error {
 // }
 
 // ======================
-
-func (r *CustomerRepositoryImpl) SearchPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error) {
-	// Get query parameters from request
-	surname := c.Query("surname")
-	firstname := c.Query("firstname")
-	gender := c.Query("gender")
-	nationality := c.Query("nationality")
-
-	// Start building the query
-	query := r.db.Model(&customerRegistration.Customer{})
-
-	// Apply filters based on provided parameters
-	if surname != "" {
-		query = query.Where("surname LIKE ?", "%"+surname+"%")
-	}
-	if firstname != "" {
-		query = query.Where("othername LIKE ?", "%"+firstname+"%")
-	}
-	if gender != "" {
-		query = query.Where("gender = ?", gender)
-	}
-	if nationality != "" {
-		query = query.Where("nationality = ?", nationality)
-	}
-
-	// Call the pagination helper
-	pagination, customers, err := utils.Paginate(c, query, customerRegistration.Customer{})
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &pagination, customers, nil
-}
 
 func (h *CustomerController) SearchCustomers(c *fiber.Ctx) error {
 	// Call the repository function to get paginated search results

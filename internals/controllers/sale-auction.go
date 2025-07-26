@@ -2,42 +2,22 @@ package controllers
 
 import (
 	"car-bond/internals/models/saleRegistration"
-	"car-bond/internals/utils"
+	"car-bond/internals/repository"
 	"errors"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 )
 
-type SaleAuctionRepository interface {
-	CreateSale(sale *saleRegistration.SaleAuction) error
-	GetPaginatedSales(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SaleAuction, error)
-	GetSaleByID(id string) (saleRegistration.SaleAuction, error)
-	UpdateSale(sale *saleRegistration.SaleAuction) error
-	DeleteByID(id string) error
-}
-
-type SaleAuctionRepositoryImpl struct {
-	db *gorm.DB
-}
-
-func NewSaleAuctionRepository(db *gorm.DB) SaleAuctionRepository {
-	return &SaleAuctionRepositoryImpl{db: db}
-}
-
 type SaleAuctionController struct {
-	repo SaleAuctionRepository
+	repo repository.SaleAuctionRepository
 }
 
-func NewSaleAuctionController(repo SaleAuctionRepository) *SaleAuctionController {
+func NewSaleAuctionController(repo repository.SaleAuctionRepository) *SaleAuctionController {
 	return &SaleAuctionController{repo: repo}
 }
 
 // ============================================
-
-func (r *SaleAuctionRepositoryImpl) CreateSale(sale *saleRegistration.SaleAuction) error {
-	return r.db.Create(sale).Error
-}
 
 func (h *SaleAuctionController) CreateCarSale(c *fiber.Ctx) error {
 	// Initialize a new Sale instance
@@ -71,14 +51,6 @@ func (h *SaleAuctionController) CreateCarSale(c *fiber.Ctx) error {
 
 // =====================
 
-func (r *SaleAuctionRepositoryImpl) GetPaginatedSales(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.SaleAuction, error) {
-	pagination, sales, err := utils.Paginate(c, r.db.Preload("Car"), saleRegistration.SaleAuction{})
-	if err != nil {
-		return nil, nil, err
-	}
-	return &pagination, sales, nil
-}
-
 func (h *SaleAuctionController) GetAllCarSales(c *fiber.Ctx) error {
 	pagination, sales, err := h.repo.GetPaginatedSales(c)
 	if err != nil {
@@ -106,12 +78,6 @@ func (h *SaleAuctionController) GetAllCarSales(c *fiber.Ctx) error {
 // ==============
 
 // Get a single car sale by ID
-
-func (r *SaleAuctionRepositoryImpl) GetSaleByID(id string) (saleRegistration.SaleAuction, error) {
-	var sale saleRegistration.SaleAuction
-	err := r.db.Preload("Car").First(&sale, "id = ?", id).Error
-	return sale, err
-}
 
 // GetCarSale fetches a sale with its associated contacts and addresses from the database
 func (h *SaleAuctionController) GetCarSale(c *fiber.Ctx) error {
@@ -143,10 +109,6 @@ func (h *SaleAuctionController) GetCarSale(c *fiber.Ctx) error {
 }
 
 // =====================================
-
-func (r *SaleAuctionRepositoryImpl) UpdateSale(sale *saleRegistration.SaleAuction) error {
-	return r.db.Save(sale).Error
-}
 
 // Define the UpdateSale struct
 type UpdateSaleAuctionPayload struct {
@@ -224,14 +186,6 @@ func updateSaleAuctionFields(sale *saleRegistration.SaleAuction, updateSaleData 
 }
 
 // ============================
-
-// DeleteByID deletes a sale by ID
-func (r *SaleAuctionRepositoryImpl) DeleteByID(id string) error {
-	if err := r.db.Delete(&saleRegistration.SaleAuction{}, "id = ?", id).Error; err != nil {
-		return err
-	}
-	return nil
-}
 
 // DeleteSaleByID deletes a Sale by its ID
 func (h *SaleAuctionController) DeleteSaleByID(c *fiber.Ctx) error {
