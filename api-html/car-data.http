@@ -39,7 +39,7 @@ authorization: bearer {{bearer}}
 
 ###
 # Fetch car by ID
-GET {{hostname}}/car/id/2
+GET {{hostname}}/car/id/59
 authorization: bearer {{bearer}}
 
 ###

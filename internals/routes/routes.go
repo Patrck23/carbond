@@ -64,12 +64,10 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	// Car
 	api.Get("/cars", middleware.Protected(), carController.GetAllCars) //middleware.PermissionMiddleware(pdbService, "resource.*", []string{"R", "W"}), middleware.RequireGroupMembership("admin"),
 	car := api.Group("/car")
-	car.Post("/", middleware.Protected(), carController.CreateCar)
 	car.Post("/all-details", middleware.Protected(), carController.CreateCarWithDetails)
 	car.Put("/all-details/:id", middleware.Protected(), carController.UpdateCarWithDetails)
 	car.Get("/id/:id", middleware.Protected(), carController.GetSingleCar)
 	car.Get("/vin/:ChasisNumber", middleware.Protected(), carController.GetSingleCarByChasisNumber)
-	car.Put("/:id/details", middleware.Protected(), carController.UpdateCar)
 	car.Put("/:id/sale", middleware.Protected(), carController.UpdateCar2)
 	car.Put("/:id/shipping-invoice", middleware.Protected(), carController.UpdateCar3)
 	car.Delete("/:id", middleware.Protected(), carController.DeleteCarByID)
@@ -244,6 +242,6 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	meta.Get("/expenses", middleware.Protected(), metaGController.GetAllExpenseCategories)
 	meta.Get("/ports", middleware.Protected(), metaGController.FindPorts)
 	meta.Get("/payment-modes", middleware.Protected(), metaGController.FindPaymentModeBymode)
-	app.Static("/uploads", "./api/uploads")
+	app.Static("/uploads", "./uploads")
 	NotFoundRoute(app)
 }

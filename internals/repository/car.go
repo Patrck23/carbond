@@ -7,7 +7,9 @@ import (
 	"car-bond/internals/utils"
 	"database/sql"
 	"fmt"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -51,6 +53,7 @@ type CarRepository interface {
 	DeleteCarPhotoByURL(photoURL string) error
 	DeleteCarPhotoByID(photoID uint) error
 	GetCarPhotosBycarID(carId uint) ([]carRegistration.CarPhoto, error)
+	DeleteCarPhotos(carID uint) error
 
 	CreateAlert(alert *alertRegistration.Transaction) error
 
@@ -684,4 +687,26 @@ func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expe
 	}
 
 	return tx.Commit().Error
+}
+
+func (r *CarRepositoryImpl) DeleteCarPhotos(carID uint) error {
+	var photos []carRegistration.CarPhoto
+
+	// Fetch all photo records
+	if err := r.db.Where("car_id = ?", carID).Find(&photos).Error; err != nil {
+		return err
+	}
+
+	// Delete physical files
+	for _, photo := range photos {
+		filePath := photo.URL
+		if strings.HasPrefix(filePath, "./uploads/car_files/") {
+			filePath = strings.TrimPrefix(filePath, "./")
+		}
+		os.Remove(filePath)
+
+	}
+
+	// Delete from DB
+	return r.db.Where("car_id = ?", carID).Delete(&carRegistration.CarPhoto{}).Error
 }
