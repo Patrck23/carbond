@@ -6,6 +6,7 @@ import (
 	"car-bond/internals/utils"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -13,10 +14,12 @@ import (
 
 type SaleController struct {
 	repo repository.SaleRepository
+	db   *gorm.DB
 }
 
-func NewSaleController(repo repository.SaleRepository) *SaleController {
-	return &SaleController{repo: repo}
+func NewSaleController(repo repository.SaleRepository, db *gorm.DB) *SaleController {
+	return &SaleController{repo: repo,
+		db: db}
 }
 
 // ============================================
@@ -1011,5 +1014,223 @@ func (h *SaleController) GenerateCustomerStatement(c *fiber.Ctx) error {
 		"status":  "success",
 		"message": "statement fetched successfully",
 		"data":    statement,
+	})
+}
+
+// ==========================
+
+type SaleWithPaymentsInput struct {
+	Sale         saleRegistration.Sale      `json:"sale"`
+	SalePayments []SalePaymentWithModeInput `json:"sale_payments"`
+}
+
+type SalePaymentWithModeInput struct {
+	AmountPayed float64                          `json:"amount_payed"`
+	PaymentDate string                           `json:"payment_date"`
+	CreatedBy   string                           `json:"created_by"`
+	UpdatedBy   string                           `json:"updated_by"`
+	PaymentMode saleRegistration.SalePaymentMode `json:"payment_mode"`
+}
+
+func (h *SaleController) CreateSaleWithPayments(c *fiber.Ctx) error {
+	var input SaleWithPaymentsInput
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
+	}
+
+	// Validate sale date
+	saleDate, err := time.Parse("2006-01-02", input.Sale.SaleDate)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid sale_date format (expected YYYY-MM-DD)",
+			"data":    err.Error(),
+		})
+	}
+	input.Sale.SaleDate = saleDate.Format("2006-01-02")
+
+	tx := h.db.Begin()
+	if tx.Error != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to start transaction"})
+	}
+
+	// Save Sale
+	if err := tx.Create(&input.Sale).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save sale", "data": err.Error()})
+	}
+
+	var savedPayments []saleRegistration.SalePayment
+	var savedModes []saleRegistration.SalePaymentMode
+
+	// Loop through sale payments
+	for _, p := range input.SalePayments {
+		// Parse payment date
+		paymentDate, err := time.Parse("2006-01-02", p.PaymentDate)
+		if err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Invalid payment_date format (expected YYYY-MM-DD)",
+				"data":    err.Error(),
+			})
+		}
+
+		// Save payment
+		payment := saleRegistration.SalePayment{
+			AmountPayed: p.AmountPayed,
+			PaymentDate: paymentDate.Format("2006-01-02"),
+			SaleID:      input.Sale.ID,
+			CreatedBy:   p.CreatedBy,
+			UpdatedBy:   p.UpdatedBy,
+		}
+		if err := tx.Create(&payment).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save payment", "data": err.Error()})
+		}
+
+		// Save mode
+		paymentMode := p.PaymentMode
+		paymentMode.SalePaymentID = payment.ID
+		if err := tx.Create(&paymentMode).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save payment mode", "data": err.Error()})
+		}
+
+		savedPayments = append(savedPayments, payment)
+		savedModes = append(savedModes, paymentMode)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Transaction commit failed", "data": err.Error()})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"status":        "success",
+		"message":       "Sale and payments created successfully",
+		"sale":          input.Sale,
+		"sale_payments": savedPayments,
+		"payment_modes": savedModes,
+	})
+}
+
+func (h *SaleController) UpdateSaleWithPayments(c *fiber.Ctx) error {
+	saleIDStr := c.Params("id")
+	if saleIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Missing sale ID in URL",
+		})
+	}
+
+	saleID := utils.StrToUint(saleIDStr)
+	if saleID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid sale ID in URL",
+		})
+	}
+
+	var input SaleWithPaymentsInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid input",
+			"data":    err.Error(),
+		})
+	}
+
+	// ✅ Assign sale ID to struct
+	input.Sale.ID = saleID
+
+	// Validate and format sale date
+	saleDate, err := time.Parse("2006-01-02", input.Sale.SaleDate)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid sale_date format (expected YYYY-MM-DD)",
+			"data":    err.Error(),
+		})
+	}
+	input.Sale.SaleDate = saleDate.Format("2006-01-02")
+
+	tx := h.db.Begin()
+	if tx.Error != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to start transaction"})
+	}
+
+	// Update Sale
+	if err := tx.Model(&saleRegistration.Sale{}).
+		Where("id = ?", saleID).
+		Updates(input.Sale).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update sale", "data": err.Error()})
+	}
+
+	// Delete existing SalePayments (modes must be deleted first)
+	if err := tx.Where("sale_payment_id IN (SELECT id FROM sale_payments WHERE sale_id = ?)", saleID).
+		Delete(&saleRegistration.SalePaymentMode{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete payment modes", "data": err.Error()})
+	}
+	if err := tx.Where("sale_id = ?", saleID).
+		Delete(&saleRegistration.SalePayment{}).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete payments", "data": err.Error()})
+	}
+
+	var savedPayments []saleRegistration.SalePayment
+	var savedModes []saleRegistration.SalePaymentMode
+
+	for _, p := range input.SalePayments {
+		paymentDate, err := time.Parse("2006-01-02", p.PaymentDate)
+		if err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Invalid payment_date format (expected YYYY-MM-DD)",
+				"data":    err.Error(),
+			})
+		}
+
+		payment := saleRegistration.SalePayment{
+			AmountPayed: p.AmountPayed,
+			PaymentDate: paymentDate.Format("2006-01-02"),
+			SaleID:      saleID, // ✅ use correct ID
+			CreatedBy:   p.CreatedBy,
+			UpdatedBy:   p.UpdatedBy,
+		}
+
+		if err := tx.Create(&payment).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save payment", "data": err.Error()})
+		}
+
+		paymentMode := p.PaymentMode
+		paymentMode.SalePaymentID = payment.ID
+		if err := tx.Create(&paymentMode).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save payment mode", "data": err.Error()})
+		}
+
+		savedPayments = append(savedPayments, payment)
+		savedModes = append(savedModes, paymentMode)
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Transaction commit failed", "data": err.Error()})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":        "success",
+		"message":       "Sale and payments updated successfully",
+		"sale":          input.Sale,
+		"sale_payments": savedPayments,
+		"payment_modes": savedModes,
 	})
 }

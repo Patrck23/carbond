@@ -1667,3 +1667,49 @@ func (h *CarController) UpdateCarWithDetails(c *fiber.Ctx) error {
 		"car":     car,
 	})
 }
+
+func (h *CarController) UpdateCarStatus(c *fiber.Ctx) error {
+	carIDStr := c.Params("id")
+	if carIDStr == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Missing car ID in URL",
+		})
+	}
+
+	carID := utils.StrToUint(carIDStr)
+	if carID == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid car ID",
+		})
+	}
+
+	var payload struct {
+		CarStatus string `json:"car_status"`
+	}
+
+	if err := c.BodyParser(&payload); err != nil || payload.CarStatus == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid request payload",
+			"data":    err.Error(),
+		})
+	}
+
+	// Perform update
+	if err := h.repo.UpdateCarStatusByID(carID, payload.CarStatus); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update car status",
+			"data":    err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"status":     "success",
+		"message":    "Car status updated successfully",
+		"car_id":     carID,
+		"new_status": payload.CarStatus,
+	})
+}

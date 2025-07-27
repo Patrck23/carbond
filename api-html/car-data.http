@@ -3,16 +3,6 @@
 POST http://127.0.0.1:8080/api/auth/login
 content-type: application/json
 
-# {
-#     "identity":"JoanKizza",
-#     "password":"password"
-# }
-
-# {
-#     "identity":"Payeba",
-#     "password":"password"
-# }
-
 {
     "identity":"Admin",
     "password":"Admin123"
@@ -41,6 +31,17 @@ authorization: bearer {{bearer}}
 # Fetch car by ID
 GET {{hostname}}/car/id/59
 authorization: bearer {{bearer}}
+
+###
+# Fetch car by ID
+PUT {{hostname}}/car/59/status
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "car_status": "InStock"
+}
+
 
 ###
 # Fetch car by VINN

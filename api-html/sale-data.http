@@ -149,3 +149,86 @@ authorization: bearer {{bearer}}
 ###
 GET {{hostname}}/sale/statement/1
 authorization: bearer {{bearer}}
+
+
+###
+# Sale Payment Deposit
+POST {{hostname}}/sale/all-details
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "sale": {
+    "total_price": 15000,
+    "dollar_rate": 3800,
+    "sale_date": "2025-07-27",
+    "car_id": 59,
+    "company_id": 2,
+    "customer_id": 1,
+    "is_full_payment": false,
+    "initial_payment": 5000,
+    "payment_period": 3,
+    "created_by": "admin",
+    "updated_by": "admin"
+  },
+  "sale_payments": [
+    {
+      "amount_payed": 5000,
+      "payment_date": "2025-07-27",
+      "created_by": "admin",
+      "updated_by": "admin",
+      "payment_mode": {
+        "mode_of_payment": "BankTransfer",
+        "transaction_id": "TXN-001",
+        "created_by": "admin",
+        "updated_by": "admin"
+      }
+    },
+    {
+      "amount_payed": 3000,
+      "payment_date": "2025-08-10",
+      "created_by": "admin",
+      "updated_by": "admin",
+      "payment_mode": {
+        "mode_of_payment": "MobileMoney",
+        "transaction_id": "TXN-002",
+        "created_by": "admin",
+        "updated_by": "admin"
+      }
+    }
+  ]
+}
+
+###
+# Sale Payment Deposit
+PUT {{hostname}}/sale/1/all-details
+authorization: bearer {{bearer}}
+Content-Type: application/json
+
+{
+  "sale": {
+    "total_price": 15000,
+    "initial_payment": 8000,
+    "payment_period": 6,
+    "sale_date": "2025-07-25",
+    "car_id": 12,
+    "company_id": 3,
+    "customer_id": 1,
+    "created_by": "admin",
+    "updated_by": "admin"
+  },
+  "sale_payments": [
+    {
+      "amount_payed": 8000,
+      "payment_date": "2025-07-26",
+      "created_by": "admin",
+      "updated_by": "admin",
+      "payment_mode": {
+        "mode_of_payment": "Cash",
+        "transaction_id": "TXN001",
+        "created_by": "admin",
+        "updated_by": "admin"
+      }
+    }
+  ]
+}

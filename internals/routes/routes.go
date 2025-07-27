@@ -69,6 +69,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	car.Get("/id/:id", middleware.Protected(), carController.GetSingleCar)
 	car.Get("/vin/:ChasisNumber", middleware.Protected(), carController.GetSingleCarByChasisNumber)
 	car.Put("/:id/sale", middleware.Protected(), carController.UpdateCar2)
+	car.Put("/:id/status", middleware.Protected(), carController.UpdateCarStatus)
 	car.Put("/:id/shipping-invoice", middleware.Protected(), carController.UpdateCar3)
 	car.Delete("/:id", middleware.Protected(), carController.DeleteCarByID)
 	// Car expense
@@ -173,7 +174,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	user.Delete("/:id", middleware.Protected(), userController.DeleteUserByID)
 
 	saleDbService := repository.NewSaleRepository(db)
-	saleController := controllers.NewSaleController(saleDbService)
+	saleController := controllers.NewSaleController(saleDbService, db)
 
 	// Sale
 	api.Get("/sales", middleware.Protected(), saleController.GetAllCarSales)
@@ -183,6 +184,8 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	sale.Put("/:id", middleware.Protected(), saleController.UpdateSale)
 	sale.Delete("/:id", middleware.Protected(), saleController.DeleteSaleByID)
 	sale.Get("/statement/:customerId", middleware.Protected(), saleController.GenerateCustomerStatement)
+	sale.Post("/all-details", middleware.Protected(), saleController.CreateSaleWithPayments)
+	sale.Put("/:id/all-details", middleware.Protected(), saleController.UpdateSaleWithPayments)
 
 	// Invoice
 	api.Get("/invoices", middleware.Protected(), saleController.GetSalePayments)

@@ -28,6 +28,7 @@ type CarRepository interface {
 	CountCarsByInvoiceExcludingID(invoiceID uint, excludeCarID uint) (int64, error)
 	GetCompanyNameByID(id uint) (string, error)
 	GetInvoiceByID(id uint) (carRegistration.CarShippingInvoice, error)
+	UpdateCarStatusByID(carID uint, status string) error
 
 	// Expense
 	CreateCarExpense(expense *carRegistration.CarExpense) error
@@ -709,4 +710,10 @@ func (r *CarRepositoryImpl) DeleteCarPhotos(carID uint) error {
 
 	// Delete from DB
 	return r.db.Where("car_id = ?", carID).Delete(&carRegistration.CarPhoto{}).Error
+}
+
+func (r *CarRepositoryImpl) UpdateCarStatusByID(carID uint, status string) error {
+	return r.db.Model(&carRegistration.Car{}).
+		Where("id = ?", carID).
+		Update("car_status", status).Error
 }
