@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -1153,6 +1154,25 @@ func (h *CarController) FetchCarUploads64(c *fiber.Ctx) error {
 
 // ==========================================
 
+func safeFloatMap(input map[string]float64) map[string]float64 {
+	safe := make(map[string]float64)
+	for k, v := range input {
+		if math.IsInf(v, 0) || math.IsNaN(v) {
+			safe[k] = 0
+		} else {
+			safe[k] = v
+		}
+	}
+	return safe
+}
+
+func safeFloat(val float64) float64 {
+	if math.IsInf(val, 0) || math.IsNaN(val) {
+		return 0
+	}
+	return val
+}
+
 // GetDashboardData returns aggregated statistics for the dashboard
 func (h *CarController) GetDashboardData(c *fiber.Ctx) error {
 	totalCars, err := h.repo.GetTotalCars()
@@ -1207,8 +1227,8 @@ func (h *CarController) GetDashboardData(c *fiber.Ctx) error {
 			"total_cars":         totalCars,
 			"disbanded_cars":     disbandedCars,
 			"cars_in_stock":      carsInStock,
-			"total_money_spent":  totalMoneySpent,
-			"total_car_expenses": totalCarExpenses,
+			"total_money_spent":  safeFloat(totalMoneySpent),
+			"total_car_expenses": safeFloatMap(totalCarExpenses),
 		},
 	})
 }
@@ -1275,8 +1295,8 @@ func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
 			"total_cars":         totalCars,
 			"cars_in_stock":      carsInStock,
 			"cars_sold":          carsSold,
-			"total_money_spent":  totalMoneySpent,
-			"total_car_expenses": totalCarExpenses,
+			"total_money_spent":  safeFloat(totalMoneySpent),
+			"total_car_expenses": safeFloatMap(totalCarExpenses),
 		},
 	})
 }
