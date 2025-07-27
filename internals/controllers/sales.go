@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/repository"
 	"car-bond/internals/utils"
@@ -1065,6 +1066,19 @@ func (h *SaleController) CreateSaleWithPayments(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save sale", "data": err.Error()})
 	}
 
+	if input.Sale.CarID != 0 && input.Sale.CustomerID != nil && *input.Sale.CustomerID != 0 {
+		if err := tx.Model(&carRegistration.Car{}).
+			Where("id = ?", input.Sale.CarID).
+			Update("customer_id", input.Sale.CustomerID).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to update car's customer_id after sale",
+				"data":    err.Error(),
+			})
+		}
+	}
+
 	var savedPayments []saleRegistration.SalePayment
 	var savedModes []saleRegistration.SalePaymentMode
 
@@ -1170,6 +1184,19 @@ func (h *SaleController) UpdateSaleWithPayments(c *fiber.Ctx) error {
 		Updates(input.Sale).Error; err != nil {
 		tx.Rollback()
 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update sale", "data": err.Error()})
+	}
+
+	if input.Sale.CarID != 0 && input.Sale.CustomerID != nil && *input.Sale.CustomerID != 0 {
+		if err := tx.Model(&carRegistration.Car{}).
+			Where("id = ?", input.Sale.CarID).
+			Update("customer_id", input.Sale.CustomerID).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to update car's customer_id after sale",
+				"data":    err.Error(),
+			})
+		}
 	}
 
 	// Delete existing SalePayments (modes must be deleted first)
