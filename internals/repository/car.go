@@ -662,9 +662,9 @@ func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expe
 	// Omit fields that should not be updated
 	if err := tx.Model(&carRegistration.Car{}).
 		Where("id = ?", car.ID).
-		Omit("car_uuid", "created_at", "created_by", "broker_name", "broker_number",
-			"number_plate", "car_tracker", "customer_id", "car_status",
-			"car_payment_status").
+		// Omit("car_uuid", "created_at", "created_by", "broker_name", "broker_number",
+		// 	"number_plate", "car_tracker", "customer_id", "car_status",
+		// 	"car_payment_status").
 		Updates(car).Error; err != nil {
 		tx.Rollback()
 		return err
