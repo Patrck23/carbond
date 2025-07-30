@@ -6,10 +6,14 @@ import (
 	"car-bond/internals/repository"
 	"car-bond/internals/utils"
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -753,26 +757,78 @@ func (h *SaleController) DeleteSalePaymentModeByID(c *fiber.Ctx) error {
 
 // CreateSalePayment handles the creation of a payment deposit
 func (h *SaleController) CreatePaymentDeposit(c *fiber.Ctx) error {
-	// Parse the request body into a salePayment struct
+	// Parse form fields
 	saleDeposit := new(saleRegistration.SalePaymentDeposit)
-	if err := c.BodyParser(saleDeposit); err != nil {
+	saleDeposit.BankName = c.FormValue("bank_name")
+	saleDeposit.BankAccount = c.FormValue("bank_account")
+	saleDeposit.BankBranch = c.FormValue("bank_branch")
+	saleDeposit.DateDeposited = c.FormValue("date_deposited")
+	saleDeposit.CreatedBy = c.FormValue("created_by")
+	saleDeposit.UpdatedBy = c.FormValue("updated_by")
+
+	// Parse float
+	amount, err := strconv.ParseFloat(c.FormValue("amount_deposited"), 64)
+	if err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Invalid input data",
+			"message": "Invalid amount deposited",
 			"data":    err.Error(),
 		})
 	}
+	saleDeposit.AmountDeposited = amount
 
-	// Create the customer address in the database
+	// Parse uint
+	salePaymentID, err := strconv.ParseUint(c.FormValue("sale_payment_id"), 10, 64)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid sale payment ID",
+			"data":    err.Error(),
+		})
+	}
+	saleDeposit.SalePaymentID = uint(salePaymentID)
+
+	// Handle file upload
+	file, err := c.FormFile("deposit_scan")
+	if err == nil {
+		uploadDir := "./uploads/deposit_scans"
+
+		// Ensure the directory exists
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to create upload directory",
+				"data":    err.Error(),
+			})
+		}
+
+		// Sanitize and generate unique file name
+		safeFileName := filepath.Base(file.Filename)
+		ext := filepath.Ext(safeFileName)
+		uniqueFileName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+		filePath := filepath.Join(uploadDir, uniqueFileName)
+
+		// Save the file
+		if err := c.SaveFile(file, filePath); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to save deposit scan file",
+				"data":    err.Error(),
+			})
+		}
+
+		saleDeposit.DepositScan = filePath
+	}
+
+	// Save deposit to DB
 	if err := h.repo.CreatePaymentDeposit(saleDeposit); err != nil {
 		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to create Payment deposit",
+			"message": "Failed to create payment deposit",
 			"data":    err.Error(),
 		})
 	}
 
-	// Return success response
 	return c.Status(201).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Payment deposit created successfully",
@@ -871,80 +927,80 @@ func (h *SaleController) GetPaymentDepositsByName(c *fiber.Ctx) error {
 // =====================
 
 func (h *SaleController) UpdateSalePaymentDeposit(c *fiber.Ctx) error {
-	// Define a struct for input validation
-	type UpdateSalePaymentDepositInput struct {
-		BankName        string  `json:"bank_name" validate:"required"`
-		BankAccount     string  `json:"bank_account" validate:"required"`
-		BankBranch      string  `json:"bank_branch" validate:"required"`
-		AmountDeposited float64 `json:"amount_deposited" validate:"required"`
-		DateDeposited   string  `json:"date_deposited" validate:"required"`
-		DepositScan     string  `json:"deposit_scan" validate:"required"`
-		SalePaymentID   uint    `json:"sale_payment_id" validate:"required"`
-		UpdatedBy       string  `json:"updated_by" validate:"required"`
-	}
+	idParam := c.Params("id")
 
-	// Parse the payment ID from the request parameters
-	paymentID := c.Params("id")
-
-	// Parse and validate the request body
-	var input UpdateSalePaymentDepositInput
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Invalid input",
-			"error":   err.Error(),
-		})
-	}
-
-	// Use a validation library to validate the input
-	if validationErr := utils.ValidateStruct(input); validationErr != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Validation failed",
-			"errors":  validationErr,
-		})
-	}
-
-	// Fetch the payment record using the repository
-	deposit, err := h.repo.FindSalePaymentDepositById(paymentID)
+	// Find existing deposit (you must implement this in your repo)
+	existingDeposit, err := h.repo.FindSalePaymentDepositById(idParam)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+		return c.Status(404).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Payment deposit not found",
+			"data":    err.Error(),
+		})
+	}
+
+	// Update fields from form
+	existingDeposit.BankName = c.FormValue("bank_name")
+	existingDeposit.BankAccount = c.FormValue("bank_account")
+	existingDeposit.BankBranch = c.FormValue("bank_branch")
+	existingDeposit.DateDeposited = c.FormValue("date_deposited")
+	existingDeposit.UpdatedBy = c.FormValue("updated_by")
+
+	// Optional: update amount deposited
+	if amtStr := c.FormValue("amount_deposited"); amtStr != "" {
+		if amt, err := strconv.ParseFloat(amtStr, 64); err == nil {
+			existingDeposit.AmountDeposited = amt
+		}
+	}
+
+	// Optional: update sale_payment_id
+	if spIDStr := c.FormValue("sale_payment_id"); spIDStr != "" {
+		if spID, err := strconv.ParseUint(spIDStr, 10, 64); err == nil {
+			existingDeposit.SalePaymentID = uint(spID)
+		}
+	}
+
+	// Handle file update if provided
+	file, err := c.FormFile("deposit_scan")
+	if err == nil {
+		uploadDir := "./uploads/deposit_scans"
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			return c.Status(500).JSON(fiber.Map{
 				"status":  "error",
-				"message": "payment not found",
+				"message": "Failed to create upload directory",
+				"data":    err.Error(),
 			})
 		}
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+
+		safeFileName := filepath.Base(file.Filename)
+		ext := filepath.Ext(safeFileName)
+		uniqueFileName := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+		filePath := filepath.Join(uploadDir, uniqueFileName)
+
+		if err := c.SaveFile(file, filePath); err != nil {
+			return c.Status(500).JSON(fiber.Map{
+				"status":  "error",
+				"message": "Failed to save deposit scan file",
+				"data":    err.Error(),
+			})
+		}
+
+		existingDeposit.DepositScan = filePath
+	}
+
+	// Save updated deposit (you must implement this in your repo)
+	if err := h.repo.UpdateSalePaymentDeposit(existingDeposit); err != nil {
+		return c.Status(500).JSON(fiber.Map{
 			"status":  "error",
-			"message": "Failed to fetch payment",
-			"error":   err.Error(),
+			"message": "Failed to update payment deposit",
+			"data":    err.Error(),
 		})
 	}
 
-	// Update the deposit fields
-	deposit.BankName = input.BankName
-	deposit.BankAccount = input.BankAccount
-	deposit.BankBranch = input.BankBranch
-	deposit.AmountDeposited = input.AmountDeposited
-	deposit.DateDeposited = input.DateDeposited
-	deposit.DepositScan = input.DepositScan
-	deposit.SalePaymentID = input.SalePaymentID
-	deposit.UpdatedBy = input.UpdatedBy
-
-	// Save the updated payment using the repository
-	if err := h.repo.UpdateSalePaymentDeposit(deposit); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"status":  "error",
-			"message": "Failed to update deposit",
-			"error":   err.Error(),
-		})
-	}
-
-	// Return the updated payment
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+	return c.Status(200).JSON(fiber.Map{
 		"status":  "success",
-		"message": "Deposit updated successfully",
-		"data":    deposit,
+		"message": "Payment deposit updated successfully",
+		"data":    existingDeposit,
 	})
 }
 
