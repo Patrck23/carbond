@@ -158,7 +158,7 @@ GET {{hostname}}/cars/search?to_company=she
 authorization: bearer {{bearer}}
 
 ###
-GET {{hostname}}/car/dash/2
+GET {{hostname}}/car/dash/1
 authorization: bearer {{bearer}}
 
 ###

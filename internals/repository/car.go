@@ -644,7 +644,7 @@ func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]
 		}
 
 		// If no dollar rate provided, skip to avoid division by zero
-		if res.DollarRate == 0 {
+		if res.DollarRate == 100 {
 			continue
 		}
 
