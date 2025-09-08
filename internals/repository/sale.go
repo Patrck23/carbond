@@ -84,6 +84,7 @@ func (r *SaleRepositoryImpl) GetSalesSummary(companyID uint) (map[string]float64
 		return nil, err
 	}
 	summary["total_payments"] = totalPayments
+	summary["money_in_mrkt"] = totalSales - totalPayments
 
 	// Total deposits for the company
 	var totalDeposits float64
