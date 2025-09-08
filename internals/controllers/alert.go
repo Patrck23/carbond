@@ -9,11 +9,15 @@ import (
 )
 
 type AlertController struct {
-	repo repository.AlertRepository
+	repo     repository.AlertRepository
+	saleRepo repository.SaleRepository
 }
 
-func NewAlertController(repo repository.AlertRepository) *AlertController {
-	return &AlertController{repo: repo}
+func NewAlertController(repo repository.AlertRepository, saleRepo repository.SaleRepository) *AlertController {
+	return &AlertController{
+		repo:     repo,
+		saleRepo: saleRepo,
+	}
 }
 
 // ============================================
@@ -61,12 +65,22 @@ func (h *AlertController) SearchAlerts(c *fiber.Ctx) error {
 		})
 	}
 
+	companyNotifications, err := h.saleRepo.CheckPaymentNotifications(c)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve sales notifications",
+			"data":    err.Error(),
+		})
+	}
+
 	// Return the response with pagination details
 	return c.Status(200).JSON(fiber.Map{
-		"status":     "success",
-		"message":    "Alerts retrieved successfully",
-		"pagination": pagination,
-		"data":       alerts,
+		"status":              "success",
+		"message":             "Alerts retrieved successfully",
+		"pagination":          pagination,
+		"data":                alerts,
+		"sales_notifications": companyNotifications,
 	})
 }
 

@@ -52,7 +52,8 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	api.Get("/roles-resource-permisions", permissionController.GetPermissions)
 
 	carDbService := repository.NewCarRepository(db)
-	carController := controllers.NewCarController(carDbService)
+	saleDbService := repository.NewSaleRepository(db)
+	carController := controllers.NewCarController(carDbService, saleDbService)
 	// Create a group for authentication routes
 	authGroup := api.Group("/auth")
 
@@ -173,7 +174,6 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	user.Patch("/:id", middleware.Protected(), userController.UpdateUser)
 	user.Delete("/:id", middleware.Protected(), userController.DeleteUserByID)
 
-	saleDbService := repository.NewSaleRepository(db)
 	saleController := controllers.NewSaleController(saleDbService, db)
 
 	// Sale
@@ -225,7 +225,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 
 	// Alert data
 	alertDbService := repository.NewAlertRepository(db)
-	alertController := controllers.NewAlertController(alertDbService)
+	alertController := controllers.NewAlertController(alertDbService, saleDbService)
 	api.Get("/alerts/search", middleware.Protected(), alertController.SearchAlerts)
 	api.Put("/alert/:id", middleware.Protected(), alertController.UpdateAlert)
 

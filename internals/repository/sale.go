@@ -6,6 +6,8 @@ import (
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/utils"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -49,6 +51,8 @@ type SaleRepository interface {
 
 	// Customer statement
 	GenerateCustomerStatement(customerID uint) (*CustomerStatement, error)
+	GetSalesSummary(companyID uint) (map[string]float64, error)
+	CheckPaymentNotifications(c *fiber.Ctx) ([]Notification, error)
 }
 
 type SaleRepositoryImpl struct {
@@ -59,8 +63,67 @@ func NewSaleRepository(db *gorm.DB) SaleRepository {
 	return &SaleRepositoryImpl{db: db}
 }
 
+func (r *SaleRepositoryImpl) GetSalesSummary(companyID uint) (map[string]float64, error) {
+	summary := make(map[string]float64)
+
+	// Total sales for the company
+	var totalSales float64
+	if err := r.db.Model(&saleRegistration.Sale{}).
+		Where("company_id = ?", companyID).
+		Select("COALESCE(SUM(total_price), 0)").Scan(&totalSales).Error; err != nil {
+		return nil, err
+	}
+	summary["total_sales"] = totalSales
+
+	// Total payments for the company
+	var totalPayments float64
+	if err := r.db.Model(&saleRegistration.SalePayment{}).
+		Joins("JOIN sales ON sales.id = sale_payments.sale_id").
+		Where("sales.company_id = ?", companyID).
+		Select("COALESCE(SUM(sale_payments.amount_payed), 0)").Scan(&totalPayments).Error; err != nil {
+		return nil, err
+	}
+	summary["total_payments"] = totalPayments
+
+	// Total deposits for the company
+	var totalDeposits float64
+	if err := r.db.Model(&saleRegistration.SalePaymentDeposit{}).
+		Joins("JOIN sale_payments ON sale_payments.id = sale_payment_deposits.sale_payment_id").
+		Joins("JOIN sales ON sales.id = sale_payments.sale_id").
+		Where("sales.company_id = ?", companyID).
+		Select("COALESCE(SUM(sale_payment_deposits.amount_deposited), 0)").Scan(&totalDeposits).Error; err != nil {
+		return nil, err
+	}
+	summary["total_deposits"] = totalDeposits
+
+	return summary, nil
+}
+
 func (r *SaleRepositoryImpl) CreateSale(sale *saleRegistration.Sale) error {
-	return r.db.Create(sale).Error
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Check if car is already sold
+		var car carRegistration.Car
+		if err := tx.First(&car, sale.CarID).Error; err != nil {
+			return err
+		}
+		if strings.EqualFold(car.CarStatus, "Sold") {
+			return fmt.Errorf("car with ID %d is already sold", sale.CarID)
+		}
+
+		// Create the sale
+		if err := tx.Create(sale).Error; err != nil {
+			return err
+		}
+
+		// Update car status to "Sold"
+		if err := tx.Model(&carRegistration.Car{}).
+			Where("id = ?", sale.CarID).
+			Update("car_status", "Sold").Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (r *SaleRepositoryImpl) GetSalePayments(saleID uint) ([]saleRegistration.SalePayment, error) {
@@ -78,7 +141,18 @@ func (r *SaleRepositoryImpl) GetSalePaymentModes(paymentID uint) ([]saleRegistra
 // ====================
 
 func (r *SaleRepositoryImpl) GetPaginatedSales(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.Sale, error) {
-	pagination, sales, err := utils.Paginate(c, r.db.Preload("Car"), saleRegistration.Sale{})
+
+	company_id := c.Query("company_id")
+	// Start building the query
+	query := r.db.Preload("Car").Model(&saleRegistration.Sale{})
+	// Apply filters based on provided parameters
+	if company_id != "" {
+		if _, err := strconv.Atoi(company_id); err == nil {
+			query = query.Where("company_id = ?", company_id)
+		}
+	}
+
+	pagination, sales, err := utils.Paginate(c, query, saleRegistration.Sale{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,12 +169,149 @@ func (r *SaleRepositoryImpl) UpdateSale(sale *saleRegistration.Sale) error {
 	return r.db.Save(sale).Error
 }
 
-// DeleteByID deletes a sale by ID
-func (r *SaleRepositoryImpl) DeleteByID(id string) error {
-	if err := r.db.Delete(&saleRegistration.Sale{}, "id = ?", id).Error; err != nil {
-		return err
+type Notification struct {
+	SaleID       uint
+	CustomerName string
+	PhoneNumber  string
+	Message      string
+	DueDate      time.Time
+	AmountDue    float64
+	CreatedAt    time.Time
+}
+
+func (r *SaleRepositoryImpl) CheckPaymentNotifications(c *fiber.Ctx) ([]Notification, error) {
+	var sales []saleRegistration.Sale
+	query := r.db.
+		Preload("Customer").
+		Preload("Car").
+		Preload("Company")
+
+	// Apply company filter if provided
+	companyID := c.Query("company_id")
+	if companyID != "" {
+		if id, err := strconv.Atoi(companyID); err == nil {
+			query = query.Where("company_id = ?", id)
+		}
 	}
-	return nil
+
+	if err := query.Find(&sales).Error; err != nil {
+		return nil, err
+	}
+
+	var notifications []Notification
+	now := time.Now()
+
+	for _, sale := range sales {
+		// Calculate total paid
+		var totalPaid float64
+		var payments []saleRegistration.SalePayment
+		if err := r.db.Where("sale_id = ?", sale.ID).Find(&payments).Error; err != nil {
+			return nil, err
+		}
+		for _, p := range payments {
+			totalPaid += p.AmountPayed
+		}
+
+		// Skip if fully paid
+		if totalPaid >= sale.TotalPrice {
+			continue
+		}
+
+		// Car number plate
+		carPlate := sale.Car.NumberPlate
+		if carPlate == "" {
+			carPlate = "N/A"
+		}
+
+		// Parse sale date
+		saleDate := parseDate(sale.SaleDate)
+		fmt.Println("Parsed sale date:", saleDate)
+
+		var dueDate time.Time
+		if sale.IsFullPayment {
+			// Full payment: set due date to sale date (or could be nil)
+			dueDate = saleDate
+			fmt.Println(dueDate)
+			fmt.Println(saleDate)
+		} else {
+			// Installments: calculate due date based on last payment or sale date
+			if len(payments) == 0 {
+				dueDate = saleDate.AddDate(0, sale.PaymentPeriod, 0) // sale date + total periods
+			} else {
+				// Last payment date
+				lastPaymentDate := parseDate(payments[len(payments)-1].PaymentDate)
+				dueDate = lastPaymentDate.AddDate(0, 1, 0) // next installment due next month
+			}
+		}
+
+		// Message
+		message := ""
+		if sale.IsFullPayment {
+			message = fmt.Sprintf("Full payment not received for sale #%d (Car: %s)", sale.ID, carPlate)
+		} else {
+			message = fmt.Sprintf("Installment payment overdue for sale #%d (Car: %s)", sale.ID, carPlate)
+		}
+
+		// Append notification
+		notifications = append(notifications, Notification{
+			SaleID:       sale.ID,
+			CustomerName: sale.Customer.Firstname,
+			PhoneNumber:  sale.Customer.Telephone,
+			Message:      message,
+			DueDate:      dueDate,
+			AmountDue:    sale.TotalPrice - totalPaid,
+			CreatedAt:    now,
+		})
+	}
+
+	return notifications, nil
+}
+
+func parseDate(dateStr string) time.Time {
+	t, err := time.Parse(time.RFC3339, dateStr)
+	if err != nil {
+		fmt.Println("Warning: failed to parse date:", dateStr, err)
+		return time.Time{}
+	}
+	return t
+}
+
+// DeleteByID deletes a sale by ID along with its payments and deposits
+func (r *SaleRepositoryImpl) DeleteByID(id string) error {
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// First get all sale payments for this sale
+		var payments []saleRegistration.SalePayment
+		if err := tx.Where("sale_id = ?", id).Find(&payments).Error; err != nil {
+			return err
+		}
+
+		// Collect payment IDs
+		var paymentIDs []uint
+		for _, p := range payments {
+			paymentIDs = append(paymentIDs, p.ID)
+		}
+
+		// Delete deposits tied to those payments
+		if len(paymentIDs) > 0 {
+			if err := tx.Where("sale_payment_id IN ?", paymentIDs).
+				Delete(&saleRegistration.SalePaymentDeposit{}).Error; err != nil {
+				return err
+			}
+		}
+
+		// Delete the payments
+		if err := tx.Where("sale_id = ?", id).
+			Delete(&saleRegistration.SalePayment{}).Error; err != nil {
+			return err
+		}
+
+		// Finally, delete the sale
+		if err := tx.Delete(&saleRegistration.Sale{}, "id = ?", id).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 // CreateCustomerContact creates a new payment deposit in the database

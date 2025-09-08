@@ -530,31 +530,33 @@ func (r *CarRepositoryImpl) GetTotalCarsExpenses() (map[string]float64, error) {
 	}
 
 	err := r.db.Model(&carRegistration.CarExpense{}).
-		Select("currency, dollar_rate, SUM(amount * (1 + (expense_vat/100))) as total").
+		Select("currency, dollar_rate, SUM(amount * (1 + (expense_vat/100.0))) as total").
 		Group("currency, dollar_rate").
 		Scan(&results).Error
 	if err != nil {
 		return nil, err
 	}
 
-	// Print the results
+	// 🔎 Print raw query results
 	for _, summary := range results {
-		fmt.Printf("Currency: %s, Dollar Rate: %.2f, Total: %.2f\n", summary.Currency, summary.DollarRate, summary.Total)
+		fmt.Printf("Currency: %s | Dollar Rate: %.4f | Total: %.2f\n",
+			summary.Currency, summary.DollarRate, summary.Total)
 	}
 
-	totalExpenses := map[string]float64{
-		"USD": 0,
-		"JPY": 0,
-		// "TotalUSD": 0,
-	}
+	// Dynamically build totals
+	totalExpenses := make(map[string]float64)
 
 	for _, res := range results {
-		if res.Currency == "JPY" {
-			totalExpenses["JPY"] += res.Total
-			// totalExpenses["TotalUSD"] += res.Total * res.DollarRate
-		} else {
-			totalExpenses["USD"] += res.Total / res.DollarRate
-			// totalExpenses["TotalUSD"] += res.Total * res.DollarRate
+		// Always add original currency
+		totalExpenses[res.Currency] += res.Total
+
+		// Convert to USD only if a valid dollar rate exists (> 0)
+		if res.DollarRate > 0 {
+			if res.Currency == "USD" {
+				totalExpenses["USD"] += res.Total
+			} else {
+				totalExpenses["USD"] += res.Total / res.DollarRate
+			}
 		}
 	}
 
@@ -582,7 +584,7 @@ func (r *CarRepositoryImpl) GetComCarsInStock(companyID uint) (int64, error) {
 func (r *CarRepositoryImpl) GetComCarsSold(companyID uint) (int64, error) {
 	var count int64
 	err := r.db.Model(&carRegistration.Car{}).
-		Where("to_company_id = ? AND car_status = ?", companyID, "Sold").
+		Where("to_company_id = ? AND LOWER(car_status) = LOWER(?)", companyID, "Sold").
 		Count(&count).Error
 	return count, err
 }
@@ -616,25 +618,39 @@ func (r *CarRepositoryImpl) GetComTotalCarsExpenses(companyID uint) (map[string]
 	err := r.db.Model(&carRegistration.CarExpense{}).
 		Joins("JOIN cars ON car_expenses.car_id = cars.id").
 		Where("cars.to_company_id = ?", companyID).
-		Select("car_expenses.currency, car_expenses.dollar_rate, SUM(car_expenses.amount * (1 + (car_expenses.expense_vat/ 100.0))) as total, cars.to_company_id").
-		Group("car_expenses.currency, car_expenses.dollar_rate, cars.to_company_id").
+		Select(`
+			car_expenses.currency, 
+			car_expenses.dollar_rate, 
+			SUM(car_expenses.amount * (1 + (car_expenses.expense_vat/100.0))) as total
+		`).
+		Group("car_expenses.currency, car_expenses.dollar_rate").
 		Scan(&results).Error
-
 	if err != nil {
 		return nil, err
 	}
-
-	totalExpenses := map[string]float64{
-		"USD": 0,
-		"JPY": 0,
+	// 🔎 Debug print of raw results
+	fmt.Println("Raw results from DB:")
+	for _, res := range results {
+		fmt.Printf("Currency: %s | DollarRate: %.4f | Total: %.2f\n", res.Currency, res.DollarRate, res.Total)
 	}
 
+	// Build totals dynamically for all currencies
+	totalExpenses := make(map[string]float64)
 	for _, res := range results {
-		if res.Currency == "JPY" {
-			totalExpenses["JPY"] += res.Total
-		} else {
-			totalExpenses["USD"] += res.Total / res.DollarRate
+		// If it's USD, no conversion needed
+		if res.Currency == "USD" {
+			totalExpenses["USD"] += res.Total
+			continue
 		}
+
+		// If no dollar rate provided, skip to avoid division by zero
+		if res.DollarRate == 0 {
+			continue
+		}
+
+		// Always convert to USD equivalent and store original currency too
+		totalExpenses[res.Currency] += res.Total
+		totalExpenses["USD"] += res.Total / res.DollarRate
 	}
 
 	return totalExpenses, nil

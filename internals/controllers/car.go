@@ -25,11 +25,15 @@ import (
 )
 
 type CarController struct {
-	repo repository.CarRepository
+	repo     repository.CarRepository
+	saleRepo repository.SaleRepository
 }
 
-func NewCarController(repo repository.CarRepository) *CarController {
-	return &CarController{repo: repo}
+func NewCarController(repo repository.CarRepository, saleRepo repository.SaleRepository) *CarController {
+	return &CarController{
+		repo:     repo,
+		saleRepo: saleRepo,
+	}
 }
 
 // ==================
@@ -1288,6 +1292,15 @@ func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
 		})
 	}
 
+	saleSummary, err := h.saleRepo.GetSalesSummary(companyId)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to retrieve sales summary",
+			"data":    err.Error(),
+		})
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"status":  "success",
 		"message": "Dashboard data retrieved successfully",
@@ -1297,6 +1310,7 @@ func (h *CarController) GetCompanyDashboardData(c *fiber.Ctx) error {
 			"cars_sold":          carsSold,
 			"total_money_spent":  safeFloat(totalMoneySpent),
 			"total_car_expenses": safeFloatMap(totalCarExpenses),
+			"sales_summary":      saleSummary,
 		},
 	})
 }
