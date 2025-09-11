@@ -576,7 +576,7 @@ func (r *CarRepositoryImpl) GetComTotalCars(companyID uint) (int64, error) {
 func (r *CarRepositoryImpl) GetComCarsInStock(companyID uint) (int64, error) {
 	var count int64
 	err := r.db.Model(&carRegistration.Car{}).
-		Where("to_company_id = ? AND car_status = ?", companyID, "Instock").
+		Where("to_company_id = ? AND LOWER(car_status) = LOWER(?)", companyID, "In stock").
 		Count(&count).Error
 	return count, err
 }

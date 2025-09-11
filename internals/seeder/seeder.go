@@ -74,6 +74,14 @@ func SeedDatabase(db *gorm.DB) {
 			CreatedBy: "Seeder",
 			UpdatedBy: "",
 		},
+		{
+			CompanyID: 3,
+			Address:   "",
+			Telephone: "",
+			Country:   "Uganda",
+			CreatedBy: "Seeder",
+			UpdatedBy: "",
+		},
 	}
 
 	// Check if the companies table already has data

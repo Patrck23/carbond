@@ -1,6 +1,6 @@
 
-# @hostname = https://kkmadinatrading.com/api
-@hostname = https://clims.health.go.ug/api
+@hostname = https://kkmadinatrading.com/api
+# @hostname = https://clims.health.go.ug/api
 # @name tokenAPI
 POST {{hostname}}/auth/login
 content-type: application/json
@@ -25,15 +25,15 @@ authorization: bearer {{bearer}}
 Content-Type: application/json
 
 {
-	"surname":   "JohnJ",
-	"firstname": "DoeJ",
+	"surname":   "Hamza",
+	"firstname": "Dajima",
 	"othername": "",
 	"gender":    "",
 	"title":     "Admin",
-	"username":  "AdminJ",
-	"email":     "adminJ.com",
+	"username":  "AdminD",
+	"email":     "adminD.com",
 	"password":  "Admin123",
-	"company_id": 2,
+	"company_id": 3,
 	"group_id":   1,
 	"created_by": "",
 	"updated_by": ""
