@@ -61,6 +61,9 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	authGroup.Post("/login", func(c *fiber.Ctx) error {
 		return controllers.Login(c, db)
 	})
+	authGroup.Post("/login_", func(c *fiber.Ctx) error {
+		return controllers.Login_(c, db)
+	})
 
 	// Car
 	api.Get("/cars", middleware.Protected(), carController.GetAllCars) //middleware.PermissionMiddleware(pdbService, "resource.*", []string{"R", "W"}), middleware.RequireGroupMembership("admin"),
@@ -169,6 +172,9 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	api.Get("/users", middleware.Protected(), userController.GetAllUsers)
 	api.Get("/users/:companyId", middleware.Protected(), userController.GetUsersByCompany)
 	user := api.Group("/user")
+	user.Get("/profile", middleware.Protected(), func(c *fiber.Ctx) error {
+		return controllers.Profile(c, db)
+	})
 	user.Get("/:id", middleware.Protected(), userController.GetUserByID)
 	user.Post("/", middleware.Protected(), userController.CreateUser)
 	user.Patch("/:id", middleware.Protected(), userController.UpdateUser)

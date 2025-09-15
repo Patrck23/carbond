@@ -13,10 +13,6 @@ content-type: application/json
 @hostname = http://127.0.0.1:8080/api
 @bearer = {{tokenAPI.response.body.token}}
 
-# POST {{hostname}}/car
-# authorization: bearer {{bearer}}
-# Content-Type: application/json
-
 ###
 # Fetch cars
 GET {{hostname}}/cars?page=1&limit=10

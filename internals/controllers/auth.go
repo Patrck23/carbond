@@ -290,3 +290,149 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 		"user":          userData,
 	})
 }
+
+// ======================= LOGIN =======================
+func Login_(c *fiber.Ctx, db *gorm.DB) error {
+	type LoginInput struct {
+		Identity string `json:"identity"`
+		Password string `json:"password"`
+	}
+
+	var input LoginInput
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid login request format",
+			"data":    err.Error(),
+		})
+	}
+
+	// Fetch user by email or username
+	var user *userRegistration.User
+	var err error
+	if isEmail(input.Identity) {
+		user, err = getUserByEmail(input.Identity, db)
+	} else {
+		user, err = getUserByUsername(input.Identity, db)
+	}
+	if err != nil || user == nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid identity or password",
+		})
+	}
+
+	// Validate password
+	if !CheckPasswordHash(input.Password, user.Password) {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Invalid identity or password",
+		})
+	}
+
+	// Fetch roles
+	var roles []userRegistration.Role
+	if err := db.Where("group_id = ?", user.GroupID).Find(&roles).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Error retrieving roles",
+			"data":    err.Error(),
+		})
+	}
+	roleCodes := []string{}
+	for _, r := range roles {
+		roleCodes = append(roleCodes, r.Code)
+	}
+
+	// Create JWT access + refresh tokens
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+	claims["user_id"] = user.ID
+	claims["username"] = user.Username
+	claims["roles"] = roleCodes
+	claims["exp"] = time.Now().Add(72 * time.Hour).Unix()
+
+	refreshToken := jwt.New(jwt.SigningMethodHS256)
+	rtClaims := refreshToken.Claims.(jwt.MapClaims)
+	rtClaims["user_id"] = user.ID
+	rtClaims["exp"] = time.Now().Add(7 * 24 * time.Hour).Unix()
+
+	secretKey := config.Config("SECRET")
+	if secretKey == "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Server configuration error",
+		})
+	}
+	t, err := token.SignedString([]byte(secretKey))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to generate token",
+		})
+	}
+	rt, err := refreshToken.SignedString([]byte(secretKey))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to generate refresh token",
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"status":        "success",
+		"message":       "Login successful",
+		"token":         t,
+		"refresh_token": rt,
+	})
+}
+
+// ======================= PROFILE =======================
+func Profile(c *fiber.Ctx, db *gorm.DB) error {
+	// Extract token and claims
+	userToken := c.Locals("user").(*jwt.Token)
+	claims := userToken.Claims.(jwt.MapClaims)
+	userID := uint(claims["user_id"].(float64))
+
+	// Fetch user
+	var user userRegistration.User
+	if err := db.First(&user, userID).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"status":  "error",
+			"message": "User not found",
+		})
+	}
+
+	// Fetch group
+	var group userRegistration.Group
+	db.First(&group, user.GroupID)
+
+	// Fetch company location
+	var companyLocation companyRegistration.CompanyLocation
+	db.Where("company_id = ?", user.CompanyID).First(&companyLocation)
+
+	// Fetch roles
+	var roles []userRegistration.Role
+	db.Where("group_id = ?", user.GroupID).Find(&roles)
+	roleCodes := []string{}
+	for _, r := range roles {
+		roleCodes = append(roleCodes, r.Code)
+	}
+
+	// Build response
+	userData := fiber.Map{
+		"id":         user.ID,
+		"username":   user.Username,
+		"email":      user.Email,
+		"group":      group.Code,
+		"roles":      roleCodes,
+		"location":   companyLocation.Country,
+		"company_id": user.CompanyID,
+	}
+
+	return c.JSON(fiber.Map{
+		"status":  "success",
+		"message": "User profile",
+		"user":    userData,
+	})
+}

@@ -1,6 +1,6 @@
 # User Login
 # @name tokenAPI
-POST http://127.0.0.1:8080/api/auth/login
+POST http://127.0.0.1:8080/api/auth/login_
 content-type: application/json
 
 {
@@ -13,6 +13,12 @@ content-type: application/json
 @hostname = http://127.0.0.1:8080/api
 @bearer = {{tokenAPI.response.body.token}}
 
+###
+# Fetch user profile
+GET {{hostname}}/user/profile
+authorization: bearer {{bearer}}
+
+###
 POST {{hostname}}/user
 authorization: bearer {{bearer}}
 Content-Type: application/json
