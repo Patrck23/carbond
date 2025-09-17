@@ -308,9 +308,6 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 	if payload.Nationality != "" {
 		updates["nationality"] = payload.Nationality
 	}
-	if payload.Age != 0 {
-		updates["age"] = payload.Age
-	}
 	if payload.DOB != "" {
 		updates["dob"] = payload.DOB
 	}
