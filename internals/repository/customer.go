@@ -204,10 +204,10 @@ func (r *CustomerRepositoryImpl) SearchPaginatedCustomers(c *fiber.Ctx) (*utils.
 
 	// Apply filters based on provided parameters
 	if surname != "" {
-		query = query.Where("surname LIKE ?", "%"+surname+"%")
+		query = query.Where("LOWER(surname) LIKE LOWER(?)", "%"+surname+"%")
 	}
 	if firstname != "" {
-		query = query.Where("othername LIKE ?", "%"+firstname+"%")
+		query = query.Where("LOWER(othername) LIKE LOWER(?)", "%"+firstname+"%")
 	}
 	if gender != "" {
 		query = query.Where("gender = ?", gender)

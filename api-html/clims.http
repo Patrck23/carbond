@@ -59,7 +59,7 @@ DELETE {{hostname}}/car/3/expense/11
 authorization: bearer {{bearer}}
 
 ###
-GET {{hostname}}/cars/search?from_company_id=2
+GET {{hostname}}/cars/search?to_company_id=1&chasisNumber=GP2-005047
 authorization: bearer {{bearer}}
 
 ###
