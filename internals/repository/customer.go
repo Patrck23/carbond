@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"car-bond/internals/middleware"
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/utils"
 
@@ -67,10 +68,19 @@ func (r *CustomerRepositoryImpl) GetCustomerContacts(customerID uint) ([]custome
 // ==============
 
 func (r *CustomerRepositoryImpl) GetPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error) {
-	pagination, customers, err := utils.Paginate(c, r.db, customerRegistration.Customer{})
+	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	// Scope the query by company_id
+	query := r.db.Where("company_id = ?", companyID)
+
+	pagination, customers, err := utils.Paginate(c, query, customerRegistration.Customer{})
+	if err != nil {
+		return nil, nil, err
+	}
+
 	return &pagination, customers, nil
 }
 
@@ -202,6 +212,13 @@ func (r *CustomerRepositoryImpl) SearchPaginatedCustomers(c *fiber.Ctx) (*utils.
 	// Start building the query
 	query := r.db.Model(&customerRegistration.Customer{})
 
+	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
+	if err != nil {
+		return nil, nil, err
+	}
+	// Scope the query by company_id
+	query = query.Where("company_id = ?", companyID)
+
 	// Apply filters based on provided parameters
 	if surname != "" {
 		query = query.Where("LOWER(surname) LIKE LOWER(?)", "%"+surname+"%")
@@ -210,10 +227,10 @@ func (r *CustomerRepositoryImpl) SearchPaginatedCustomers(c *fiber.Ctx) (*utils.
 		query = query.Where("LOWER(othername) LIKE LOWER(?)", "%"+firstname+"%")
 	}
 	if gender != "" {
-		query = query.Where("gender = ?", gender)
+		query = query.Where("LOWER(gender) = LOWER(?)", gender)
 	}
 	if nationality != "" {
-		query = query.Where("nationality = ?", nationality)
+		query = query.Where("LOWER(nationality) = LOWER(?)", nationality)
 	}
 
 	// Call the pagination helper

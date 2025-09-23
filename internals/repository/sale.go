@@ -12,6 +12,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type SaleRepository interface {
@@ -100,27 +101,47 @@ func (r *SaleRepositoryImpl) GetSalesSummary(companyID uint) (map[string]float64
 	return summary, nil
 }
 
+const (
+	CarStatusInTransit = "InTransit"
+	CarStatusSold      = "Sold"
+)
+
 func (r *SaleRepositoryImpl) CreateSale(sale *saleRegistration.Sale) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// Check if car is already sold
+		// Lock the car row to prevent concurrent sales
 		var car carRegistration.Car
-		if err := tx.First(&car, sale.CarID).Error; err != nil {
-			return err
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			First(&car, sale.CarID).Error; err != nil {
+			return fmt.Errorf("failed to find car with ID %d: %w", sale.CarID, err)
 		}
-		if strings.EqualFold(car.CarStatus, "Sold") {
+
+		// Check if car is already sold
+		if strings.EqualFold(car.CarStatus, CarStatusSold) {
 			return fmt.Errorf("car with ID %d is already sold", sale.CarID)
 		}
 
 		// Create the sale
 		if err := tx.Create(sale).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to create sale: %w", err)
 		}
 
+		// // Update car status to "Sold"
+		// if err := tx.Model(&carRegistration.Car{}).
+		// 	Where("id = ? AND car_status <> ?", sale.CarID, CarStatusSold).
+		// 	Update("car_status", CarStatusSold).Error; err != nil {
+		// 	return fmt.Errorf("failed to update car status: %w", err)
+		// }
+
 		// Update car status to "Sold"
-		if err := tx.Model(&carRegistration.Car{}).
+		result := tx.Model(&carRegistration.Car{}).
 			Where("id = ?", sale.CarID).
-			Update("car_status", "Sold").Error; err != nil {
-			return err
+			Update("car_status", CarStatusSold)
+
+		if result.Error != nil {
+			return fmt.Errorf("failed to update car status: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("failed to update car status: no rows affected (possible race condition)")
 		}
 
 		return nil

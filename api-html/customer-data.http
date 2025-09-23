@@ -23,7 +23,6 @@ Content-Type: application/json
   "othername": "Michael",
   "gender": "Male",
   "nationality": "Ugandan",
-  "age": 35,
   "dob": "1989-05-15",
   "telephone": "+256-701-234-567",
   "email": "john.doe@example.com",
@@ -59,7 +58,7 @@ authorization: bearer {{bearer}}
 
 ###
 # Fetch customer by ID
-GET {{hostname}}/customer/1
+GET {{hostname}}/customer/4
 authorization: bearer {{bearer}}
 
 ###
@@ -84,7 +83,7 @@ Content-Type: application/json
 
 ###
 # Delete customer by ID
-DELETE  {{hostname}}/customer/2
+DELETE  {{hostname}}/customer/
 authorization: bearer {{bearer}}
 
 

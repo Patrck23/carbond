@@ -223,6 +223,7 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 	session.Set("username", user.Username)
 	session.Set("userId", user.ID)
 	session.Set("roles", roleCodes)
+	session.Set("companyId", user.CompanyID)
 
 	if err := session.Save(); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -237,12 +238,16 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 	claims["username"] = user.Username
 	claims["user_id"] = user.ID
 	claims["roles"] = roleCodes
+	claims["company_id"] = user.CompanyID
 	claims["exp"] = time.Now().Add(72 * time.Hour).Unix()
 
 	// Create JWT token for refresh
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
 	rtClaims := refreshToken.Claims.(jwt.MapClaims)
 	rtClaims["user_id"] = user.ID
+	// rtClaims["username"] = user.Username
+	// rtClaims["roles"] = roleCodes
+	// rtClaims["company_id"] = user.CompanyID
 	rtClaims["exp"] = time.Now().Add(72 * 7 * time.Hour).Unix() // Refresh token expires in 72 hours
 
 	secretKey := config.Config("SECRET")
@@ -347,15 +352,20 @@ func Login_(c *fiber.Ctx, db *gorm.DB) error {
 	// Create JWT access + refresh tokens
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
-	claims["user_id"] = user.ID
 	claims["username"] = user.Username
+	claims["user_id"] = user.ID
 	claims["roles"] = roleCodes
+	claims["company_id"] = user.CompanyID
 	claims["exp"] = time.Now().Add(72 * time.Hour).Unix()
 
+	// Create JWT token for refresh
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
 	rtClaims := refreshToken.Claims.(jwt.MapClaims)
+	// rtClaims["username"] = user.Username
+	// rtClaims["roles"] = roleCodes
+	// rtClaims["company_id"] = user.CompanyID
 	rtClaims["user_id"] = user.ID
-	rtClaims["exp"] = time.Now().Add(7 * 24 * time.Hour).Unix()
+	rtClaims["exp"] = time.Now().Add(72 * 7 * time.Hour).Unix()
 
 	secretKey := config.Config("SECRET")
 	if secretKey == "" {

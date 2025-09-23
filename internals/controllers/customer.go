@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"car-bond/internals/middleware"
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/repository"
 	"car-bond/internals/utils"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"path/filepath"
 
@@ -85,6 +87,13 @@ func (h *CustomerController) CreateCustomer(c *fiber.Ctx) error {
 		}
 	}
 
+	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
 	// Create a new Customer instance
 	customer := &customerRegistration.Customer{
 		Surname:     c.FormValue("surname"),
@@ -99,6 +108,7 @@ func (h *CustomerController) CreateCustomer(c *fiber.Ctx) error {
 		NIN:         c.FormValue("nin"),
 		CreatedBy:   c.FormValue("created_by"),
 		UpdatedBy:   c.FormValue("updated_by"),
+		CompanyID:   &companyID,
 		UploadFile:  filePath, // Store file path
 	}
 
@@ -249,6 +259,7 @@ type UpdateCustomerPayload struct {
 	Telephone   string `json:"telephone"`
 	Email       string `json:"email"`
 	NIN         string `json:"nin"`
+	CompanyID   uint   `json:"company_id"`
 	UpdatedBy   string `json:"updated_by"`
 }
 
@@ -310,7 +321,20 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 	}
 	if payload.DOB != "" {
 		updates["dob"] = payload.DOB
+
+		// Recompute age manually
+		dob, _ := time.Parse("2006-01-02", payload.DOB)
+		today := time.Now()
+		age := today.Year() - dob.Year()
+		if today.YearDay() < dob.YearDay() {
+			age--
+		}
+		if age < 0 {
+			age = 0
+		}
+		updates["age"] = age
 	}
+
 	if payload.Telephone != "" {
 		updates["telephone"] = payload.Telephone
 	}
@@ -323,6 +347,20 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 	if payload.UpdatedBy != "" {
 		updates["updated_by"] = payload.UpdatedBy
 	}
+
+	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	if payload.CompanyID != 0 && payload.CompanyID != companyID {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "you cannot override company_id",
+		})
+	}
+
+	updates["company_id"] = companyID
 
 	// Handle file upload
 	file, err := c.FormFile("upload_file")
@@ -939,36 +977,6 @@ func (h *CustomerController) DeleteCustomerAddressById(c *fiber.Ctx) error {
 }
 
 // ========================================
-
-// // Delete Customer address by ID
-
-// func DeleteCustomerAddressById(c *fiber.Ctx) error {
-// 	// Initialize database instance
-// 	db := database.DB.Db
-
-// 	// Parse parameters
-// 	id := c.Params("id")
-// 	customerId := c.Params("customerId")
-
-// 	// Check if the customer exists
-// 	var customer customerRegistration.Customer
-// 	if err := db.First(&customer, customerId).Error; err != nil {
-// 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Customer not found"})
-// 	}
-
-// 	// Check if the customer address exists and belongs to the customer
-// 	var customerAddress customerRegistration.CustomerAddress
-// 	if err := db.Where("id = ? AND customer_id = ?", id, customerId).First(&customerAddress).Error; err != nil {
-// 		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Customer address not found or does not belong to the specified customer"})
-// 	}
-
-// 	// Delete the customer address
-// 	if err := db.Delete(&customerAddress).Error; err != nil {
-// 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to delete customer address", "data": err.Error()})
-// 	}
-
-// 	return c.Status(200).JSON(fiber.Map{"status": "success", "message": "Customer address deleted successfully"})
-// }
 
 // ======================
 

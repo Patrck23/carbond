@@ -9,6 +9,7 @@ import (
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -195,4 +196,30 @@ func getRolesFromRequest(c *fiber.Ctx) []string {
 	}
 
 	return roles
+}
+
+func GetUserAndCompanyFromJWT(c *fiber.Ctx) (uint, uint, error) {
+	// Get user from JWT claims (Fiber's JWT middleware usually sets this in Locals)
+	userClaims := c.Locals("user")
+	if userClaims == nil {
+		return 0, 0, fmt.Errorf("no JWT claims found")
+	}
+
+	claims := userClaims.(*jwt.Token).Claims.(jwt.MapClaims)
+
+	// Extract user_id
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		return 0, 0, fmt.Errorf("user_id not found in token")
+	}
+	userID := uint(userIDFloat)
+
+	// Extract company_id
+	companyIDFloat, ok := claims["company_id"].(float64)
+	if !ok {
+		return 0, 0, fmt.Errorf("company_id not found in token")
+	}
+	companyID := uint(companyIDFloat)
+
+	return userID, companyID, nil
 }

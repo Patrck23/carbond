@@ -1,6 +1,7 @@
 package customerRegistration
 
 import (
+	"car-bond/internals/models/companyRegistration"
 	"time"
 
 	"github.com/google/uuid"
@@ -9,20 +10,22 @@ import (
 
 type Customer struct {
 	gorm.Model
-	CustomerUUID uuid.UUID `json:"customer_uuid"`
-	Surname      string    `json:"surname"`
-	Firstname    string    `json:"firstname"`
-	Othername    string    `json:"othername"`
-	Gender       string    `json:"gender"`
-	Nationality  string    `json:"nationality"`
-	Age          uint      `json:"age"` // Always computed, not from payload
-	DOB          string    `gorm:"type:date" json:"dob"`
-	Telephone    string    `json:"telephone"`
-	Email        string    `json:"email"`
-	NIN          string    `json:"nin"`
-	CreatedBy    string    `json:"created_by"`
-	UpdatedBy    string    `json:"updated_by"`
-	UploadFile   string    `json:"upload_file"` // Store the file path or URL
+	CustomerUUID uuid.UUID                    `json:"customer_uuid"`
+	Surname      string                       `json:"surname"`
+	Firstname    string                       `json:"firstname"`
+	Othername    string                       `json:"othername"`
+	Gender       string                       `json:"gender"`
+	Nationality  string                       `json:"nationality"`
+	Age          uint                         `json:"age"` // Always computed, not from payload
+	DOB          string                       `gorm:"type:date" json:"dob"`
+	Telephone    string                       `json:"telephone"`
+	Email        string                       `json:"email"`
+	NIN          string                       `json:"nin"`
+	CompanyID    *uint                        `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;" json:"company_id"`
+	Company      *companyRegistration.Company `gorm:"foreignKey:CompanyID;references:ID" json:"company"`
+	CreatedBy    string                       `json:"created_by"`
+	UpdatedBy    string                       `json:"updated_by"`
+	UploadFile   string                       `json:"upload_file"` // Store the file path or URL
 }
 
 // BeforeCreate hook
