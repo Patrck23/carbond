@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"car-bond/internals/middleware"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/models/saleRegistration"
@@ -164,15 +165,15 @@ func (r *SaleRepositoryImpl) GetSalePaymentModes(paymentID uint) ([]saleRegistra
 
 func (r *SaleRepositoryImpl) GetPaginatedSales(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.Sale, error) {
 
-	company_id := c.Query("company_id")
+	_, company_id, err := middleware.GetUserAndCompanyFromJWT(c)
+	if err != nil {
+		return nil, nil, err
+	}
 	// Start building the query
 	query := r.db.Preload("Car").Model(&saleRegistration.Sale{})
 	// Apply filters based on provided parameters
-	if company_id != "" {
-		if _, err := strconv.Atoi(company_id); err == nil {
-			query = query.Where("company_id = ?", company_id)
-		}
-	}
+
+	query = query.Where("company_id = ?", company_id)
 
 	pagination, sales, err := utils.Paginate(c, query, saleRegistration.Sale{})
 	if err != nil {

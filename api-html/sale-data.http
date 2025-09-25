@@ -4,7 +4,7 @@ POST http://127.0.0.1:8080/api/auth/login
 content-type: application/json
 
 {
-    "identity":"Admin",
+    "identity":"AdminD",
     "password":"Admin123"
 }
 
