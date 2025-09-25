@@ -418,6 +418,10 @@ func Profile(c *fiber.Ctx, db *gorm.DB) error {
 	db.First(&group, user.GroupID)
 
 	// Fetch company location
+	var company companyRegistration.Company
+	db.Where("id = ?", user.CompanyID).First(&company)
+
+	// Fetch company location
 	var companyLocation companyRegistration.CompanyLocation
 	db.Where("company_id = ?", user.CompanyID).First(&companyLocation)
 
@@ -431,13 +435,14 @@ func Profile(c *fiber.Ctx, db *gorm.DB) error {
 
 	// Build response
 	userData := fiber.Map{
-		"id":         user.ID,
-		"username":   user.Username,
-		"email":      user.Email,
-		"group":      group.Code,
-		"roles":      roleCodes,
-		"location":   companyLocation.Country,
-		"company_id": user.CompanyID,
+		"id":           user.ID,
+		"username":     user.Username,
+		"email":        user.Email,
+		"group":        group.Code,
+		"roles":        roleCodes,
+		"location":     companyLocation.Country,
+		"company_id":   user.CompanyID,
+		"company_name": company.Name,
 	}
 
 	return c.JSON(fiber.Map{
