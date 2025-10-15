@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"car-bond/internals/middleware"
 	"car-bond/internals/models/companyRegistration"
 	"car-bond/internals/utils"
+	"strconv"
 
 	"car-bond/internals/repository"
 	"errors"
@@ -402,11 +404,11 @@ func (h *CompanyController) UpdateCompanyExpense(c *fiber.Ctx) error {
 
 func (h *CompanyController) DeleteCompanyExpenseById(c *fiber.Ctx) error {
 	// Parse companyId and expenseId from the request parameters
-	companyId := c.Params("companyId")
+	_, companyId, _ := middleware.GetUserAndCompanyFromJWT(c)
 	expenseId := c.Params("id")
 
 	// Check if the expense exists and belongs to the specified company
-	expense, err := h.repo.FindCompanyExpenseByCompanyAndId(companyId, expenseId)
+	expense, err := h.repo.FindCompanyExpenseByCompanyAndId(strconv.FormatUint(uint64(companyId), 10), expenseId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{

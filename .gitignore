@@ -32,3 +32,5 @@ Dockerfile
 .dockerignore
 docker-compose.yml
 .DS_Store
+init
+readMe.md
