@@ -6,6 +6,7 @@ import (
 	"car-bond/internals/models/customerRegistration"
 	"car-bond/internals/models/saleRegistration"
 	"car-bond/internals/utils"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -107,6 +108,8 @@ const (
 	CarStatusSold      = "Sold"
 )
 
+var ErrCarAlreadySold = errors.New("car already sold")
+
 func (r *SaleRepositoryImpl) CreateSale(sale *saleRegistration.Sale) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		// Lock the car row to prevent concurrent sales
@@ -125,13 +128,6 @@ func (r *SaleRepositoryImpl) CreateSale(sale *saleRegistration.Sale) error {
 		if err := tx.Create(sale).Error; err != nil {
 			return fmt.Errorf("failed to create sale: %w", err)
 		}
-
-		// // Update car status to "Sold"
-		// if err := tx.Model(&carRegistration.Car{}).
-		// 	Where("id = ? AND car_status <> ?", sale.CarID, CarStatusSold).
-		// 	Update("car_status", CarStatusSold).Error; err != nil {
-		// 	return fmt.Errorf("failed to update car status: %w", err)
-		// }
 
 		// Update car status to "Sold"
 		result := tx.Model(&carRegistration.Car{}).
@@ -299,13 +295,18 @@ func parseDate(dateStr string) time.Time {
 	return t
 }
 
-// DeleteByID deletes a sale by ID along with its payments and deposits
 func (r *SaleRepositoryImpl) DeleteByID(id string) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
-		// First get all sale payments for this sale
+		// Fetch the sale first to get CarID
+		var saleRecord saleRegistration.Sale
+		if err := tx.First(&saleRecord, "id = ?", id).Error; err != nil {
+			return fmt.Errorf("failed to fetch sale to delete: %w", err)
+		}
+
+		// Get all payments for this sale
 		var payments []saleRegistration.SalePayment
 		if err := tx.Where("sale_id = ?", id).Find(&payments).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to fetch sale payments: %w", err)
 		}
 
 		// Collect payment IDs
@@ -318,19 +319,31 @@ func (r *SaleRepositoryImpl) DeleteByID(id string) error {
 		if len(paymentIDs) > 0 {
 			if err := tx.Where("sale_payment_id IN ?", paymentIDs).
 				Delete(&saleRegistration.SalePaymentDeposit{}).Error; err != nil {
-				return err
+				return fmt.Errorf("failed to delete sale payment deposits: %w", err)
 			}
 		}
 
 		// Delete the payments
 		if err := tx.Where("sale_id = ?", id).
 			Delete(&saleRegistration.SalePayment{}).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to delete sale payments: %w", err)
 		}
 
-		// Finally, delete the sale
+		// Delete the sale
 		if err := tx.Delete(&saleRegistration.Sale{}, "id = ?", id).Error; err != nil {
-			return err
+			return fmt.Errorf("failed to delete sale: %w", err)
+		}
+
+		// Update the car status back to "InTransit"
+		result := tx.Model(&carRegistration.Car{}).
+			Where("id = ?", saleRecord.CarID).
+			Update("car_status", "InStock")
+
+		if result.Error != nil {
+			return fmt.Errorf("failed to update car status back to InTransit: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return fmt.Errorf("failed to update car status: no rows affected (possible race condition)")
 		}
 
 		return nil

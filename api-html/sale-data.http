@@ -20,8 +20,8 @@ Content-Type: application/json
 {
     "total_price": 10525000.00,
     "sale_date": "2025-01-28",
-    "car_id": 1,
-    "company_id": 1,
+    "car_id": 28,
+    "company_id": 3,
     "is_full_payment": false,
     "payment_period": 12,
     "created_by": "admin",
@@ -57,7 +57,7 @@ Content-Type: application/json
 
 ###
 # Delete sale by ID
-DELETE  {{hostname}}/sale/1
+DELETE  {{hostname}}/sale/46
 authorization: bearer {{bearer}}
 
 # ====================
@@ -162,41 +162,15 @@ Content-Type: application/json
     "total_price": 15000,
     "dollar_rate": 3800,
     "sale_date": "2025-07-27",
-    "car_id": 59,
-    "company_id": 2,
-    "customer_id": 1,
+    "car_id": 57,
+    "company_id": 3,
+    "customer_id": 4,
     "is_full_payment": false,
     "initial_payment": 5000,
     "payment_period": 3,
     "created_by": "admin",
     "updated_by": "admin"
-  },
-  "sale_payments": [
-    {
-      "amount_payed": 5000,
-      "payment_date": "2025-07-27",
-      "created_by": "admin",
-      "updated_by": "admin",
-      "payment_mode": {
-        "mode_of_payment": "BankTransfer",
-        "transaction_id": "TXN-001",
-        "created_by": "admin",
-        "updated_by": "admin"
-      }
-    },
-    {
-      "amount_payed": 3000,
-      "payment_date": "2025-08-10",
-      "created_by": "admin",
-      "updated_by": "admin",
-      "payment_mode": {
-        "mode_of_payment": "MobileMoney",
-        "transaction_id": "TXN-002",
-        "created_by": "admin",
-        "updated_by": "admin"
-      }
-    }
-  ]
+  }
 }
 
 ###

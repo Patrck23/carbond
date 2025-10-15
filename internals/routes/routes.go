@@ -180,7 +180,7 @@ func SetupRoute(app *fiber.App, db *gorm.DB) {
 	user.Patch("/:id", middleware.Protected(), userController.UpdateUser)
 	user.Delete("/:id", middleware.Protected(), userController.DeleteUserByID)
 
-	saleController := controllers.NewSaleController(saleDbService, db)
+	saleController := controllers.NewSaleController(saleDbService, carDbService, db)
 
 	// Sale
 	api.Get("/sales", middleware.Protected(), saleController.GetAllCarSales)

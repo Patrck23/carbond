@@ -29,6 +29,7 @@ type CarRepository interface {
 	GetCompanyNameByID(id uint) (string, error)
 	GetInvoiceByID(id uint) (carRegistration.CarShippingInvoice, error)
 	UpdateCarStatusByID(carID uint, status string) error
+	UpdateCarStatus(carID uint, status string) error
 
 	// Expense
 	CreateCarExpense(expense *carRegistration.CarExpense) error
@@ -141,6 +142,22 @@ func (r *CarRepositoryImpl) UpdateCar(car *carRegistration.Car) error {
 
 func (r *CarRepositoryImpl) UpdateCarJapan(id string, updates map[string]interface{}) error {
 	return r.db.Model(&carRegistration.Car{}).Where("id = ?", id).Updates(updates).Error
+}
+
+// Update car status to "Sold"
+func (r *CarRepositoryImpl) UpdateCarStatus(carID uint, status string) error {
+	result := r.db.Model(&carRegistration.Car{}).
+		Where("id = ?", carID).
+		Update("car_status", status)
+
+	if result.Error != nil {
+		return fmt.Errorf("failed to update car status: %w", result.Error)
+	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no rows updated, possible invalid car ID or status already set")
+	}
+
+	return nil
 }
 
 func (r *CarRepositoryImpl) GetCompanyNameByID(id uint) (string, error) {

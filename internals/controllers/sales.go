@@ -10,21 +10,26 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type SaleController struct {
-	repo repository.SaleRepository
-	db   *gorm.DB
+	repo  repository.SaleRepository
+	cRepo repository.CarRepository
+	db    *gorm.DB
 }
 
-func NewSaleController(repo repository.SaleRepository, db *gorm.DB) *SaleController {
-	return &SaleController{repo: repo,
-		db: db}
+func NewSaleController(repo repository.SaleRepository, cRepo repository.CarRepository, db *gorm.DB) *SaleController {
+	return &SaleController{
+		repo:  repo,
+		cRepo: cRepo,
+		db:    db}
 }
 
 // ============================================
@@ -47,6 +52,14 @@ func (h *SaleController) CreateCarSale(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
 			"message": "Failed to create sale",
+			"data":    err.Error(),
+		})
+	}
+
+	if err := h.cRepo.UpdateCarStatus(sale.CarID, "Sold"); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"status":  "error",
+			"message": "Failed to update car status to Sold",
 			"data":    err.Error(),
 		})
 	}
@@ -1116,23 +1129,55 @@ func (h *SaleController) CreateSaleWithPayments(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to start transaction"})
 	}
 
-	// Save Sale
+	// // Save Sale
+	// if err := tx.Create(&input.Sale).Error; err != nil {
+	// 	tx.Rollback()
+	// 	return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save sale", "data": err.Error()})
+	// }
+
+	// if input.Sale.CarID != 0 && input.Sale.CustomerID != nil && *input.Sale.CustomerID != 0 {
+	// 	if err := tx.Model(&carRegistration.Car{}).
+	// 		Where("id = ?", input.Sale.CarID).
+	// 		Update("customer_id", input.Sale.CustomerID).Error; err != nil {
+	// 		tx.Rollback()
+	// 		return c.Status(500).JSON(fiber.Map{
+	// 			"status":  "error",
+	// 			"message": "Failed to update car's customer_id after sale",
+	// 			"data":    err.Error(),
+	// 		})
+	// 	}
+	// }
+
+	// ✅ Lock car BEFORE sale writing
+	var car carRegistration.Car
+	if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		First(&car, input.Sale.CarID).Error; err != nil {
+		tx.Rollback()
+		return c.Status(404).JSON(fiber.Map{"status": "error", "message": "Car not found"})
+	}
+
+	// ✅ Prevent double selling
+	if strings.EqualFold(car.CarStatus, "Sold") {
+		tx.Rollback()
+		return c.Status(400).JSON(fiber.Map{"status": "error", "message": "Car already sold"})
+	}
+
+	// ✅ Save Sale (after locking car)
 	if err := tx.Create(&input.Sale).Error; err != nil {
 		tx.Rollback()
 		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to save sale", "data": err.Error()})
 	}
 
-	if input.Sale.CarID != 0 && input.Sale.CustomerID != nil && *input.Sale.CustomerID != 0 {
-		if err := tx.Model(&carRegistration.Car{}).
-			Where("id = ?", input.Sale.CarID).
-			Update("customer_id", input.Sale.CustomerID).Error; err != nil {
-			tx.Rollback()
-			return c.Status(500).JSON(fiber.Map{
-				"status":  "error",
-				"message": "Failed to update car's customer_id after sale",
-				"data":    err.Error(),
-			})
-		}
+	// ✅ Update car (status + optional customer)
+	updateData := map[string]interface{}{
+		"car_status": "Sold",
+	}
+	if input.Sale.CustomerID != nil && *input.Sale.CustomerID != 0 {
+		updateData["customer_id"] = input.Sale.CustomerID
+	}
+	if err := tx.Model(&carRegistration.Car{}).Where("id = ?", input.Sale.CarID).Updates(updateData).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"status": "error", "message": "Failed to update car status", "data": err.Error()})
 	}
 
 	var savedPayments []saleRegistration.SalePayment
