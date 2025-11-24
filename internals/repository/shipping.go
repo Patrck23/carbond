@@ -15,7 +15,8 @@ import (
 type ShippingRepository interface {
 	CreateShippingInvoice(invoice *carRegistration.CarShippingInvoice) error
 	GetPaginatedShippingInvoices(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarShippingInvoice, error)
-	GetCarsByInvoiceId(invoiceID uint) ([]carRegistration.Car, error)
+	// GetCarsByInvoiceId(invoiceID uint) ([]carRegistration.Car, error)
+	GetCarsByInvoiceId(invoiceID uint) (map[string][]carRegistration.Car, error)
 	GetShippingInvoiceByID(invoiceID string) (carRegistration.CarShippingInvoice, error)
 	GetShippingInvoiceByInvoiceNum(invoiceNo string) (carRegistration.CarShippingInvoice, error)
 	UpdateShippingInvoice(invoice *carRegistration.CarShippingInvoice) error
@@ -37,10 +38,26 @@ func (r *ShippingRepositoryImpl) CreateShippingInvoice(invoice *carRegistration.
 	return r.db.Create(invoice).Error
 }
 
-func (r *ShippingRepositoryImpl) GetCarsByInvoiceId(invoiceID uint) ([]carRegistration.Car, error) {
+// func (r *ShippingRepositoryImpl) GetCarsByInvoiceId(invoiceID uint) ([]carRegistration.Car, error) {
+// 	var cars []carRegistration.Car
+// 	err := r.db.Where("car_shipping_invoice_id = ?", invoiceID).Find(&cars).Error
+// 	return cars, err
+// }
+
+func (r *ShippingRepositoryImpl) GetCarsByInvoiceId(invoiceID uint) (map[string][]carRegistration.Car, error) {
 	var cars []carRegistration.Car
 	err := r.db.Where("car_shipping_invoice_id = ?", invoiceID).Find(&cars).Error
-	return cars, err
+	if err != nil {
+		return nil, err
+	}
+
+	groupedCars := make(map[string][]carRegistration.Car)
+	for _, car := range cars {
+		key := car.OtherEntity
+		groupedCars[key] = append(groupedCars[key], car)
+	}
+
+	return groupedCars, nil
 }
 
 func (r *ShippingRepositoryImpl) GetPaginatedShippingInvoices(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarShippingInvoice, error) {

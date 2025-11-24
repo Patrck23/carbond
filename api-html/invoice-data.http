@@ -50,17 +50,17 @@ GET {{hostname}}/shipping/invoices?page=1&limit=50
 authorization: bearer {{bearer}}
 
 ###
-# Fetch customer by ID
+# Fetch invoice by ID
 GET {{hostname}}/shipping/invoice/1
 authorization: bearer {{bearer}}
 
 ###
-# Fetch customer by ID
+# Fetch invoice by ID
 GET {{hostname}}/shipping/invoice/no/FGTG908
 authorization: bearer {{bearer}}
 
 ###
-# Update customer by ID
+# Update invoice by ID
 PUT {{hostname}}/shipping/invoice/1
 authorization: bearer {{bearer}}
 Content-Type: application/json
@@ -79,12 +79,12 @@ Content-Type: application/json
 }
 
 ###
-# Delete customer by ID
+# Delete invoice by ID
 DELETE {{hostname}}/shipping/invoice/1
 authorization: bearer {{bearer}}
 
 ###
-# Delete customer by ID
+# Delete invoice by ID
 PATCH {{hostname}}/shipping/invoice/1/lock
 authorization: bearer {{bearer}}
 
