@@ -689,30 +689,75 @@ func (r *CarRepositoryImpl) CreateCarExpenses(expenses []carRegistration.CarExpe
 	return r.db.Create(&expenses).Error
 }
 
+// func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expenses []carRegistration.CarExpense) error {
+// 	tx := r.db.Begin()
+
+// 	// Omit fields that should not be updated
+// 	if err := tx.Model(&carRegistration.Car{}).
+// 		Where("id = ?", car.ID).
+// 		// Omit("car_uuid", "created_at", "created_by", "broker_name", "broker_number",
+// 		// 	"number_plate", "car_tracker", "customer_id", "car_status",
+// 		// 	"car_payment_status").
+// 		Updates(car).Error; err != nil {
+// 		tx.Rollback()
+// 		return err
+// 	}
+
+// 	// Delete existing expenses
+// 	if err := tx.Where("car_id = ?", car.ID).Delete(&carRegistration.CarExpense{}).Error; err != nil {
+// 		tx.Rollback()
+// 		return err
+// 	}
+
+// 	// Insert new expenses
+// 	for i := range expenses {
+// 		expenses[i].CarID = car.ID
+// 	}
+// 	if len(expenses) > 0 {
+// 		if err := tx.Create(&expenses).Error; err != nil {
+// 			tx.Rollback()
+// 			return err
+// 		}
+// 	}
+
+// 	return tx.Commit().Error
+// }
+
 func (r *CarRepositoryImpl) UpdateCarWithExpenses(car *carRegistration.Car, expenses []carRegistration.CarExpense) error {
 	tx := r.db.Begin()
 
-	// Omit fields that should not be updated
+	// 1. Omit currency (and any other sensitive fields you don't want to update)
 	if err := tx.Model(&carRegistration.Car{}).
 		Where("id = ?", car.ID).
-		// Omit("car_uuid", "created_at", "created_by", "broker_name", "broker_number",
-		// 	"number_plate", "car_tracker", "customer_id", "car_status",
-		// 	"car_payment_status").
+		Omit("currency"). // <---- currency will NOT be updated
 		Updates(car).Error; err != nil {
 		tx.Rollback()
 		return err
 	}
 
-	// Delete existing expenses
-	if err := tx.Where("car_id = ?", car.ID).Delete(&carRegistration.CarExpense{}).Error; err != nil {
-		tx.Rollback()
-		return err
+	// Determine the currency for expense replacements
+	// (Assumes all passed expenses use the same currency)
+	var expenseCurrency string
+	if len(expenses) > 0 {
+		expenseCurrency = expenses[0].Currency
 	}
 
-	// Insert new expenses
+	// 2. Delete ONLY expenses matching the given currency
+	if expenseCurrency != "" {
+		if err := tx.
+			Where("car_id = ? AND currency = ?", car.ID, expenseCurrency).
+			Delete(&carRegistration.CarExpense{}).
+			Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	// 3. Insert new expenses (same currency group)
 	for i := range expenses {
 		expenses[i].CarID = car.ID
 	}
+
 	if len(expenses) > 0 {
 		if err := tx.Create(&expenses).Error; err != nil {
 			tx.Rollback()
