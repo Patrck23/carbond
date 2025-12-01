@@ -9,14 +9,32 @@ import (
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/session"
-	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
 // Protected protect routes
+//
+//	func Protected() fiber.Handler {
+//		return jwtware.New(jwtware.Config{
+//			SigningKey:   jwtware.SigningKey{Key: []byte(config.Config("SECRET"))},
+//			ErrorHandler: jwtError,
+//		})
+//	}
 func Protected() fiber.Handler {
 	return jwtware.New(jwtware.Config{
-		SigningKey:   jwtware.SigningKey{Key: []byte(config.Config("SECRET"))},
+		SigningKey: jwtware.SigningKey{
+			Key: []byte(config.Config("SECRET")),
+		},
+
+		// REQUIRED for Fiber to store the JWT claims in c.Locals("user")
+		ContextKey: "user",
+
+		// REQUIRED to read token from Authorization header
+		TokenLookup: "header:Authorization",
+
+		// REQUIRED so it expects: Authorization: Bearer <token>
+		AuthScheme: "Bearer",
+
 		ErrorHandler: jwtError,
 	})
 }
@@ -198,28 +216,58 @@ func getRolesFromRequest(c *fiber.Ctx) []string {
 	return roles
 }
 
-func GetUserAndCompanyFromJWT(c *fiber.Ctx) (uint, uint, error) {
-	// Get user from JWT claims (Fiber's JWT middleware usually sets this in Locals)
-	userClaims := c.Locals("user")
-	if userClaims == nil {
-		return 0, 0, fmt.Errorf("no JWT claims found")
-	}
+// func GetUserAndCompanyFromSession(c *fiber.Ctx) (uint, uint, error) {
+// 	// Get user from JWT claims (Fiber's JWT middleware usually sets this in Locals)
+// 	userClaims := c.Locals("user")
+// 	if userClaims == nil {
+// 		return 0, 0, fmt.Errorf("no JWT claims found")
+// 	}
 
-	claims := userClaims.(*jwt.Token).Claims.(jwt.MapClaims)
+// 	claims := userClaims.(*jwt.Token).Claims.(jwt.MapClaims)
 
-	// Extract user_id
-	userIDFloat, ok := claims["user_id"].(float64)
+// 	// Extract user_id
+// 	userIDFloat, ok := claims["user_id"].(float64)
+// 	if !ok {
+// 		return 0, 0, fmt.Errorf("user_id not found in token")
+// 	}
+// 	userID := uint(userIDFloat)
+
+// 	// Extract company_id
+// 	companyIDFloat, ok := claims["company_id"].(float64)
+// 	if !ok {
+// 		return 0, 0, fmt.Errorf("company_id not found in token")
+// 	}
+// 	companyID := uint(companyIDFloat)
+
+// 	return userID, companyID, nil
+// }
+
+func GetUserAndCompanyFromSession(c *fiber.Ctx) (uint, uint, error) {
+	// Retrieve Fiber session from context
+	sess, ok := c.Locals("session").(*session.Session)
 	if !ok {
-		return 0, 0, fmt.Errorf("user_id not found in token")
+		return 0, 0, fmt.Errorf("session not found in context")
 	}
-	userID := uint(userIDFloat)
 
-	// Extract company_id
-	companyIDFloat, ok := claims["company_id"].(float64)
-	if !ok {
-		return 0, 0, fmt.Errorf("company_id not found in token")
+	// Extract userId
+	userIDVal := sess.Get("userId")
+	if userIDVal == nil {
+		return 0, 0, fmt.Errorf("userId not found in session")
 	}
-	companyID := uint(companyIDFloat)
 
-	return userID, companyID, nil
+	// Extract companyId
+	companyIDVal := sess.Get("companyId")
+	if companyIDVal == nil {
+		return 0, 0, fmt.Errorf("companyId not found in session")
+	}
+
+	// Convert interface{} to uint (session stores values as interface{})
+	userId, ok1 := userIDVal.(uint)
+	companyId, ok2 := companyIDVal.(uint)
+
+	if !ok1 || !ok2 {
+		return 0, 0, fmt.Errorf("invalid type for userId/companyId in session")
+	}
+
+	return userId, companyId, nil
 }

@@ -404,7 +404,7 @@ func (h *CompanyController) UpdateCompanyExpense(c *fiber.Ctx) error {
 
 func (h *CompanyController) DeleteCompanyExpenseById(c *fiber.Ctx) error {
 	// Parse companyId and expenseId from the request parameters
-	_, companyId, _ := middleware.GetUserAndCompanyFromJWT(c)
+	_, companyId, _ := middleware.GetUserAndCompanyFromSession(c)
 	expenseId := c.Params("id")
 
 	// Check if the expense exists and belongs to the specified company

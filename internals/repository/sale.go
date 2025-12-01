@@ -161,7 +161,7 @@ func (r *SaleRepositoryImpl) GetSalePaymentModes(paymentID uint) ([]saleRegistra
 
 func (r *SaleRepositoryImpl) GetPaginatedSales(c *fiber.Ctx) (*utils.Pagination, []saleRegistration.Sale, error) {
 
-	_, company_id, err := middleware.GetUserAndCompanyFromJWT(c)
+	_, company_id, err := middleware.GetUserAndCompanyFromSession(c)
 	if err != nil {
 		return nil, nil, err
 	}

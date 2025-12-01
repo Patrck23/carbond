@@ -87,7 +87,7 @@ func (h *CustomerController) CreateCustomer(c *fiber.Ctx) error {
 		}
 	}
 
-	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
+	_, companyID, err := middleware.GetUserAndCompanyFromSession(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": err.Error(),
@@ -348,7 +348,7 @@ func (h *CustomerController) UpdateCustomer(c *fiber.Ctx) error {
 		updates["updated_by"] = payload.UpdatedBy
 	}
 
-	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
+	_, companyID, err := middleware.GetUserAndCompanyFromSession(c)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": err.Error(),

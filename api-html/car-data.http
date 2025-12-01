@@ -4,7 +4,7 @@ POST http://127.0.0.1:8080/api/auth/login
 content-type: application/json
 
 {
-    "identity":"Admin",
+    "identity":"AdminJ",
     "password":"Admin123"
 }
 
@@ -93,7 +93,7 @@ authorization: bearer {{bearer}}
 
 ###
 # Get Car expenses by Car ID
-GET {{hostname}}/car/4/expenses?page=1&limit=10
+GET {{hostname}}/car/10/expenses?page=1&limit=10
 
 ###
 # Get Car expenses by Car ID and expense ID

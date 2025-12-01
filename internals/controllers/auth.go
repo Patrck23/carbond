@@ -158,8 +158,6 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 
 	group_code := group.Code
 
-	// company_id
-
 	// Ensure that user.GroupID is valid
 	if user.GroupID == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -245,9 +243,6 @@ func Login(c *fiber.Ctx, db *gorm.DB) error {
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
 	rtClaims := refreshToken.Claims.(jwt.MapClaims)
 	rtClaims["user_id"] = user.ID
-	// rtClaims["username"] = user.Username
-	// rtClaims["roles"] = roleCodes
-	// rtClaims["company_id"] = user.CompanyID
 	rtClaims["exp"] = time.Now().Add(72 * 7 * time.Hour).Unix() // Refresh token expires in 72 hours
 
 	secretKey := config.Config("SECRET")
@@ -361,9 +356,6 @@ func Login_(c *fiber.Ctx, db *gorm.DB) error {
 	// Create JWT token for refresh
 	refreshToken := jwt.New(jwt.SigningMethodHS256)
 	rtClaims := refreshToken.Claims.(jwt.MapClaims)
-	// rtClaims["username"] = user.Username
-	// rtClaims["roles"] = roleCodes
-	// rtClaims["company_id"] = user.CompanyID
 	rtClaims["user_id"] = user.ID
 	rtClaims["exp"] = time.Now().Add(72 * 7 * time.Hour).Unix()
 

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"car-bond/internals/middleware"
 	"car-bond/internals/models/alertRegistration"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/models/companyRegistration"
@@ -18,7 +19,8 @@ import (
 type CarRepository interface {
 	CreateCar(car *carRegistration.Car) error
 	GetPaginatedCars(c *fiber.Ctx) (*utils.Pagination, []carRegistration.Car, error)
-	GetCarExpenses(carID uint) ([]carRegistration.CarExpense, error)
+	// GetCarExpenses(carID uint) ([]carRegistration.CarExpense, error)
+	GetCarExpenses(carID uint, c *fiber.Ctx) ([]carRegistration.CarExpense, error)
 	GetCarByID(id string) (carRegistration.Car, error)
 	GetCarByVin(ChasisNumber string) (carRegistration.Car, error)
 	UpdateCar(car *carRegistration.Car) error
@@ -35,7 +37,8 @@ type CarRepository interface {
 	CreateCarExpense(expense *carRegistration.CarExpense) error
 	GetPaginatedExpenses(c *fiber.Ctx) (*utils.Pagination, []carRegistration.CarExpense, error)
 	FindCarExpenseByIdAndCarId(id string, carId string) (*carRegistration.CarExpense, error)
-	GetPaginatedExpensesByCarId(c *fiber.Ctx, carId string) (*utils.Pagination, []carRegistration.CarExpense, error)
+	// GetPaginatedExpensesByCarId(c *fiber.Ctx, carId string) (*utils.Pagination, []carRegistration.CarExpense, error)
+	GetPaginatedExpensesByCarId(c *fiber.Ctx, carId string, cpId uint) (*utils.Pagination, []carRegistration.CarExpense, error)
 	FindCarExpenseById(id string) (*carRegistration.CarExpense, error)
 	UpdateCarExpense(expense *carRegistration.CarExpense) error
 	DeleteCarExpense(expense *carRegistration.CarExpense) error
@@ -116,10 +119,69 @@ func (r *CarRepositoryImpl) GetPaginatedCars(c *fiber.Ctx) (*utils.Pagination, [
 	return &pagination, cars, nil
 }
 
-func (r *CarRepositoryImpl) GetCarExpenses(carID uint) ([]carRegistration.CarExpense, error) {
+func (r *CarRepositoryImpl) GetCarExpenses(carID uint, c *fiber.Ctx) ([]carRegistration.CarExpense, error) {
+
+	fmt.Printf("\n--- GetCarExpenses Debug Start ---\n")
+	fmt.Printf("CarID received: %d\n", carID)
+
+	// 1. Extract company from JWT
+	_, companyID, err := middleware.GetUserAndCompanyFromSession(c)
+	if err != nil {
+		fmt.Printf("Error extracting user/company from JWT: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("Extracted CompanyID: %d\n", companyID)
+
+	// 2. Load company location
+	var location companyRegistration.CompanyLocation
+	err = r.db.Where("company_id = ?", companyID).First(&location).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			fmt.Printf("No location found for company: %d (returning all expenses)\n", companyID)
+
+			var expenses []carRegistration.CarExpense
+			err = r.db.Where("car_id = ?", carID).Find(&expenses).Error
+			fmt.Printf("Expenses returned (no filter applied): %d\n", len(expenses))
+
+			return expenses, err
+		}
+
+		fmt.Printf("Error fetching location for company %d: %v\n", companyID, err)
+		return nil, err
+	}
+
+	fmt.Printf("Company location found: Country='%s', City='%v'\n", location.Country, location.CompanyID)
+
+	// 3. Build base query
 	var expenses []carRegistration.CarExpense
-	err := r.db.Where("car_id = ?", carID).Find(&expenses).Error
-	return expenses, err
+	query := r.db.Where("car_id = ?", carID)
+
+	// Country detection
+	country := strings.TrimSpace(location.Country)
+	countryUpper := strings.ToUpper(country)
+
+	fmt.Printf("Normalized Country: %s\n", countryUpper)
+
+	// 4. Add JPY filter if company is in Japan
+	if countryUpper == "JAPAN" || countryUpper == "JP" {
+		fmt.Printf("Company in Japan → applying currency filter: JPY only\n")
+		query = query.Where("currency = ?", "JPY")
+	} else {
+		fmt.Printf("Company NOT in Japan → returning ALL currencies\n")
+	}
+
+	// 5. Execute final query
+	err = query.Find(&expenses).Error
+	if err != nil {
+		fmt.Printf("Error fetching expenses: %v\n", err)
+		return nil, err
+	}
+
+	fmt.Printf("Expenses found: %d\n", len(expenses))
+	fmt.Printf("--- GetCarExpenses Debug End ---\n\n")
+
+	return expenses, nil
 }
 
 // ====================
@@ -204,11 +266,49 @@ func (r *CarRepositoryImpl) FindCarExpenseByIdAndCarId(id string, carId string) 
 	return &expense, nil
 }
 
-func (r *CarRepositoryImpl) GetPaginatedExpensesByCarId(c *fiber.Ctx, carId string) (*utils.Pagination, []carRegistration.CarExpense, error) {
-	pagination, expenses, err := utils.Paginate(c, r.db.Preload("Car").Where("car_id = ?", carId), carRegistration.CarExpense{})
+func (r *CarRepositoryImpl) GetPaginatedExpensesByCarId(c *fiber.Ctx, carId string, cpId uint) (*utils.Pagination, []carRegistration.CarExpense, error) {
+
+	fmt.Printf("\n--- GetPaginatedExpensesByCarId Debug Start ---\n")
+	fmt.Printf("CarID: %s | CompanyID: %d\n", carId, cpId)
+
+	var err error
+
+	// Determine if the company has ANY location in Japan
+	var japanLocationCount int64
+	err = r.db.
+		Model(&companyRegistration.CompanyLocation{}).
+		Where("company_id = ? AND (UPPER(country) = ? OR UPPER(country) = ?)", cpId, "JAPAN", "JP").
+		Count(&japanLocationCount).Error
+
 	if err != nil {
+		fmt.Printf("Error checking if company is in Japan: %v\n", err)
 		return nil, nil, err
 	}
+
+	isJapan := japanLocationCount > 0
+	fmt.Printf("Company in Japan? %v (found %d Japan locations)\n", isJapan, japanLocationCount)
+
+	// Base query
+	query := r.db.Preload("Car").Where("car_id = ?", carId)
+
+	// Apply Japan filter
+	if isJapan {
+		fmt.Printf("Company has Japan location → Restricting expenses to JPY only\n")
+		query = query.Where("currency = ?", "JPY")
+	} else {
+		fmt.Printf("Company NOT in Japan → Returning ALL currencies\n")
+	}
+
+	// Paginate results
+	pagination, expenses, err := utils.Paginate(c, query, carRegistration.CarExpense{})
+	if err != nil {
+		fmt.Printf("Pagination error: %v\n", err)
+		return nil, nil, err
+	}
+
+	fmt.Printf("Returned expenses count: %d\n", len(expenses))
+	fmt.Printf("--- GetPaginatedExpensesByCarId Debug End ---\n\n")
+
 	return &pagination, expenses, nil
 }
 

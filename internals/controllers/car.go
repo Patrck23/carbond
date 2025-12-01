@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"archive/zip"
+	"car-bond/internals/middleware"
 	"car-bond/internals/models/alertRegistration"
 	"car-bond/internals/models/carRegistration"
 	"car-bond/internals/repository"
@@ -129,7 +130,7 @@ func (h *CarController) GetAllCars(c *fiber.Ctx) error {
 	// Iterate over all cars to fetch associated car ports and expenses
 	for _, car := range cars {
 
-		expenses, err := h.repo.GetCarExpenses(car.ID)
+		expenses, err := h.repo.GetCarExpenses(car.ID, c)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",
@@ -183,7 +184,7 @@ func (h *CarController) GetSingleCar(c *fiber.Ctx) error {
 	}
 
 	// Fetch expenses associated with the car
-	expenses, err := h.repo.GetCarExpenses(car.ID)
+	expenses, err := h.repo.GetCarExpenses(car.ID, c)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -229,7 +230,7 @@ func (h *CarController) GetSingleCarByChasisNumber(c *fiber.Ctx) error {
 	}
 
 	// Fetch expenses associated with the car
-	expenses, err := h.repo.GetCarExpenses(car.ID)
+	expenses, err := h.repo.GetCarExpenses(car.ID, c)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -617,8 +618,15 @@ func (h *CarController) GetCarExpensesByCarId(c *fiber.Ctx) error {
 	// Retrieve carId from the request parameters
 	carId := c.Params("carId")
 
+	_, companyID, err := middleware.GetUserAndCompanyFromSession(c)
+	if err != nil {
+		fmt.Printf("Error extracting company from JWT: %v\n", err)
+		return err
+	}
+	fmt.Printf("Extracted CompanyID: %d\n", companyID)
+
 	// Fetch paginated car expenses using the repository
-	pagination, expenses, err := h.repo.GetPaginatedExpensesByCarId(c, carId)
+	pagination, expenses, err := h.repo.GetPaginatedExpensesByCarId(c, carId, companyID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"status":  "error",
@@ -987,7 +995,7 @@ func (h *CarController) SearchCars(c *fiber.Ctx) error {
 	// Iterate over all cars to fetch associated car ports and expenses
 	for _, car := range cars {
 
-		expenses, err := h.repo.GetCarExpenses(car.ID)
+		expenses, err := h.repo.GetCarExpenses(car.ID, c)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"status":  "error",

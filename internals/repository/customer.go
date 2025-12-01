@@ -68,7 +68,7 @@ func (r *CustomerRepositoryImpl) GetCustomerContacts(customerID uint) ([]custome
 // ==============
 
 func (r *CustomerRepositoryImpl) GetPaginatedCustomers(c *fiber.Ctx) (*utils.Pagination, []customerRegistration.Customer, error) {
-	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
+	_, companyID, err := middleware.GetUserAndCompanyFromSession(c)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -212,7 +212,7 @@ func (r *CustomerRepositoryImpl) SearchPaginatedCustomers(c *fiber.Ctx) (*utils.
 	// Start building the query
 	query := r.db.Model(&customerRegistration.Customer{})
 
-	_, companyID, err := middleware.GetUserAndCompanyFromJWT(c)
+	_, companyID, err := middleware.GetUserAndCompanyFromSession(c)
 	if err != nil {
 		return nil, nil, err
 	}
